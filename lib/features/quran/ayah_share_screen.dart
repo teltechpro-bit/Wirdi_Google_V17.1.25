@@ -214,7 +214,7 @@ class _AyahCard extends StatelessWidget {
             arabicText,
             textAlign: TextAlign.center,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'AmiriQuran',
               fontSize: 24,
               height: 1.9,
@@ -229,7 +229,7 @@ class _AyahCard extends StatelessWidget {
             Text(
               translationText!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontStyle: FontStyle.italic,
                 color: template.text.withValues(alpha: 0.75),

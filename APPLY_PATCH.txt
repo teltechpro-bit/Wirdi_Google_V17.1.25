@@ -1,0 +1,23 @@
+Wirdi V17 patch (against V16.1.25)
+
+How to apply: extract this zip over the project root (same folder that contains
+pubspec.yaml), overwriting when asked. Then:
+  flutter pub get
+  flutter analyze
+
+Modified (8):
+  FIREBASE_SETUP.md
+  lib/core/services/notification_service.dart
+  lib/core/services/prayer_notification_scheduler.dart
+  lib/features/quran/ayah_share_screen.dart
+  lib/features/tools/islamic_tools_screen.dart
+  patch_main_activity.py
+  patch_manifest.py
+  pubspec.yaml
+
+New (18): everything else in this zip.
+
+If you already applied the previous V17 zip and only need the analyzer fix,
+the last two edited files are:
+  lib/features/quran/ayah_share_screen.dart
+  lib/features/quran/recitation_check_screen.dart
