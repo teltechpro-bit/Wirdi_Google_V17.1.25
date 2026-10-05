@@ -1,0 +1,8 @@
+Wirdi 1.56.3+26 — Internal Testing preparation
+
+Changed files:
+- lib/core/data/app_sources.dart: set privacy policy URL and contact email.
+- docs/privacy-policy.html: replace placeholder contact email and remove pre-publish note.
+
+Upload these files over the matching paths in the current GitHub repository.
+The existing workflow already contains a Release AAB build path, conditional on RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD GitHub secrets being configured.

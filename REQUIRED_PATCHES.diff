@@ -1,0 +1,84 @@
+--- a/lib/core/services/settings_service.dart
++++ b/lib/core/services/settings_service.dart
+@@
+   static const List<String> dailyReminderKeys = [
+     'friday',
+     'morningAzkar',
+     'eveningAzkar',
+     'dailyWird',
+     'sleepAzkar',
+     'sadaqah',
++    'tahajjud',
++    'weeklySummary',
++    'backupReminder',
++    'dailyQuote',
+   ];
+@@
+   final Map<String, DailyReminderSetting> _dailyReminders = {
+     'friday': const DailyReminderSetting(enabled: false, hour: 8, minute: 0),
+     'morningAzkar': const DailyReminderSetting(enabled: false, hour: 6, minute: 0),
+     'eveningAzkar': const DailyReminderSetting(enabled: false, hour: 17, minute: 0),
+     'dailyWird': const DailyReminderSetting(enabled: false, hour: 20, minute: 0),
+     'sleepAzkar': const DailyReminderSetting(enabled: false, hour: 22, minute: 0),
+     'sadaqah': const DailyReminderSetting(enabled: false, hour: 20, minute: 0),
++    'tahajjud': const DailyReminderSetting(enabled: false, hour: 3, minute: 30),
++    'weeklySummary': const DailyReminderSetting(enabled: false, hour: 20, minute: 0),
++    'backupReminder': const DailyReminderSetting(enabled: false, hour: 20, minute: 30),
++    'dailyQuote': const DailyReminderSetting(enabled: false, hour: 9, minute: 0),
+   };
+--- a/lib/core/services/quran_repository.dart
++++ b/lib/core/services/quran_repository.dart
+@@
+-      if (cached != null) {
+-        // Return cached data immediately, refresh silently in background.
+-        // ignore: unawaited_futures
+-        _refreshInBackground();
+-        return _parseAsync(cached);
+-      }
++      if (cached != null) {
++        return _parseAsync(cached);
++      }
+@@
+-      if (bundled != null) {
+-        // No cache yet (first launch): serve the bundled copy immediately and
+-        // fill the cache from the network in the background.
+-        // ignore: unawaited_futures
+-        _refreshInBackground();
+-        return _parseAsync(bundled);
+-      }
++      if (bundled != null) {
++        return _parseAsync(bundled);
++      }
+@@
+-  static Future<void> _refreshInBackground() async {
+-    try {
+-      final raw = await _fetchRaw();
+-      await LocalCacheService.setString(_cacheKey, raw);
+-    } catch (e, st) {
+-      AppLogger.error('Quran background refresh failed, serving cached copy', error: e, stackTrace: st);
+-    }
+-  }
+-
+--- a/lib/core/services/sync_service.dart
++++ b/lib/core/services/sync_service.dart
+@@
+   Future<void> deleteAllCloudData() async {
+     if (_uid == null) return;
+@@
+-    for (final col in collections) {
++    final failures = <String>[];
++    for (final col in collections) {
+       try {
+         await _doc(col).delete();
+       } catch (e, st) {
++        failures.add(col);
+         AppLogger.error('Failed to delete cloud collection "' + col + '" during account deletion', error: e, stackTrace: st);
+       }
+     }
++    if (failures.isNotEmpty) {
++      throw PartialSyncException(
++        failures.map((name) => 'delete:$name').toList(),
++      );
++    }
+     debugPrint('[SyncService] All cloud data deleted');
+   }

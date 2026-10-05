@@ -1,0 +1,45 @@
+Wirdi — files changed for the 8 requested fixes
+
+Replace these files on GitHub:
+
+1. lib/core/services/quran_audio_service.dart
+   - Keep screen awake while Quran audio is actively playing.
+   - Disable wakelock on pause/stop/completion.
+   - Gapless just_audio playlist is preserved.
+
+2. lib/features/quran/quran_screen.dart
+   - Reduce excessive ListView cacheExtent that caused long-surah opening delay.
+
+3. lib/features/mushaf/mushaf_view_screen.dart
+   - Fast ayah -> Mushaf page map.
+   - Automatically follow the playing ayah across page boundaries.
+   - Works in page-flip and continuous-scroll modes.
+   - Smooth 280 ms page transition.
+   - Remove screen-wide wakelock; audio service owns it.
+
+4. lib/features/auth/login_screen.dart
+   - Remove email/password login UI.
+   - Remove register/forgot-password UI.
+   - Keep Google Sign-In and Continue without an account.
+
+5. lib/features/azkar/azkar_screen.dart
+   - Background image layer now covers the whole screen.
+   - Azkar/Duas tab labels and indicator are white for readability.
+
+6. lib/core/services/radio_service.dart
+   - Merge Data-Rosy radio catalog.
+   - Merge Uthumany radio catalog.
+   - Keep Cairo Quran Radio pinned as HTTPS fallback.
+   - Preserve existing MP3Quran and Radio-Browser sources.
+
+7. lib/core/models/radio_station.dart
+   - Parse the current Uthumany API schema (name/nameAr/streamUrl/country/genre/img).
+
+8. lib/features/home/home_dashboard_screen.dart
+   - Make dashboard cards theme-aware in light/dark mode.
+   - Match weekly summary card surface, elevation, shadow and radius.
+
+IMPORTANT:
+- Do NOT replace the whole project.
+- These files are based on the uploaded version that already contains the working gapless Quran audio patch.
+- After replacing the files: flutter pub get && flutter analyze && flutter test.
