@@ -125,7 +125,8 @@ jobs:
           #     startup, but there is no long-lived daemon process left
           #     to vanish, and no memory carried over between the debug
           #     and release builds later in this same job.
-          #   - org.gradle.jvmargs -Xmx3072m -XX:MaxMetaspaceSize=1g ->
+          #   - org.gradle.jvmargs -Xmx4608m -XX:MaxMetaspaceSize=1g ->  (raised from 3072m in v17:
+          #     JetifyTransform of the Flutter engine jar hit 'Java heap space')
           #     caps the heap well under the runner's ~7 GB total, leaving
           #     headroom for the OS, AAPT2, D8/R8, and the Kotlin daemon
           #     running alongside it.
@@ -140,7 +141,8 @@ jobs:
             echo ""
             echo "# --- CI memory tuning (appended by workflow) ---"
             echo "org.gradle.daemon=false"
-            echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+            echo "org.gradle.jvmargs=-Xmx4608m -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+            echo "kotlin.daemon.jvmargs=-Xmx1536m"
             echo "org.gradle.workers.max=2"
           } >> android/gradle.properties
           echo "----- Resulting android/gradle.properties -----"
