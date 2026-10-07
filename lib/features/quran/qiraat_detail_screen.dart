@@ -36,7 +36,7 @@ class QiraatDetailScreen extends StatelessWidget {
                 title: qiraat.nameFor(ar ? 'ar' : 'en'),
                 subtitle: ar
                     ? 'القراءة ${index + 1} من القراءات العشر المتواترة'
-                    : 'Reading \${index + 1} of the ten canonical Qira’at',
+                    : 'Reading ${index + 1} of the ten canonical Qira’at',
                 body: ar ? qiraat.descriptionAr : qiraat.descriptionEn,
               ),
               const SizedBox(height: 12),
@@ -309,7 +309,7 @@ class _RiwayahCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 5),
           child: Text(
             available
-                ? (ar ? '${readers.length} قارئ متاح في وردي' : '\${readers.length} reader sources in Wirdi')
+                ? (ar ? '${readers.length} قارئ متاح في وردي' : '${readers.length} reader sources in Wirdi')
                 : (ar ? 'لا يوجد مصدر قارئ مكتشف حاليًا' : 'No runtime reader source discovered yet'),
           ),
         ),
