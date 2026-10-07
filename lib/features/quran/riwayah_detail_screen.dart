@@ -230,7 +230,7 @@ class _ReaderCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             if (selected)
-              const Icon(Icons.check_circle, color: AppColors.goldAccent)
+              Icon(Icons.check_circle, color: AppColors.goldAccent)
             else
               OutlinedButton(
                 onPressed: onUse,
