@@ -18,6 +18,7 @@ class QiraatService {
   Map<String, List<RiwayahReader>>? _readers;
   Map<String, String>? _selectedReaderIds;
   Future<Map<String, List<RiwayahReader>>>? _readersFuture;
+  Future<Map<String, String>>? _catalogFuture;
 
   String get selectedRiwayahId => _selectedRiwayahId;
   RiwayahOption get selectedRiwayah => QiraatCatalog.byId(_selectedRiwayahId);
