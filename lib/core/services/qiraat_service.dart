@@ -114,7 +114,7 @@ class QiraatService {
           final serverRaw = '${read['server'] ?? ''}';
           final total = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
           if (serverRaw.isEmpty || total < 114) continue;
-          final server = serverRaw.endsWith('/') ? serverRaw : '${serverRaw}/';
+          final server = serverRaw.endsWith('/') ? serverRaw : '$serverRaw/';
           for (final riwayahId in _matches(name)) {
             final surahList = '${read['surah_list'] ?? ''}'.split(',').map(int.tryParse).whereType<int>().toSet();
             final reader = RiwayahReader(
