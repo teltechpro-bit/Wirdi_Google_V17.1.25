@@ -132,6 +132,7 @@ class RadioService extends ChangeNotifier {
     await mergeFrom(_fetchRadioBrowser, 'Radio-Browser');
     await mergeFrom(_fetchDataRosy, 'Data-Rosy');
     await mergeFrom(_fetchUthumany, 'Uthumany');
+    await mergeFrom(_fetchIprd, 'IPRD');
     // Keep the Cairo Quran station available even if an upstream catalog
     // temporarily omits it. This is the HTTPS stream documented by the
     // public Islamic-APIs radio endpoint.
@@ -189,6 +190,33 @@ class RadioService extends ChangeNotifier {
         .map(RadioStation.fromUthumany)
         .where((s) => s.streamUrl.isNotEmpty && RadioStation.isSecureUrl(s.streamUrl))
         .toList();
+  }
+
+
+  Future<List<RadioStation>> _fetchIprd() async {
+    final resp = await http
+        .get(Uri.parse('https://iprd-org.github.io/iprd/site_data/metadata/catalog.json'))
+        .timeout(const Duration(seconds: 15));
+    if (resp.statusCode != 200) return const [];
+    final decoded = jsonDecode(resp.body);
+    if (decoded is! Map<String, dynamic>) return const [];
+    final stations = decoded['stations'];
+    if (stations is! List) return const [];
+
+    const keywords = ['quran', 'koran', 'islamic', 'islam', 'religious', 'religion', 'tilawah'];
+    final result = <RadioStation>[];
+    for (final raw in stations.whereType<Map<String, dynamic>>()) {
+      final text = [
+        raw['name'],
+        raw['language'],
+        ...(raw['genres'] is List ? raw['genres'] : const []),
+        ...(raw['tags'] is List ? raw['tags'] : const []),
+      ].whereType<String>().join(' ').toLowerCase();
+      if (!keywords.any(text.contains)) continue;
+      final station = RadioStation.fromIprd(raw);
+      if (station.streamUrl.isNotEmpty) result.add(station);
+    }
+    return result;
   }
 
   Future<List<RadioStation>> _fetchMp3Quran() async {
