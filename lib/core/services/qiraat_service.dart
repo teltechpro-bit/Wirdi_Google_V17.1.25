@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/qiraat_catalog.dart';
+import '../models/riwayah_reader.dart';
 
 class QiraatService {
   QiraatService._();
@@ -14,12 +15,47 @@ class QiraatService {
 
   String _selectedRiwayahId = 'hafs';
   Map<String, String>? _surahServers;
-  Future<Map<String, String>>? _catalogFuture;
+  Map<String, List<RiwayahReader>>? _readers;
+  Map<String, String>? _selectedReaderIds;
+  Future<Map<String, List<RiwayahReader>>>? _readersFuture;
 
   String get selectedRiwayahId => _selectedRiwayahId;
   RiwayahOption get selectedRiwayah => QiraatCatalog.byId(_selectedRiwayahId);
   bool get isHafs => _selectedRiwayahId == 'hafs';
   bool get isWarsh => _selectedRiwayahId == 'warsh';
+
+  List<RiwayahReader> readersForSelectedRiwayah() => _readers?[_selectedRiwayahId] ?? const [];
+
+  RiwayahReader? selectedReaderFor(String riwayahId) {
+    final list = _readers?[riwayahId] ?? const [];
+    final id = _selectedReaderIds?[riwayahId];
+    if (id == null) return list.isEmpty ? null : list.first;
+    for (final reader in list) { if (reader.id == id) return reader; }
+    return list.isEmpty ? null : list.first;
+  }
+
+  Future<void> loadReaders() async {
+    if (_readers != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    _selectedReaderIds = <String, String>{};
+    for (final r in QiraatCatalog.allRiwayat) {
+      final id = prefs.getString('qiraat_reader_${r.id}');
+      if (id != null) _selectedReaderIds![r.id] = id;
+    }
+    final future = _readersFuture ??= _fetchReaders();
+    _readers = await future;
+    _readersFuture = null;
+  }
+
+  Future<void> setReader(String riwayahId, String readerId) async {
+    await loadReaders();
+    final exists = (_readers?[riwayahId] ?? const []).any((r) => r.id == readerId);
+    if (!exists) return;
+    _selectedReaderIds ??= <String, String>{};
+    _selectedReaderIds![riwayahId] = readerId;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('qiraat_reader_$riwayahId', readerId);
+  }
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -52,9 +88,49 @@ class QiraatService {
   Future<String?> surahAudioUrl(int surahNumber) async {
     if (_selectedRiwayahId == 'hafs') return null;
     final servers = await _loadSurahServers();
-    final server = servers[_selectedRiwayahId];
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    final server = reader?.server ?? servers[_selectedRiwayahId];
     if (server == null) return null;
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
+  }
+
+  Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
+    try {
+      final response = await http.get(Uri.parse(_catalogUrl)).timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) return const {};
+      final json = jsonDecode(response.body);
+      if (json is! Map<String, dynamic> || json['reciters'] is! List) return const {};
+      final result = <String, List<RiwayahReader>>{};
+      for (final item in json['reciters'] as List) {
+        if (item is! Map) continue;
+        final reciterId = '${item['id'] ?? ''}';
+        final reciterName = '${item['name'] ?? ''}'.trim();
+        final moshaf = item['moshaf'];
+        if (reciterId.isEmpty || reciterName.isEmpty || moshaf is! List) continue;
+        for (final read in moshaf) {
+          if (read is! Map) continue;
+          final name = _normalize('${read['name'] ?? ''}');
+          final serverRaw = '${read['server'] ?? ''}';
+          final total = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
+          if (serverRaw.isEmpty || total < 114) continue;
+          final server = serverRaw.endsWith('/') ? serverRaw : '${serverRaw}/';
+          for (final riwayahId in _matches(name)) {
+            final surahList = '${read['surah_list'] ?? ''}'.split(',').map(int.tryParse).whereType<int>().toSet();
+            final reader = RiwayahReader(
+              id: '${reciterId}-${read['id'] ?? riwayahId}',
+              name: reciterName,
+              riwayahId: riwayahId,
+              source: 'MP3Quran',
+              server: server,
+              surahs: surahList.isEmpty ? {for (var i = 1; i <= 114; i++) i} : surahList,
+            );
+            final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);
+            if (!list.any((r) => r.id == reader.id)) list.add(reader);
+          }
+        }
+      }
+      return result;
+    } catch (_) { return const {}; }
   }
 
   Future<Map<String, String>> _loadSurahServers() {
