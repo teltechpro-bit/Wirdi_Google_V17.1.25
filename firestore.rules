@@ -38,6 +38,20 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claims'])
         && request.resource.data.claims.diff(resource.data.claims).affectedKeys().hasOnly([request.auth.uid]);
 
+      // A non-owner may remove only their own membership entry.
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.memberUids
+        && request.auth.uid != resource.data.ownerUid
+        && !(request.auth.uid in request.resource.data.memberUids)
+        && request.resource.data.memberUids.size() == resource.data.memberUids.size() - 1
+        && resource.data.memberUids.hasAll(request.resource.data.memberUids)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members'])
+        && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.claims == resource.data.claims
+        && request.resource.data.rounds == resource.data.rounds;
+
       // The owner may start a new round by clearing claims and incrementing
       // the round counter; all identity and membership fields stay immutable.
       allow update: if request.auth != null
