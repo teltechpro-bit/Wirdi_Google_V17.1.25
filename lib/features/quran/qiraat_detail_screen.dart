@@ -24,7 +24,7 @@ class QiraatDetailScreen extends StatelessWidget {
       ),
       body: FutureBuilder<void>(
         future: service.loadReaders(),
-        builder: (context, snapshot) {
+        builder: (context, _) {
           final runtimeCount = qiraat.riwayat
               .map((r) => service.readersForRiwayah(r.id).length)
               .fold<int>(0, (sum, count) => sum + count);
