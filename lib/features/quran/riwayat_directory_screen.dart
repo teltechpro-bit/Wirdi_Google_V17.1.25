@@ -28,7 +28,7 @@ class RiwayatDirectoryScreen extends StatelessWidget {
       ),
       body: FutureBuilder<void>(
         future: service.loadReaders(),
-        builder: (context, snapshot) {
+        builder: (context, _) {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
             itemCount: items.length,
