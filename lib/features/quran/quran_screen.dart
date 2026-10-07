@@ -13,7 +13,6 @@ import '../../core/services/arabic_text_utils.dart';
 import '../../core/services/audio_download_service.dart';
 import '../../core/services/mushaf_repository.dart';
 import '../../core/services/quran_audio_service.dart';
-import '../../core/services/qiraat_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/quran_translation_repository.dart';
 import '../../core/services/settings_service.dart';
