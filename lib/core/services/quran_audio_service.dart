@@ -72,6 +72,8 @@ class QuranAudioService extends ChangeNotifier {
   int? _rangeEndAyah;
   int _playlistStartAyah = 1;
   int _playlistEndAyah = 1;
+  bool _fullSurahOnly = false;
+  Map<int, ({int startMs, int endMs})> _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
 
   int? playingAyah;
   bool playingWholeSurah = false;
@@ -99,6 +101,9 @@ class QuranAudioService extends ChangeNotifier {
   bool isSurahActive(int surahNumber) => _surahNumber == surahNumber;
 
   double get surahProgress {
+    if (_fullSurahOnly && duration > Duration.zero) {
+      return (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    }
     final ayah = playingAyah;
     if (ayah == null || _progress.isEmpty) return 0.0;
     return _progress.progress(
@@ -109,6 +114,7 @@ class QuranAudioService extends ChangeNotifier {
   }
 
   Duration get surahElapsed {
+    if (_fullSurahOnly) return position;
     final ayah = playingAyah;
     if (ayah == null || _progress.isEmpty) return Duration.zero;
     return _progress.elapsed(
@@ -119,17 +125,47 @@ class QuranAudioService extends ChangeNotifier {
   }
 
   Duration get surahEstimatedTotal =>
-      _progress.isEmpty ? Duration.zero : _progress.estimatedTotal;
+      _fullSurahOnly && duration > Duration.zero
+          ? duration
+          : (_progress.isEmpty ? Duration.zero : _progress.estimatedTotal);
 
   bool get isSurahTotalExact =>
-      !_progress.isEmpty && _progress.isTotalExact;
+      _fullSurahOnly ? duration > Duration.zero : (!_progress.isEmpty && _progress.isTotalExact);
 
-  int ayahAtSurahProgress(double fraction) =>
-      _progress.isEmpty ? (playingAyah ?? 1) : _progress.locate(fraction).ayah;
+  int ayahAtSurahProgress(double fraction) => _progress.isEmpty ? (playingAyah ?? 1) : _progress.locate(fraction).ayah;
+
+  int _ayahForFullSurahPosition(Duration value) {
+    if (_fullSurahTimings.isNotEmpty) {
+      final ms = value.inMilliseconds;
+      final ordered = _fullSurahTimings.entries.toList()..sort((a, b) => a.value.startMs.compareTo(b.value.startMs));
+      for (final entry in ordered) {
+        if (ms >= entry.value.startMs && ms < entry.value.endMs) return entry.key;
+      }
+      if (ms >= ordered.last.value.endMs) return ordered.last.key;
+      return ordered.first.key;
+    }
+    if (duration <= Duration.zero || _progress.isEmpty) return playingAyah ?? 1;
+    return _progress.locate((value.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)).ayah;
+  }
 
   Future<void> seekToSurahProgress(double fraction) async {
     final current = playingAyah;
     if (current == null || _progress.isEmpty) return;
+
+    if (_fullSurahOnly && duration > Duration.zero) {
+      final targetPosition = Duration(
+        milliseconds: (duration.inMilliseconds * fraction.clamp(0.0, 1.0)).round(),
+      );
+      try {
+        await _player.seek(targetPosition, index: 0);
+        position = targetPosition;
+        playingAyah = _ayahForFullSurahPosition(targetPosition);
+        notifyListeners();
+      } catch (e, st) {
+        AppLogger.error('Failed to seek full-surah riwayah audio', error: e, stackTrace: st);
+      }
+      return;
+    }
 
     final target = _progress.locate(fraction);
     if (target.ayah == current) {
@@ -183,8 +219,8 @@ class QuranAudioService extends ChangeNotifier {
     _indexSub = _player.currentIndexStream.listen((index) {
       if (_stopping || index == null) return;
 
-      final ayah = _playlistStartAyah + index;
-      if (ayah < _playlistStartAyah || ayah > _playlistEndAyah) return;
+      final ayah = _fullSurahOnly ? _ayahForFullSurahPosition(_player.position) : (_playlistStartAyah + index);
+      if (!_fullSurahOnly && (ayah < _playlistStartAyah || ayah > _playlistEndAyah)) return;
 
       playingAyah = ayah;
       position = _player.position;
@@ -192,7 +228,7 @@ class QuranAudioService extends ChangeNotifier {
       isBuffering = _player.processingState == ja.ProcessingState.loading ||
           _player.processingState == ja.ProcessingState.buffering;
 
-      if (duration > Duration.zero) {
+      if (!_fullSurahOnly && duration > Duration.zero) {
         _progress.setKnownDuration(ayah, duration);
       }
       notifyListeners();
@@ -202,7 +238,9 @@ class QuranAudioService extends ChangeNotifier {
       if (_stopping) return;
       position = p;
       final ayah = playingAyah;
-      if (ayah != null && duration > Duration.zero) {
+      if (_fullSurahOnly) {
+        playingAyah = _ayahForFullSurahPosition(p);
+      } else if (ayah != null && duration > Duration.zero) {
         _progress.setKnownDuration(ayah, duration);
       }
       notifyListeners();
@@ -212,7 +250,7 @@ class QuranAudioService extends ChangeNotifier {
       if (_stopping || d == null || d <= Duration.zero) return;
       duration = d;
       final ayah = playingAyah;
-      if (ayah != null) {
+      if (!_fullSurahOnly && ayah != null) {
         _progress.setKnownDuration(ayah, d);
       }
       notifyListeners();
@@ -299,6 +337,8 @@ class QuranAudioService extends ChangeNotifier {
       start: _rangeStartAyah,
       end: _rangeEndAyah,
     );
+    _fullSurahOnly = false;
+    _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
   }
 
   Future<void> playAyah(
@@ -394,20 +434,13 @@ class QuranAudioService extends ChangeNotifier {
     await qiraat.loadReaders();
     final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
     final fullSurahOnly = !hasAyahAudio;
-    if (fullSurahOnly &&
-        (!playingWholeSurah || startAyah != 1 || endAyah != _totalAyahsInSurah)) {
-      isBuffering = false;
-      playingAyah = null;
-      AppLogger.error(
-        'Selected riwayah has full-surah audio only; ayah/range playback is disabled to prevent a wrong fallback.',
-      );
-      notifyListeners();
-      return;
-    }
 
+
+    _fullSurahOnly = fullSurahOnly;
     _playlistStartAyah = fullSurahOnly ? 1 : startAyah;
-    _playlistEndAyah = fullSurahOnly ? 1 : endAyah;
-    playingAyah = 1;
+    _playlistEndAyah = fullSurahOnly ? _totalAyahsInSurah : endAyah;
+    _fullSurahTimings = fullSurahOnly ? await qiraat.ayahTimings(_surahNumber ?? 1) : const <int, ({int startMs, int endMs})>{};
+    playingAyah = fullSurahOnly ? startAyah : startAyah;
     isBuffering = true;
     position = initialPosition;
     duration = Duration.zero;
@@ -489,8 +522,36 @@ class QuranAudioService extends ChangeNotifier {
         sources,
         preload: true,
         initialIndex: 0,
-        initialPosition: initialPosition,
+        initialPosition: fullSurahOnly ? Duration.zero : initialPosition,
       );
+
+      if (fullSurahOnly) {
+        final total = _player.duration ?? Duration.zero;
+        duration = total;
+        var target = Duration.zero;
+        if (startAyah > 1) {
+          final timing = _fullSurahTimings[startAyah];
+          if (timing != null) {
+            target = Duration(milliseconds: timing.startMs);
+          } else if (total > Duration.zero) {
+            final fraction = _progress.locate(0.0); // keep the fallback calculation below deterministic
+            var weightBefore = 0.0;
+            final totalWeight = _progress.totalWeight;
+            for (var a = 1; a < startAyah; a++) weightBefore += _progress.weightOf(a);
+            final ratio = totalWeight > 0 ? weightBefore / totalWeight : 0.0;
+            target = Duration(milliseconds: (total.inMilliseconds * ratio).round());
+          }
+        }
+        if (initialPosition > Duration.zero) {
+          target += initialPosition;
+          if (total > Duration.zero && target > total) target = total;
+        }
+        if (target > Duration.zero) {
+          await _player.seek(target, index: 0);
+        }
+        position = target;
+        playingAyah = _ayahForFullSurahPosition(target);
+      }
 
       if (token != _playToken) return;
 
@@ -678,6 +739,8 @@ class QuranAudioService extends ChangeNotifier {
 
     playingAyah = null;
     playingWholeSurah = false;
+    _fullSurahOnly = false;
+    _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     isPaused = false;
     isBuffering = false;
     _rangeStartAyah = null;
