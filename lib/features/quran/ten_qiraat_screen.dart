@@ -141,8 +141,8 @@ class _QiraatCard extends StatelessWidget {
         ),
         subtitle: Text(
           arabic
-              ? 'الإمام: \${qiraat.imamAr} • \${qiraat.riwayat.length} روايتان'
-              : 'Imam: \${qiraat.imamEn} • \${qiraat.riwayat.length} riwayat',
+              ? 'الإمام: ${qiraat.imamAr} • ${qiraat.riwayat.length} روايتان'
+              : 'Imam: ${qiraat.imamEn} • ${qiraat.riwayat.length} riwayat',
           textDirection: arabic ? TextDirection.rtl : TextDirection.ltr,
         ),
         children: [
@@ -164,8 +164,8 @@ class _QiraatCard extends StatelessWidget {
                 alignment: arabic ? Alignment.centerRight : Alignment.centerLeft,
                 child: Text(
                   arabic
-                      ? '\${readersCount} قارئًا متاحًا لهذه القراءة'
-                      : '\${readersCount} readers available across these riwayat',
+                      ? '${readersCount} قارئًا متاحًا لهذه القراءة'
+                      : '${readersCount} readers available across these riwayat',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -240,8 +240,8 @@ class _RiwayahRow extends StatelessWidget {
                               ? 'لا يوجد قارئ موثّق مكتشف حاليًا'
                               : 'No verified reader source discovered yet')
                           : (arabic
-                              ? '\${readers.length} قارئ مرتبط بهذه الرواية'
-                              : '\${readers.length} reader\${readers.length == 1 ? '' : 's'} linked to this riwayah'),
+                              ? '${readers.length} قارئ مرتبط بهذه الرواية'
+                              : '${readers.length} reader${readers.length == 1 ? '' : 's'} linked to this riwayah'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textDirection: arabic ? TextDirection.rtl : TextDirection.ltr,
