@@ -92,6 +92,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           value: selectedReader.id,
                           decoration: InputDecoration(
                             labelText: ar ? 'اختر القارئ' : 'Choose reader',
@@ -99,7 +100,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                           ),
                           items: readers.map((reader) => DropdownMenuItem<String>(
                             value: reader.id,
-                            child: Text(reader.name),
+                            child: Text(reader.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                           )).toList(),
                           onChanged: (value) async {
                             if (value == null) return;
@@ -109,9 +110,12 @@ class _QiraatScreenState extends State<QiraatScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          (ar ? 'المصدر: ' : 'Source: ') +
-                              selectedReader.source +
-                              (ar ? ' • مرتبط بهذه الرواية فقط' : ' • linked to this riwayah only'),
+                          (ar ? 'الرواية: ' : 'Riwayah: ') +
+                              QiraatCatalog.byId(current).nameFor(ar ? 'ar' : 'en') +
+                              '\n' +
+                              (ar ? 'القارئ: ' : 'Reader: ') + selectedReader.name +
+                              '\n' +
+                              (ar ? 'المصدر: ' : 'Source: ') + selectedReader.source,
                           style: const TextStyle(fontSize: 12),
                         ),
                       ],
@@ -167,7 +171,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                       trailing: r.id == current
                           ? Icon(Icons.check_circle, color: AppColors.goldAccent)
                           : null,
-                      onTap: _service.hasRuntimeReaderSource(r.id)
+                      onTap: _service.hasRuntimeReaderSource(r.id) || r.id == current
                           ? () async {
                               await _service.setRiwayah(r.id);
                               if (mounted) setState(() {});
