@@ -30,6 +30,7 @@ class QiraatService {
   bool get isWarsh => _selectedRiwayahId == 'warsh';
 
   List<RiwayahReader> readersForSelectedRiwayah() => _readers?[_selectedRiwayahId] ?? const [];
+  List<RiwayahReader> readersForRiwayah(String riwayahId) => _readers?[riwayahId] ?? const [];
 
   /// Number of riwayat with at least one complete reader source discovered at runtime.
   int get discoveredRiwayahCount {
