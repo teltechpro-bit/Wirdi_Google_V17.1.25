@@ -55,6 +55,60 @@ class _QiraatScreenState extends State<QiraatScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          FutureBuilder<void>(
+            future: _service.loadReaders(),
+            builder: (context, snapshot) {
+              final readers = _service.readersForSelectedRiwayah();
+              final selectedReader = _service.selectedReaderFor(current);
+              if (readers.isEmpty) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.person_search),
+                    title: Text(ar ? 'قراء هذه الرواية' : 'Readers for this riwayah'),
+                    subtitle: Text(ar ? 'سيتم إظهار القارئ فقط عند توفر مصدر موثّق.' : 'A reader appears only when a verified source is available.'),
+                  ),
+                );
+              }
+              final selectedValue = readers.any((r) => r.id == selectedReader?.id) ? selectedReader!.id : readers.first.id;
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        ar ? 'القارئ — ${QiraatCatalog.byId(current).nameAr}' : 'Reader — ${QiraatCatalog.byId(current).nameEn}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedValue,
+                        decoration: InputDecoration(
+                          labelText: ar ? 'اختر القارئ' : 'Choose reader',
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: readers.map((reader) => DropdownMenuItem<String>(
+                          value: reader.id,
+                          child: Text(reader.name),
+                        )).toList(),
+                        onChanged: (value) async {
+                          if (value == null) return;
+                          await _service.setReader(current, value);
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        ar ? 'المصدر: MP3Quran • مرتبط بهذه الرواية فقط' : 'Source: MP3Quran • linked to this riwayah only',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
           for (final q in QiraatCatalog.all) ...[
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 4),
