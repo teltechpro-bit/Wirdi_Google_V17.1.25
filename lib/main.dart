@@ -15,6 +15,7 @@ import 'core/services/islamic_occasions_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/radio_service.dart';
+import 'core/services/qiraat_service.dart';
 import 'core/services/settings_service.dart';
 import 'core/services/wirdi_audio_handler.dart';
 import 'core/theme/app_theme.dart';
@@ -125,6 +126,7 @@ void main() {
     });
 
     await appSettings.load();
+    await QiraatService.instance.load();
     await RadioService.instance.init();
     await initializeDateFormatting();
 
