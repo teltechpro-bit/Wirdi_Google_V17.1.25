@@ -170,7 +170,7 @@ class QiraatService {
           final surahTotal = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
           if (server.isEmpty || surahTotal < 114) continue;
           for (final match in _matches(name)) {
-            result.putIfAbsent(match, () => server.endsWith('/') ? server : server + '/');
+            result.putIfAbsent(match, () => server.endsWith('/') ? server : '$server/');
           }
         }
       }
