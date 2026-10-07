@@ -30,9 +30,21 @@ class QiraatService {
   RiwayahReader? selectedReaderFor(String riwayahId) {
     final list = _readers?[riwayahId] ?? const [];
     final id = _selectedReaderIds?[riwayahId];
-    if (id == null) return list.isEmpty ? null : list.first;
-    for (final reader in list) { if (reader.id == id) return reader; }
+    if (id == null) return null;
+    for (final reader in list) {
+      if (reader.id == id) return reader;
+    }
+    return null;
+  }
+
+  RiwayahReader? defaultReaderFor(String riwayahId) {
+    final list = _readers?[riwayahId] ?? const [];
     return list.isEmpty ? null : list.first;
+  }
+
+  bool selectedReaderHasAyahAudio() {
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    return reader?.hasAyahAudio ?? selectedRiwayah.hasVerifiedAyahAudio;
   }
 
   Future<void> loadReaders() async {
@@ -78,18 +90,21 @@ class QiraatService {
       case 'hafs':
         return 'https://cdn.islamic.network/quran/audio/128/$hafsEdition/$globalAyahNumber.mp3';
       case 'warsh':
+        final reader = selectedReaderFor('warsh') ?? defaultReaderFor('warsh');
+        if (reader == null || !reader.hasAyahAudio) return null;
         final s = surahNumber.toString().padLeft(3, '0');
         final a = ayahNumber.toString().padLeft(3, '0');
-        return 'https://everyayah.com/data/warsh/warsh_ibrahim_aldosary_128kbps/$s$a.mp3';
+        return reader.server + s + a + '.mp3';
       default:
         return null;
     }
   }
 
   Future<String?> surahAudioUrl(int surahNumber) async {
-    if (_selectedRiwayahId == 'hafs') return null;
+    final selectedReader = selectedReaderFor(_selectedRiwayahId);
+    if (_selectedRiwayahId == 'hafs' && selectedReader == null) return null;
     final servers = await _loadSurahServers();
-    final reader = selectedReaderFor(_selectedRiwayahId);
+    final reader = selectedReader ?? defaultReaderFor(_selectedRiwayahId);
     final server = reader?.server ?? servers[_selectedRiwayahId];
     if (server == null) return null;
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
@@ -123,6 +138,7 @@ class QiraatService {
               riwayahId: riwayahId,
               source: 'MP3Quran',
               server: server,
+              hasAyahAudio: false,
               surahs: surahList.isEmpty ? {for (var i = 1; i <= 114; i++) i} : surahList,
             );
             final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);

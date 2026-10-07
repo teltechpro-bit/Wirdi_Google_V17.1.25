@@ -5,6 +5,7 @@ class RiwayahReader {
   final String source;
   final String server;
   final Set<int> surahs;
+  final bool hasAyahAudio;
 
   const RiwayahReader({
     required this.id,
@@ -13,6 +14,7 @@ class RiwayahReader {
     required this.source,
     required this.server,
     required this.surahs,
+    this.hasAyahAudio = false,
   });
 
   bool supportsSurah(int surahNumber) => surahs.contains(surahNumber);

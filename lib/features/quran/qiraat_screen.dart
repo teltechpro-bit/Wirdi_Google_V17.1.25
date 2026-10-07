@@ -59,7 +59,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
             future: _service.loadReaders(),
             builder: (context, snapshot) {
               final readers = _service.readersForSelectedRiwayah();
-              final selectedReader = _service.selectedReaderFor(current);
+              final selectedReader = _service.selectedReaderFor(current) ?? _service.defaultReaderFor(current);
               if (readers.isEmpty) {
                 return Card(
                   child: ListTile(
@@ -69,7 +69,10 @@ class _QiraatScreenState extends State<QiraatScreen> {
                   ),
                 );
               }
-              final selectedValue = readers.any((r) => r.id == selectedReader?.id) ? selectedReader!.id : readers.first.id;
+              final readerForDisplay = selectedReader != null && readers.any((r) => r.id == selectedReader.id)
+                  ? selectedReader
+                  : readers.first;
+              final selectedValue = readerForDisplay.id;
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -99,7 +102,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        ar ? 'المصدر: MP3Quran • مرتبط بهذه الرواية فقط' : 'Source: MP3Quran • linked to this riwayah only',
+                        ar ? 'المصدر: ${readerForDisplay.source} • مرتبط بهذه الرواية فقط' : 'Source: ${readerForDisplay.source} • linked to this riwayah only',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
