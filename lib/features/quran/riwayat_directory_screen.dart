@@ -14,7 +14,9 @@ class RiwayatDirectoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     final service = QiraatService.instance;
-    final all = QiraatCatalog.allRiwayat;
+    final all = QiraatCatalog.directoryReadings
+        .expand((q) => q.riwayat)
+        .toList(growable: false);
     final items = qiraatId == null
         ? all
         : all.where((r) => r.qiraatId == qiraatId).toList(growable: false);
