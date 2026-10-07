@@ -16,6 +16,7 @@ class QiraatService {
 
   String _selectedRiwayahId = 'hafs';
   Map<String, String>? _surahServers;
+  final Map<String, Map<int, ({int startMs, int endMs})>> _ayahTimingCache = <String, Map<int, ({int startMs, int endMs})>>{};
   Map<String, List<RiwayahReader>>? _readers;
   final Set<String> _healthyAudioServers = <String>{};
   final Set<String> _unhealthyAudioServers = <String>{};
@@ -219,13 +220,17 @@ class QiraatService {
       final arabic = <String, List<RiwayahReader>>{};
       for (final entry in idsByRiwayah.entries) {
         for (final apiId in entry.value) {
-          final uri = Uri.parse(_catalogUrl).replace(
-            queryParameters: <String, String>{
-              'language': 'ar',
-              'rewaya': apiId.toString(),
-            },
-          );
-          await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+          try {
+            final uri = Uri.parse(_catalogUrl).replace(
+              queryParameters: <String, String>{
+                'language': 'ar',
+                'rewaya': apiId.toString(),
+              },
+            );
+            await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+          } catch (_) {
+            // Localization is optional; never discard the verified source.
+          }
         }
       }
       for (final entry in result.entries) {
@@ -250,6 +255,7 @@ class QiraatService {
               surahs: reader.surahs,
               hasAyahAudio: reader.hasAyahAudio,
               surahUrls: reader.surahUrls,
+              timingReadId: reader.timingReadId,
             );
           }
         }
@@ -412,6 +418,38 @@ class QiraatService {
           if (!list.any((r) => r.id == reader.id)) list.add(reader);
         }
       }
+    }
+  }
+  Future<Map<int, ({int startMs, int endMs})>> ayahTimings(int surahNumber) async {
+    final reader = selectedReaderFor(_selectedRiwayahId) ?? defaultReaderFor(_selectedRiwayahId);
+    final readId = reader?.timingReadId;
+    if (reader == null || readId == null || reader.source != 'MP3Quran') {
+      return const <int, ({int startMs, int endMs})>{};
+    }
+    final key = reader.id + ':' + surahNumber.toString();
+    final cached = _ayahTimingCache[key];
+    if (cached != null) return cached;
+    try {
+      final uri = Uri.parse('https://mp3quran.net/api/v3/ayat_timing').replace(
+        queryParameters: <String, String>{'surah': surahNumber.toString(), 'read': readId.toString()},
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return const <int, ({int startMs, int endMs})>{};
+      final json = jsonDecode(response.body);
+      if (json is! List) return const <int, ({int startMs, int endMs})>{};
+      final timings = <int, ({int startMs, int endMs})>{};
+      for (final item in json) {
+        if (item is! Map) continue;
+        final ayah = int.tryParse('${item['ayah'] ?? ''}');
+        final start = int.tryParse('${item['start_time'] ?? ''}');
+        final end = int.tryParse('${item['end_time'] ?? ''}');
+        if (ayah == null || ayah <= 0 || start == null || end == null || end <= start) continue;
+        timings[ayah] = (startMs: start, endMs: end);
+      }
+      _ayahTimingCache[key] = timings;
+      return timings;
+    } catch (_) {
+      return const <int, ({int startMs, int endMs})>{};
     }
   }
   Future<Map<String, String>> _loadSurahServers() {
