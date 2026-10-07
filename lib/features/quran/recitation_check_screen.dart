@@ -1,4 +1,6 @@
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -41,6 +43,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   bool _listening = false;
   bool _starting = false;
   String? _lastError;
+  Completer<void>? _finalResultWaiter;
 
   List<MapEntry<String, String>> _expected = const <MapEntry<String, String>>[];
   List<_WordState> _states = const <_WordState>[];
@@ -187,7 +190,16 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
   Future<void> _stop() async {
     setState(() => _session = false);
-    await _speech.stop();
+    _finalResultWaiter = Completer<void>();
+    try {
+      await _speech.stop();
+      await Future.any<void>([
+        _finalResultWaiter!.future,
+        Future<void>.delayed(const Duration(milliseconds: 1200)),
+      ]);
+    } finally {
+      _finalResultWaiter = null;
+    }
     if (!mounted) return;
     _align(finalizing: true);
   }
@@ -197,6 +209,8 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     if (result.finalResult) {
       _finalWords.addAll(words);
       _partialWords = const <String>[];
+      _finalResultWaiter?.complete();
+      _finalResultWaiter = null;
     } else {
       _partialWords = words;
     }
@@ -284,6 +298,17 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (!_session && _finalWords.isNotEmpty)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Text(
+                            bi(context, 'انتهى التصحيح. راجع الكلمات المعلّمة بالأخضر والأحمر.', 'Correction finished. Review the words marked green and red.'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
                     if (total > 0 && judged > 0)
                       Card(
                         child: Padding(
