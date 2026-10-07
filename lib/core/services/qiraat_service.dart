@@ -417,6 +417,7 @@ class QiraatService {
             surahs: surahList.isEmpty
                 ? {for (var i = 1; i <= 114; i++) i}
                 : surahList,
+            timingReadId: int.tryParse('${read['id'] ?? ''}'),
           );
           final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);
           if (!list.any((r) => r.id == reader.id)) list.add(reader);
