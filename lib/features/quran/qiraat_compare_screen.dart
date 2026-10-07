@@ -172,7 +172,7 @@ class _QiraatCompareScreenState extends State<QiraatCompareScreen> {
             if (selected)
               Text(
                 ar ? 'محددة حاليًا' : 'Currently selected',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppColors.goldAccent,
                 ),
