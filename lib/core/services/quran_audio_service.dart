@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../data/app_sources.dart';
 import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
