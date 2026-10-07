@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../data/app_sources.dart';
+import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
 import 'audio_download_service.dart';
@@ -429,10 +430,16 @@ class QuranAudioService extends ChangeNotifier {
         sources.add(
           ja.AudioSource.uri(
             Uri.parse(
-              AppSources.ayahAudioUrl(
-                globalNumber,
-                reciter: appSettings.reciterId,
-              ),
+              QiraatService.instance.ayahAudioUrl(
+                    _surahNumber ?? 1,
+                    ayahs[i],
+                    globalNumber,
+                    hafsEdition: appSettings.reciterId,
+                  ) ??
+                  AppSources.ayahAudioUrl(
+                    globalNumber,
+                    reciter: appSettings.reciterId,
+                  ),
             ),
           ),
         );
