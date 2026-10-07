@@ -15,7 +15,6 @@ class QiraatService {
   static const _qudCatalogUrl = 'https://audio.qud.dev/api/static/catalog.json';
 
   String _selectedRiwayahId = 'hafs';
-  Map<String, String>? _surahServers;
   final Map<String, Map<int, ({int startMs, int endMs})>> _ayahTimingCache = <String, Map<int, ({int startMs, int endMs})>>{};
   Map<String, List<RiwayahReader>>? _readers;
   final Set<String> _healthyAudioServers = <String>{};
