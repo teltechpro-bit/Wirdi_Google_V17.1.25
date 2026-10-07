@@ -74,7 +74,7 @@ class _QiraatCompareScreenState extends State<QiraatCompareScreen> {
           const SizedBox(height: 16),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.compare_arrows, color: AppColors.goldAccent),
+              leading: Icon(Icons.compare_arrows, color: AppColors.goldAccent),
               title: Text(ar ? 'المقارنة النصية' : 'Text comparison'),
               subtitle: Text(
                 ar
