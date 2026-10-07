@@ -46,7 +46,7 @@ class TenQiraatScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ...QiraatCatalog.all.asMap().entries.map((entry) {
+              ...QiraatCatalog.directoryReadings.asMap().entries.map((entry) {
                 final index = entry.key;
                 final q = entry.value;
                 final readerCount = q.riwayat
