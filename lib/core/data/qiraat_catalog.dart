@@ -170,6 +170,22 @@ class QiraatCatalog {
     ),
   ];
 
+  static const List<String> directoryOrder = [
+    'asim',
+    'nafi',
+    'abu_amr',
+    'ibn_kathir',
+    'hamza',
+    'alkisai',
+    'abu_jafar',
+    'ibn_amir',
+    'yaqub',
+    'khalaf',
+  ];
+
+  static List<QiraatReading> get directoryReadings =>
+      directoryOrder.map((id) => all.firstWhere((q) => q.id == id)).toList(growable: false);
+
   static List<QiraatSecondaryRoute> secondaryRoutesFor(String qiraatId) =>
       secondaryRoutes.where((route) => route.qiraatId == qiraatId).toList(growable: false);
 
