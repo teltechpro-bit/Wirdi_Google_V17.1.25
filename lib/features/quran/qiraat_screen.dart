@@ -38,8 +38,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
         future: _service.loadReaders(),
         builder: (context, snapshot) {
           final readers = _service.readersForSelectedRiwayah();
-          final selectedReader = _service.selectedReaderFor(current) ??
-              _service.defaultReaderFor(current);
+          final selectedReader = _service.selectedReaderFor(current);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
