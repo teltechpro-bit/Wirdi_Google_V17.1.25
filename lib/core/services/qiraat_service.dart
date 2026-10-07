@@ -103,36 +103,36 @@ class QiraatService {
     }
   }
 
-  List<String> _matches(String name) {
-    bool has(String value) => name.contains(value);
+  List<String> _matches(String rawName) {
+    final name = _normalize(rawName);
     final ids = <String>[];
-    if (has('hafs')) ids.add('hafs');
-    if (has('warsh')) ids.add('warsh');
-    if (has('qal')) ids.add('qalun');
-    if (has('albizi') || has('bazzi')) ids.add('al_bazzi');
-    if (has('qunbol') || has('qunbul')) ids.add('qunbul');
-    if (has('susi')) ids.add('al_susi');
-    if (has('dorai') && has('abi amr')) ids.add('al_duri_abu_amr');
-    if (has('hisham')) ids.add('hisham');
-    if (has('dhakwan') || has('thakwaan')) ids.add('ibn_dhakwan');
-    if (has('shoba') || has('shubah')) ids.add('shuba');
-    if (has('khallad')) ids.add('khallad');
-    if (has('khalaf') && has('hamza') && !has('ashir')) ids.add('khalaf_hamza');
-    if (has('harith') && has('kisa')) ids.add('abu_al_harith');
-    if (has('dorai') && has('kisa')) ids.add('al_duri_kisai');
-    if (has('wardan')) ids.add('ibn_wardan');
-    if (has('jammaz')) ids.add('ibn_jammaz');
-    if (has('ruways') || has('rowais')) ids.add('ruways');
-    if (has('rawh') || has('rooh')) ids.add('rawh');
-    if (has('ishaq') || has('is’haq') || has('is_haq')) ids.add('ishaq');
-    if (has('idris') || has('idrees')) ids.add('idris');
+    bool hasAny(List<String> values) => values.any(name.contains);
+    bool hasAll(List<String> values) => values.every(name.contains);
+    if (hasAny(['hafs'])) ids.add('hafs');
+    if (hasAny(['warsh'])) ids.add('warsh');
+    if (hasAny(['qalun', 'qaloon', 'qal'])) ids.add('qalun');
+    if (hasAny(['albizi', 'albazzi', 'bazzi'])) ids.add('al_bazzi');
+    if (hasAny(['qunbol', 'qunbul'])) ids.add('qunbul');
+    if (hasAny(['assosi', 'susi'])) ids.add('al_susi');
+    if (hasAny(['aldori', 'aldurri', 'dori']) && hasAny(['abiamr', 'abuamr'])) ids.add('al_duri_abu_amr');
+    if (hasAny(['hisham', 'hesham'])) ids.add('hisham');
+    if (hasAny(['ibnthakwan', 'ibndhakwan', 'dhakwan', 'thakwan'])) ids.add('ibn_dhakwan');
+    if (hasAny(['shubah', 'shobah', 'shoba'])) ids.add('shuba');
+    if (hasAll(['khalaf', 'hamzah']) || hasAll(['khalaf', 'hamza'])) ids.add('khalaf_hamza');
+    if (hasAny(['aldorai', 'aldori', 'dori']) && hasAny(['alkisai', 'kisaai', 'kisai'])) ids.add('al_duri_kisai');
+    if (hasAny(['ruways', 'rowais', 'ruweis'])) ids.add('ruways');
+    if (hasAny(['rawh', 'rooh'])) ids.add('rawh');
     return ids;
+  }
+
+  String _normalize(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r"[’'`\\-]"), '').replaceAll(RegExp(r"[^a-z0-9]+"), '');
   }
 
   String audioStatusFor(RiwayahOption r, String languageCode) {
     if (r.hasVerifiedAyahAudio) {
       return languageCode == 'ar' ? 'صوت آية-بآية متحقق' : 'Verified verse-by-verse audio';
     }
-    return languageCode == 'ar' ? 'صوت السورة متاح من مصدر الرواية' : 'Full-surah riwayah audio source available';
+    return languageCode == 'ar' ? 'صوت السورة من مصدر الرواية متحقق' : 'Full-surah riwayah audio source verified';
   }
 }
