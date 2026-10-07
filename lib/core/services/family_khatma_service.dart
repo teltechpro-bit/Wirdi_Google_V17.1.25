@@ -267,9 +267,14 @@ class FamilyKhatmaService {
       }
       final memberUids = (data['memberUids'] is List) ? List<String>.from(data['memberUids'] as List) : <String>[];
       final remaining = memberUids.where((m) => m != user.uid).toList();
-      if (remaining.isEmpty && data['ownerUid'] == user.uid) {
-        await ref.delete();
-        return;
+      if (data['ownerUid'] == user.uid) {
+        if (remaining.isEmpty) {
+          await ref.delete();
+          return;
+        }
+        // Do not leave a live group without an owner. Ownership transfer is
+        // intentionally explicit rather than silently choosing another member.
+        throw const FamilyKhatmaException('notOwner');
       }
       if (updates.isNotEmpty) {
         // Claims first (rule: members may edit only claims/rounds in one write).
