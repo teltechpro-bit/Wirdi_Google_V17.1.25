@@ -110,9 +110,46 @@ class QiraatService {
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
   }
 
-  Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
+  static const Map<String, int> _mp3QuranRiwayahIds = {\n    'hafs': 1,\n    'qalun': 5,\n    'warsh': 10,\n    'al_bazzi': 11,\n    'qunbul': 11,\n    'al_duri_kisai': 12,\n  };\n\n  Fu
+      return;
+    }
+  }
+ure<Map<String, List<RiwayahReader>>> _fetchReaders() async {
     try {
-      final response = await http.get(Uri.parse(_catalogUrl)).timeout(const Duration(seconds: 20));
+
+      final targeted = <int>{};
+      for (final entry in _mp3QuranRiwayahIds.entries) {
+        if (!targeted.add(entry.value)) continue;
+        final uri = Uri.parse(_catalogUrl).replace(
+          queryParameters: <String, String>{
+            'language': 'eng',
+            'rewaya': entry.value.toString(),
+          },
+        );
+        await _fetchReadersFromUri(
+          uri,
+          result,
+          onlyRiwayat: _mp3QuranRiwayahIds.entries
+              .where((e) => e.value == entry.value)
+              .map((e) => e.key)
+              .toSet(),
+        );
+      }
+      // Keep the full catalog for narrations whose current public API
+      // documentation does not expose a stable ID in the documented list.
+      await _fetchReadersFromUri(Uri.parse(_catalogUrl), result);
+      return result;
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<void> _fetchReadersFromUri(
+    Uri uri,
+    Map<String, List<RiwayahReader>> result, {
+    Set<String>? onlyRiwayat,
+  }) async {
+    final response = await http.get(uri).timeout(const Duration(seconds: 20));
       if (response.statusCode != 200) return const {};
       final json = jsonDecode(response.body);
       if (json is! Map<String, dynamic> || json['reciters'] is! List) return const {};
@@ -130,7 +167,7 @@ class QiraatService {
           final total = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
           if (serverRaw.isEmpty || total < 114) continue;
           final server = serverRaw.endsWith('/') ? serverRaw : '$serverRaw/';
-          for (final riwayahId in _matches(name)) {
+          var matches = _matches(name);\n          if (onlyRiwayat != null) {\n            matches = matches.where(onlyRiwayat.contains).toList(growable: false);\n          }\n          for (final riwayahId in matches) {
             final surahList = '${read['surah_list'] ?? ''}'.split(',').map(int.tryParse).whereType<int>().toSet();
             final reader = RiwayahReader(
               id: '$reciterId-${read['id'] ?? riwayahId}',
