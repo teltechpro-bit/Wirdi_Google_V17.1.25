@@ -35,7 +35,7 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
         builder: (context, snapshot) {
           final readers = service.readersForRiwayah(widget.riwayahId);
           final pages = readers.isEmpty ? 1 : (readers.length / _pageSize).ceil();
-          final currentPage = _page.clamp(0, pages - 1);
+          final currentPage = _page.clamp(0, pages - 1).toInt();
           final start = currentPage * _pageSize;
           final visible = readers.skip(start).take(_pageSize).toList(growable: false);
 
