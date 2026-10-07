@@ -391,7 +391,8 @@ class QuranAudioService extends ChangeNotifier {
     _stopping = false;
 
     final qiraat = QiraatService.instance;
-    final hasAyahAudio = qiraat.selectedRiwayah.hasVerifiedAyahAudio;
+    await qiraat.loadReaders();
+    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
     final fullSurahOnly = !hasAyahAudio;
     if (fullSurahOnly &&
         (!playingWholeSurah || startAyah != 1 || endAyah != _totalAyahsInSurah)) {
