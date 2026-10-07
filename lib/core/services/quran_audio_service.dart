@@ -534,7 +534,6 @@ class QuranAudioService extends ChangeNotifier {
           if (timing != null) {
             target = Duration(milliseconds: timing.startMs);
           } else if (total > Duration.zero) {
-            final fraction = _progress.locate(0.0); // keep the fallback calculation below deterministic
             var weightBefore = 0.0;
             final totalWeight = _progress.totalWeight;
             for (var a = 1; a < startAyah; a++) weightBefore += _progress.weightOf(a);
