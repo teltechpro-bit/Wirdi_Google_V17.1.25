@@ -48,6 +48,7 @@ class QiraatSecondaryRoute {
   });
 
   String nameFor(String languageCode) => languageCode == 'ar' ? nameAr : nameEn;
+  String routeFor(String languageCode) => languageCode == 'ar' ? routeAr : routeEn;
 }
 
 class RiwayahOption {
