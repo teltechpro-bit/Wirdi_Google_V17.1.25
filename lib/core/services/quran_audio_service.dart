@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../data/app_sources.dart';
 import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
@@ -391,9 +390,23 @@ class QuranAudioService extends ChangeNotifier {
     final token = ++_playToken;
     _stopping = false;
 
-    _playlistStartAyah = startAyah;
-    _playlistEndAyah = endAyah;
-    playingAyah = startAyah;
+    final qiraat = QiraatService.instance;
+    final hasAyahAudio = qiraat.selectedRiwayah.hasVerifiedAyahAudio;
+    final fullSurahOnly = !hasAyahAudio;
+    if (fullSurahOnly &&
+        (!playingWholeSurah || startAyah != 1 || endAyah != _totalAyahsInSurah)) {
+      isBuffering = false;
+      playingAyah = null;
+      AppLogger.error(
+        'Selected riwayah has full-surah audio only; ayah/range playback is disabled to prevent a wrong fallback.',
+      );
+      notifyListeners();
+      return;
+    }
+
+    _playlistStartAyah = fullSurahOnly ? 1 : startAyah;
+    _playlistEndAyah = fullSurahOnly ? 1 : endAyah;
+    playingAyah = 1;
     isBuffering = true;
     position = initialPosition;
     duration = Duration.zero;
@@ -408,45 +421,63 @@ class QuranAudioService extends ChangeNotifier {
       (index) => startAyah + index,
     );
 
-    final localPaths = await Future.wait(
-      ayahs.map(
-        (ayah) => AudioDownloadService.localPathFor(
-          appSettings.reciterId,
-          _surahAyahOffset + ayah,
-        ),
-      ),
-    );
+    final localPaths = hasAyahAudio && qiraat.selectedRiwayahId == 'hafs'
+        ? await Future.wait(
+            ayahs.map(
+              (ayah) => AudioDownloadService.localPathFor(
+                appSettings.reciterId,
+                _surahAyahOffset + ayah,
+              ),
+            ),
+          )
+        : List<String?>.filled(ayahs.length, null);
 
     if (token != _playToken) return;
 
     final sources = <ja.AudioSource>[];
-    for (var i = 0; i < ayahs.length; i++) {
-      final globalNumber = _surahAyahOffset + ayahs[i];
-      final localPath = localPaths[i];
-
-      if (localPath != null) {
-        sources.add(ja.AudioSource.file(localPath));
-      } else {
-        sources.add(
-          ja.AudioSource.uri(
-            Uri.parse(
-              QiraatService.instance.ayahAudioUrl(
-                    _surahNumber ?? 1,
-                    ayahs[i],
-                    globalNumber,
-                    hafsEdition: appSettings.reciterId,
-                  ) ??
-                  AppSources.ayahAudioUrl(
-                    globalNumber,
-                    reciter: appSettings.reciterId,
-                  ),
-            ),
-          ),
+    if (fullSurahOnly) {
+      final url = await qiraat.surahAudioUrl(_surahNumber ?? 1);
+      if (url != null) {
+        sources.add(ja.AudioSource.uri(Uri.parse(url)));
+      }
+    } else {
+      for (var i = 0; i < ayahs.length; i++) {
+        final globalNumber = _surahAyahOffset + ayahs[i];
+        final localPath = localPaths[i];
+        final url = qiraat.ayahAudioUrl(
+          _surahNumber ?? 1,
+          ayahs[i],
+          globalNumber,
+          hafsEdition: appSettings.reciterId,
         );
+
+        if (localPath != null) {
+          sources.add(ja.AudioSource.file(localPath));
+        } else if (url != null) {
+          sources.add(ja.AudioSource.uri(Uri.parse(url)));
+        } else {
+          AppLogger.error(
+            'No verified audio mapping for selected riwayah; refusing Hafs fallback.',
+          );
+          isBuffering = false;
+          playingAyah = null;
+          notifyListeners();
+          return;
+        }
       }
     }
 
-    if (sources.isEmpty || token != _playToken) return;
+    if (sources.isEmpty || token != _playToken) {
+      isBuffering = false;
+      playingAyah = null;
+      AppLogger.error(
+        'No audio source found for selected riwayah ' +
+            qiraat.selectedRiwayahId +
+            '; refusing Hafs fallback.',
+      );
+      notifyListeners();
+      return;
+    }
 
     try {
       await _player.setLoopMode(

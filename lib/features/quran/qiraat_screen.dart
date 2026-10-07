@@ -46,8 +46,8 @@ class _QiraatScreenState extends State<QiraatScreen> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 ar
-                    ? 'تظهر هنا القراءات العشر والروايتان المشهورتان لكل قراءة. Wirdi لا يبدّل الصوت إلى حفص بصمت: الرواية لا تُعتبر مدعومة صوتيًا إلا عند وجود مصدر آية-بآية متحقق.'
-                    : 'Wirdi lists the ten canonical readings and two famous riwayat for each. Audio is only marked available when a verified verse-by-verse source exists; Wirdi never silently falls back to Hafs.',
+                    ? 'تظهر هنا القراءات العشر والروايتان المشهورتان لكل قراءة. حفص وورش يدعمان الصوت آية-بآية، وبقية الروايات تستخدم مصدر السورة الحقيقي عند توفره، ولا يوجد أي تحويل صامت إلى حفص.'
+                    : 'Wirdi lists all ten canonical readings and twenty riwayat. Hafs and Warsh have verified verse-by-verse sources; the other riwayat use a real full-surah source when available. Wirdi never silently falls back to Hafs.',
                 textAlign: ar ? TextAlign.right : TextAlign.left,
                 textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
                 style: const TextStyle(height: 1.6),
@@ -80,15 +80,15 @@ class _QiraatScreenState extends State<QiraatScreen> {
                   leading: Icon(
                     r.hasVerifiedAyahAudio
                         ? Icons.graphic_eq
-                        : Icons.info_outline,
+                        : Icons.library_music,
                     color: r.hasVerifiedAyahAudio
                         ? AppColors.primaryEmerald
-                        : AppColors.mutedText,
+                        : AppColors.goldAccent,
                   ),
                   trailing: r.id == current
                       ? Icon(Icons.check_circle, color: AppColors.goldAccent)
                       : null,
-                  onTap: r.hasVerifiedAyahAudio
+                  onTap: r.hasSurahAudio
                       ? () async {
                           await _service.setRiwayah(r.id);
                           if (mounted) setState(() {});
