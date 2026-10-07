@@ -1263,11 +1263,26 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '${ayah.text}  ﴿${ayah.number}﴾',
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * _fontScale, height: 2.2, fontWeight: FontWeight.normal),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => isPlayingThis ? _stopAudio() : _playAyah(ayah.number),
+                    child: Semantics(
+                      button: true,
+                      label: isPlayingThis
+                          ? l10n.quranStopPlayingAyahLabel
+                          : l10n.quranPlayAyahLabel(ayah.number),
+                      child: Text(
+                        '${ayah.text}  ﴿${ayah.number}﴾',
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontFamily: 'AmiriQuran',
+                          fontSize: 24 * _fontScale,
+                          height: 2.2,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
                   ),
                   if (appSettings.showTransliteration) ...[
                     const SizedBox(height: 6),
