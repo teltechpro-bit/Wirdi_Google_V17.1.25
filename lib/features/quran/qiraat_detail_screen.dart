@@ -195,7 +195,7 @@ class _StatsCard extends StatelessWidget {
                 label: ar ? 'رواية أساسية' : 'Core riwayat',
               ),
             ),
-            Container(width: 1, height: 42, color: AppColors.divider),
+            Container(width: 1, height: 42, color: Theme.of(context).dividerColor),
             Expanded(
               child: _Stat(
                 value: '$readerCount',
