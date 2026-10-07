@@ -62,7 +62,7 @@ class QiraatService {
 
   bool selectedReaderHasAyahAudio() {
     final reader = selectedReaderFor(_selectedRiwayahId);
-    return reader?.hasAyahAudio ?? selectedRiwayah.hasVerifiedAyahAudio;
+    return reader?.hasAyahAudio ?? false;
   }
 
   Future<void> loadReaders() async {
@@ -76,6 +76,17 @@ class QiraatService {
     final future = _readersFuture ??= _fetchReaders();
     _readers = await future;
     _readersFuture = null;
+
+    // Establish an explicit initial reader for each discovered riwayah. This is
+    // the initial pairing, not a playback fallback: once a user changes it,
+    // playback must use that exact reader only.
+    for (final entry in _readers!.entries) {
+      if (entry.value.isEmpty) continue;
+      final current = _selectedReaderIds![entry.key];
+      if (current == null || !entry.value.any((reader) => reader.id == current)) {
+        _selectedReaderIds![entry.key] = entry.value.first.id;
+      }
+    }
   }
 
   Future<void> setReader(String riwayahId, String readerId) async {
@@ -104,30 +115,22 @@ class QiraatService {
   }
 
   String? ayahAudioUrl(int surahNumber, int ayahNumber, int globalAyahNumber, {String hafsEdition = 'ar.alafasy'}) {
-    switch (_selectedRiwayahId) {
-      case 'hafs':
-        return 'https://cdn.islamic.network/quran/audio/128/$hafsEdition/$globalAyahNumber.mp3';
-      case 'warsh':
-        final reader = selectedReaderFor('warsh') ?? defaultReaderFor('warsh');
-        if (reader == null || !reader.hasAyahAudio) return null;
-        final s = surahNumber.toString().padLeft(3, '0');
-        final a = ayahNumber.toString().padLeft(3, '0');
-        return reader.server + s + a + '.mp3';
-      default:
-        return null;
-    }
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    if (reader == null || !reader.hasAyahAudio || reader.server.isEmpty) return null;
+    final s = surahNumber.toString().padLeft(3, '0');
+    final a = ayahNumber.toString().padLeft(3, '0');
+    return reader.server + s + a + '.mp3';
   }
 
   Future<String?> surahAudioUrl(int surahNumber) async {
-    final selectedReader = selectedReaderFor(_selectedRiwayahId);
-    if (_selectedRiwayahId == 'hafs' && selectedReader == null) return null;
-    final reader = selectedReader ?? defaultReaderFor(_selectedRiwayahId);
-    final directUrl = reader?.surahUrls[surahNumber];
+    // Never substitute another reader or another riwayah. The selected reader
+    // is the complete playback identity.
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    if (reader == null) return null;
+    final directUrl = reader.surahUrls[surahNumber];
     if (directUrl != null && await _isHealthyAudioUrl(directUrl)) return directUrl;
-    final servers = await _loadSurahServers();
-    final server = reader?.server ?? servers[_selectedRiwayahId];
-    if (server == null || !await _isHealthyAudioServer(server)) return null;
-    return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
+    if (reader.server.isEmpty || !await _isHealthyAudioServer(reader.server)) return null;
+    return reader.server + surahNumber.toString().padLeft(3, '0') + '.mp3';
   }
 
   Future<bool> _isHealthyAudioUrl(String url) async {
@@ -422,7 +425,7 @@ class QiraatService {
     }
   }
   Future<Map<int, ({int startMs, int endMs})>> ayahTimings(int surahNumber) async {
-    final reader = selectedReaderFor(_selectedRiwayahId) ?? defaultReaderFor(_selectedRiwayahId);
+    final reader = selectedReaderFor(_selectedRiwayahId);
     final readId = reader?.timingReadId;
     if (reader == null || readId == null || reader.source != 'MP3Quran') {
       return const <int, ({int startMs, int endMs})>{};
