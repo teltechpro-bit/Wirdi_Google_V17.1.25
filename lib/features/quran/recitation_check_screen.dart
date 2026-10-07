@@ -126,9 +126,19 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
+      if (pick == null) {
+        if (mounted) {
+          setState(() {
+            _speechUnavailable = true;
+            _lastError = 'لم تتوفر لغة عربية لخدمة التعرف على الصوت على هذا الجهاز.';
+          });
+        }
+        return false;
+      }
       if (mounted) {
         setState(() {
           _speechReady = true;
+          _speechUnavailable = false;
           _localeId = pick;
         });
       }
