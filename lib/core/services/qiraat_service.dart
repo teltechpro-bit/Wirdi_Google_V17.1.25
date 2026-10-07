@@ -122,32 +122,70 @@ class QiraatService {
   Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
     try {
       final result = <String, List<RiwayahReader>>{};
-      final targeted = <int>{};
-      for (final entry in _mp3QuranRiwayahIds.entries) {
-        if (!targeted.add(entry.value)) continue;
-        final uri = Uri.parse(_catalogUrl).replace(
-          queryParameters: <String, String>{
-            'language': 'eng',
-            'rewaya': entry.value.toString(),
-          },
-        );
-        await _fetchReadersFromUri(
-          uri,
-          result,
-          onlyRiwayat: _mp3QuranRiwayahIds.entries
-              .where((e) => e.value == entry.value)
-              .map((e) => e.key)
-              .toSet(),
-        );
+      final dynamicIds = await _fetchMp3QuranRiwayahIds();
+      final idsByRiwayah = <String, Set<int>>{};
+
+      for (final entry in dynamicIds.entries) {
+        for (final riwayahId in entry.value) {
+          idsByRiwayah.putIfAbsent(riwayahId, () => <int>{}).add(entry.key);
+        }
       }
 
-      // Keep the full catalog for narrations whose current public API
-      // documentation does not expose a stable ID in the documented list.
-      await _fetchReadersFromUri(Uri.parse(_catalogUrl), result);
+      // Keep these documented IDs as a safety net if the riwayat catalog
+      // endpoint is temporarily unavailable or changes shape.
+      for (final entry in _mp3QuranRiwayahIds.entries) {
+        idsByRiwayah.putIfAbsent(entry.key, () => <int>{}).add(entry.value);
+      }
+
+      for (final entry in idsByRiwayah.entries) {
+        for (final apiId in entry.value) {
+          final uri = Uri.parse(_catalogUrl).replace(
+            queryParameters: <String, String>{
+              'language': 'eng',
+              'rewaya': apiId.toString(),
+            },
+          );
+          await _fetchReadersFromUri(
+            uri,
+            result,
+            onlyRiwayat: {entry.key},
+          );
+        }
+      }
       return result;
     } catch (_) {
       return const {};
     }
+  }
+
+  Future<Map<int, Set<String>>> _fetchMp3QuranRiwayahIds() async {
+    final result = <int, Set<String>>{};
+    try {
+      final uri = Uri.parse(
+        'https://mp3quran.net/api/v3/riwayat?language=eng',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return result;
+      final json = jsonDecode(response.body);
+      if (json is! Map<String, dynamic> || json['riwayat'] is! List) {
+        return result;
+      }
+      for (final item in json['riwayat'] as List) {
+        if (item is! Map) continue;
+        final id = int.tryParse('${item['id'] ?? ''}');
+        final name = '${item['name'] ?? ''}';
+        if (id == null || name.isEmpty) continue;
+        final matches = _matches(name)
+            .where((localId) => QiraatCatalog.allRiwayat.any((r) => r.id == localId))
+            .toSet();
+        if (matches.isNotEmpty) {
+          result[id] = matches;
+        }
+      }
+    } catch (_) {
+      // Static documented IDs remain available as fallback.
+    }
+    return result;
   }
 
   Future<void> _fetchReadersFromUri(
@@ -262,6 +300,20 @@ class QiraatService {
     if (hasAny(['shubah', 'shobah', 'shoba'])) ids.add('shuba');
     if (hasAll(['khalaf', 'hamzah']) || hasAll(['khalaf', 'hamza'])) ids.add('khalaf_hamza');
     if (hasAny(['aldorai', 'aldori', 'dori']) && hasAny(['alkisai', 'kisaai', 'kisai'])) ids.add('al_duri_kisai');
+    if (hasAny(['khallad']) && hasAny(['hamzah', 'hamza'])) ids.add('khallad');
+    if (hasAny(['abualharith', 'abialharith']) && hasAny(['kisai', 'kisaai', 'alkisai'])) {
+      ids.add('abu_al_harith');
+    }
+    if (hasAny(['ibnwardan', 'ibnwerdan']) && hasAny(['abijafar', 'abujafar'])) {
+      ids.add('ibn_wardan');
+    }
+    if (hasAny(['ibnjammaz']) && hasAny(['abijafar', 'abujafar'])) {
+      ids.add('ibn_jammaz');
+    }
+    if (hasAny(['ishaq', 'ishak']) && hasAny(['abijafar', 'abujafar'])) {
+      ids.add('ishaq');
+    }
+    if (hasAny(['idris']) && hasAny(['khalaf'])) ids.add('idris');
     if (hasAny(['ruways', 'rowais', 'ruweis'])) ids.add('ruways');
     if (hasAny(['rawh', 'rooh'])) ids.add('rawh');
     return ids;
