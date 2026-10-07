@@ -107,6 +107,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           setState(() => _lastError = error.errorMsg);
         },
         onStatus: _onStatus,
+        finalTimeout: const Duration(seconds: 5),
       );
       if (!ok) {
         if (mounted) setState(() => _speechUnavailable = true);
@@ -200,7 +201,18 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     } finally {
       _finalResultWaiter = null;
     }
+    // Some Android recognizers stop without delivering a separate final
+    // callback. Promote the latest partial transcript instead of silently
+    // doing nothing.
+    if (_finalWords.isEmpty && _partialWords.isNotEmpty) {
+      _finalWords.addAll(_partialWords);
+      _partialWords = const <String>[];
+    }
     if (!mounted) return;
+    if (_finalWords.isEmpty) {
+      setState(() => _lastError = 'لم يصل نص من خدمة التعرف على الصوت. حاول التلاوة مرة أخرى.');
+      return;
+    }
     _align(finalizing: true);
   }
 
