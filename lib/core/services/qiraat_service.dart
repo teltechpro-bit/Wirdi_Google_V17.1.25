@@ -291,8 +291,10 @@ class QiraatService {
     if (hasAny(['hafs'])) ids.add('hafs');
     if (hasAny(['warsh'])) ids.add('warsh');
     if (hasAny(['qalun', 'qaloon', 'qal'])) ids.add('qalun');
-    if (hasAny(['albizi', 'albazzi', 'bazzi'])) ids.add('al_bazzi');
-    if (hasAny(['qunbol', 'qunbul'])) ids.add('qunbul');
+    final hasBazzi = hasAny(['albizi', 'albazzi', 'bazzi']);
+    final hasQunbul = hasAny(['qunbol', 'qunbul']);
+    if (hasBazzi && !hasQunbul) ids.add('al_bazzi');
+    if (hasQunbul && !hasBazzi) ids.add('qunbul');
     if (hasAny(['assosi', 'susi'])) ids.add('al_susi');
     if (hasAny(['aldori', 'aldurri', 'dori']) && hasAny(['abiamr', 'abuamr'])) ids.add('al_duri_abu_amr');
     if (hasAny(['hisham', 'hesham'])) ids.add('hisham');
