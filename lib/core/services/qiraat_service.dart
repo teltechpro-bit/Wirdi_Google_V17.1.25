@@ -22,7 +22,6 @@ class QiraatService {
   final Set<String> _unhealthyAudioServers = <String>{};
   Map<String, String>? _selectedReaderIds;
   Future<Map<String, List<RiwayahReader>>>? _readersFuture;
-  Future<Map<String, String>>? _catalogFuture;
 
   String get selectedRiwayahId => _selectedRiwayahId;
   RiwayahOption get selectedRiwayah => QiraatCatalog.byId(_selectedRiwayahId);
@@ -457,52 +456,6 @@ class QiraatService {
       return const <int, ({int startMs, int endMs})>{};
     }
   }
-  Future<Map<String, String>> _loadSurahServers() {
-    final cached = _surahServers;
-    if (cached != null) return Future.value(cached);
-    final inFlight = _catalogFuture;
-    if (inFlight != null) return inFlight;
-    final future = _fetchSurahServers();
-    _catalogFuture = future;
-    future.then((value) {
-      _surahServers = value;
-      _catalogFuture = null;
-    }, onError: (_) {
-      _catalogFuture = null;
-    });
-    return future;
-  }
-
-  Future<Map<String, String>> _fetchSurahServers() async {
-    try {
-      final response = await http.get(Uri.parse(_catalogUrl)).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return const {};
-      final json = jsonDecode(response.body);
-      if (json is! Map<String, dynamic>) return const {};
-      final reciters = json['reciters'];
-      if (reciters is! List) return const {};
-      final result = <String, String>{};
-      for (final item in reciters) {
-        if (item is! Map) continue;
-        final moshaf = item['moshaf'];
-        if (moshaf is! List) continue;
-        for (final read in moshaf) {
-          if (read is! Map) continue;
-          final name = (read['name'] ?? '').toString().toLowerCase();
-          final server = (read['server'] ?? '').toString();
-          final surahTotal = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
-          if (server.isEmpty || surahTotal < 114) continue;
-          for (final match in _matches(name)) {
-            result.putIfAbsent(match, () => server.endsWith('/') ? server : '$server/');
-          }
-        }
-      }
-      return result;
-    } catch (_) {
-      return const {};
-    }
-  }
-
   List<String> _matches(String rawName) {
     final name = _normalize(rawName);
     final ids = <String>[];
