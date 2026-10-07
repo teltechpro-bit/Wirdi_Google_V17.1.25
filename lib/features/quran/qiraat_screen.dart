@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/data/qiraat_catalog.dart';
 import '../../core/services/qiraat_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'qiraat_compare_screen.dart';
 
 class QiraatScreen extends StatefulWidget {
   const QiraatScreen({super.key});
@@ -23,6 +24,19 @@ class _QiraatScreenState extends State<QiraatScreen> {
       appBar: AppBar(
         title: Text(ar ? 'القراءات العشر والروايات' : 'Ten Qira’at & Riwayat'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: ar ? 'مقارنة الروايات' : 'Compare riwayat',
+            icon: const Icon(Icons.compare_arrows),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const QiraatCompareScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -44,18 +58,36 @@ class _QiraatScreenState extends State<QiraatScreen> {
           for (final q in QiraatCatalog.all) ...[
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 4),
-              child: Text(q.nameFor(ar ? 'ar' : 'en'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primaryEmerald)),
+              child: Text(
+                q.nameFor(ar ? 'ar' : 'en'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryEmerald,
+                ),
+              ),
             ),
             for (final r in q.riwayat)
               Card(
                 child: ListTile(
-                  title: Text(r.nameFor(ar ? 'ar' : 'en'), textDirection: ar ? TextDirection.rtl : TextDirection.ltr),
-                  subtitle: Text(_service.audioStatusFor(r, ar ? 'ar' : 'en')),
-                  leading: Icon(
-                    r.hasVerifiedAyahAudio ? Icons.graphic_eq : Icons.info_outline,
-                    color: r.hasVerifiedAyahAudio ? AppColors.primaryEmerald : AppColors.mutedText,
+                  title: Text(
+                    r.nameFor(ar ? 'ar' : 'en'),
+                    textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
                   ),
-                  trailing: r.id == current ? Icon(Icons.check_circle, color: AppColors.goldAccent) : null,
+                  subtitle: Text(
+                    _service.audioStatusFor(r, ar ? 'ar' : 'en'),
+                  ),
+                  leading: Icon(
+                    r.hasVerifiedAyahAudio
+                        ? Icons.graphic_eq
+                        : Icons.info_outline,
+                    color: r.hasVerifiedAyahAudio
+                        ? AppColors.primaryEmerald
+                        : AppColors.mutedText,
+                  ),
+                  trailing: r.id == current
+                      ? Icon(Icons.check_circle, color: AppColors.goldAccent)
+                      : null,
                   onTap: r.hasVerifiedAyahAudio
                       ? () async {
                           await _service.setRiwayah(r.id);
