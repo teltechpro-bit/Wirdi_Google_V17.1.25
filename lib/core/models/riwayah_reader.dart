@@ -8,6 +8,7 @@ class RiwayahReader {
   final Set<int> surahs;
   final bool hasAyahAudio;
   final Map<int, String> surahUrls;
+  final int? timingReadId;
 
   const RiwayahReader({
     required this.id,
@@ -19,6 +20,7 @@ class RiwayahReader {
     required this.surahs,
     this.hasAyahAudio = false,
     this.surahUrls = const <int, String>{},
+    this.timingReadId,
   });
 
   String nameFor(String languageCode) =>
