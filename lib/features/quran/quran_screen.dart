@@ -26,6 +26,7 @@ import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
 import 'qiraat_screen.dart';
+import 'ten_qiraat_screen.dart';
 import 'widgets/quran_playback_bar.dart';
 
 class QuranScreen extends StatefulWidget {
@@ -96,6 +97,16 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
         title: Directionality(textDirection: TextDirection.rtl, child: Text(l10n.quranTitle)),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'القراءات العشر'
+                : 'The Ten Qira’at',
+            icon: const Icon(Icons.auto_stories_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TenQiraatScreen()),
+            ),
+          ),
           IconButton(
             tooltip: l10n.quranViewMushaf,
             icon: const Icon(Icons.import_contacts_outlined),
