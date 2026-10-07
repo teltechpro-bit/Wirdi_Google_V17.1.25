@@ -114,6 +114,30 @@ class RadioStation {
     );
   }
 
+
+  factory RadioStation.fromIprd(Map<String, dynamic> j) {
+    final name = (j['name'] as String?)?.trim() ?? '';
+    final id = j['id']?.toString() ?? name;
+    final country = (j['country'] as String?)?.trim() ?? '';
+    final streams = (j['streams'] as List<dynamic>?) ?? const [];
+    final stream = streams
+        .whereType<Map<String, dynamic>>()
+        .where((s) => isSecureUrl((s['url'] as String?)?.trim() ?? ''))
+        .where((s) => ((s['reliability'] as num?)?.toDouble() ?? 0) >= 0.75)
+        .map((s) => (s['url'] as String).trim())
+        .firstWhere((_) => true, orElse: () => '');
+    return RadioStation(
+      id: 'iprd_$id',
+      nameAr: name,
+      nameEn: name,
+      streamUrl: stream,
+      country: country.isNotEmpty ? country : _guessCountry(name),
+      countryCode: (j['countryCode'] as String?)?.toUpperCase() ?? _guessCountryCode(name),
+      category: 'quran',
+      isOfficial: false,
+    );
+  }
+
   factory RadioStation.fromMp3Quran(Map<String, dynamic> j) {
     final name = (j['name'] as String?) ?? '';
     final id = j['id']?.toString() ?? name;
