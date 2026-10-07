@@ -12,6 +12,7 @@ class QiraatService {
 
   static const _riwayahKey = 'qiraat_selected_riwayah';
   static const _catalogUrl = 'https://mp3quran.net/api/v3/reciters?language=eng';
+  static const _qudCatalogUrl = 'https://audio.qud.dev/api/static/catalog.json';
 
   String _selectedRiwayahId = 'hafs';
   Map<String, String>? _surahServers;
@@ -105,11 +106,24 @@ class QiraatService {
   Future<String?> surahAudioUrl(int surahNumber) async {
     final selectedReader = selectedReaderFor(_selectedRiwayahId);
     if (_selectedRiwayahId == 'hafs' && selectedReader == null) return null;
-    final servers = await _loadSurahServers();
     final reader = selectedReader ?? defaultReaderFor(_selectedRiwayahId);
+    final directUrl = reader?.surahUrls[surahNumber];
+    if (directUrl != null && await _isHealthyAudioUrl(directUrl)) return directUrl;
+    final servers = await _loadSurahServers();
     final server = reader?.server ?? servers[_selectedRiwayahId];
     if (server == null || !await _isHealthyAudioServer(server)) return null;
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
+  }
+
+  Future<bool> _isHealthyAudioUrl(String url) async {
+    try {
+      final head = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (head.statusCode >= 200 && head.statusCode < 400) return true;
+      final ranged = await http.get(Uri.parse(url), headers: const {'Range': 'bytes=0-0'}).timeout(const Duration(seconds: 8));
+      return ranged.statusCode == 200 || ranged.statusCode == 206;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _isHealthyAudioServer(String server) async {
@@ -156,6 +170,7 @@ class QiraatService {
   Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
     try {
       final result = <String, List<RiwayahReader>>{};
+      await _fetchQudReaders(result);
       final dynamicIds = await _fetchMp3QuranRiwayahIds();
       final idsByRiwayah = <String, Set<int>>{};
 
@@ -190,6 +205,81 @@ class QiraatService {
     } catch (_) {
       return const {};
     }
+  }
+
+  Future<void> _fetchQudReaders(
+    Map<String, List<RiwayahReader>> result,
+  ) async {
+    try {
+      final response = await http.get(Uri.parse(_qudCatalogUrl)).timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) return;
+      final json = jsonDecode(response.body);
+      if (json is! Map<String, dynamic>) return;
+      final items = json['recitations'] ?? json['deliveries'];
+      if (items is! List) return;
+      for (final item in items) {
+        if (item is! Map) continue;
+        final riwayah = _qudRiwayahId('${item['riwayah'] ?? ''}');
+        if (riwayah == null) continue;
+        final urls = _qudSurahUrls(item);
+        if (urls.length != 114) continue;
+        final name = '${item['name'] ?? item['reciter'] ?? ''}'.trim();
+        if (name.isEmpty) continue;
+        final slug = '${item['slug'] ?? item['id'] ?? name}';
+        final reader = RiwayahReader(
+          id: 'qud-$slug',
+          name: name,
+          riwayahId: riwayah,
+          source: 'QUD',
+          server: '',
+          hasAyahAudio: false,
+          surahs: urls.keys.toSet(),
+          surahUrls: urls,
+        );
+        final list = result.putIfAbsent(riwayah, () => <RiwayahReader>[]);
+        if (!list.any((r) => r.id == reader.id)) list.add(reader);
+      }
+    } catch (_) {
+      // QUD is additive; existing verified sources remain usable.
+    }
+  }
+
+  String? _qudRiwayahId(String raw) {
+    final value = _normalize(raw);
+    if (value.contains('warsh')) return 'warsh';
+    if (value.contains('qalun') || value.contains('qaloon')) return 'qalun';
+    if (value.contains('shubah') || value.contains('shobah')) return 'shuba';
+    if (value.contains('hafs')) return 'hafs';
+    if (value.contains('susi') || value.contains('soosi')) return 'al_susi';
+    if (value.contains('duri') && value.contains('abuamr')) return 'al_duri_abu_amr';
+    if (value.contains('khalaf') && value.contains('hamza')) return 'khalaf_hamza';
+    return null;
+  }
+
+  Map<int, String> _qudSurahUrls(Map item) {
+    final audio = item['audio'];
+    final candidates = <dynamic>[
+      item['chapter_urls'],
+      item['surah_urls'],
+      audio is Map ? audio['chapter_urls'] : null,
+      audio is Map ? audio['chapters'] : null,
+    ];
+    for (final candidate in candidates) {
+      if (candidate is! Map) continue;
+      final urls = <int, String>{};
+      candidate.forEach((key, value) {
+        final surah = int.tryParse('$key');
+        if (surah == null || surah < 1 || surah > 114) return;
+        if (value is String && value.startsWith('http')) {
+          urls[surah] = value;
+        } else if (value is Map) {
+          final url = '${value['url'] ?? ''}';
+          if (url.startsWith('http')) urls[surah] = url;
+        }
+      });
+      if (urls.length == 114) return urls;
+    }
+    return const <int, String>{};
   }
 
   Future<Map<int, Set<String>>> _fetchMp3QuranRiwayahIds() async {
