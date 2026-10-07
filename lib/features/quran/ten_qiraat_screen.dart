@@ -20,7 +20,7 @@ class TenQiraatScreen extends StatelessWidget {
       ),
       body: FutureBuilder<void>(
         future: service.loadReaders(),
-        builder: (context, snapshot) {
+        builder: (context, _) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
             children: [
