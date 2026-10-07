@@ -13,6 +13,7 @@ import '../../core/services/arabic_text_utils.dart';
 import '../../core/services/audio_download_service.dart';
 import '../../core/services/mushaf_repository.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/qiraat_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/quran_translation_repository.dart';
 import '../../core/services/settings_service.dart';
@@ -25,6 +26,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
+import 'qiraat_screen.dart';
 import 'widgets/quran_playback_bar.dart';
 
 class QuranScreen extends StatefulWidget {
@@ -1159,6 +1161,8 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                 _openMushafView();
               } else if (value == 'reciter') {
                 _pickReciter();
+              } else if (value == 'qiraat') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const QiraatScreen())).then((_) => setState(() {}));
               } else if (value == 'fontDec') {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
@@ -1176,6 +1180,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               if (MediaQuery.of(context).orientation == Orientation.landscape && surah.number < 114) PopupMenuItem(value: 'next', child: Text(languageCode == 'ar' ? 'السورة التالية' : 'Next surah')),
               if (MediaQuery.of(context).orientation == Orientation.landscape) PopupMenuItem(value: 'mushaf', child: Text(l10n.quranViewAsMushafPageTooltip)),
               PopupMenuItem(value: 'reciter', child: Text(l10n.quranChooseReciterTooltip(Reciters.byId(appSettings.reciterId).displayNameFor(languageCode)))),
+              PopupMenuItem(value: 'qiraat', child: Text(languageCode == 'ar' ? 'القراءات والروايات' : 'Qira’at & Riwayat')),
               PopupMenuItem(value: 'fontDec', child: Text(l10n.quranDecreaseFontTooltip)),
               PopupMenuItem(value: 'fontInc', child: Text(l10n.quranIncreaseFontTooltip)),
               PopupMenuItem(
