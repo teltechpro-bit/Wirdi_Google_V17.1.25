@@ -30,6 +30,19 @@ class QiraatService {
 
   List<RiwayahReader> readersForSelectedRiwayah() => _readers?[_selectedRiwayahId] ?? const [];
 
+  /// Number of riwayat with at least one complete reader source discovered at runtime.
+  int get discoveredRiwayahCount {
+    final readers = _readers;
+    if (readers == null) return 0;
+    return QiraatCatalog.allRiwayat
+        .where((r) => (readers[r.id] ?? const []).isNotEmpty)
+        .length;
+  }
+
+  bool hasRuntimeReaderSource(String riwayahId) {
+    return (_readers?[riwayahId] ?? const []).isNotEmpty;
+  }
+
   RiwayahReader? selectedReaderFor(String riwayahId) {
     final list = _readers?[riwayahId] ?? const [];
     final id = _selectedReaderIds?[riwayahId];
@@ -450,12 +463,25 @@ class QiraatService {
   }
 
   String audioStatusFor(RiwayahOption r, String languageCode) {
-    if (r.hasVerifiedAyahAudio) {
-      return languageCode == 'ar' ? 'صوت آية-بآية متحقق' : 'Verified verse-by-verse audio';
+    final hasRuntimeSource = hasRuntimeReaderSource(r.id);
+    if (r.hasVerifiedAyahAudio && (r.id == 'hafs' || r.id == 'warsh')) {
+      return languageCode == 'ar'
+          ? 'صوت آية-بآية متحقق'
+          : 'Verified verse-by-verse audio';
+    }
+    if (hasRuntimeSource) {
+      final count = _readers![r.id]!.length;
+      return languageCode == 'ar'
+          ? 'مصدر موثّق متاح • ' + count.toString() + ' قارئ'
+          : 'Verified source available • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
     }
     if (r.hasSurahAudio) {
-      return languageCode == 'ar' ? 'صوت السورة من مصدر الرواية متحقق' : 'Verified full-surah riwayah audio';
+      return languageCode == 'ar'
+          ? 'مصدر الرواية مفعّل وسيظهر بعد التحقق'
+          : 'Riwayah source configured; waiting for runtime verification';
     }
-    return languageCode == 'ar' ? 'مصدر صوتي موثّق غير متوفر حاليًا' : 'Verified audio source not available yet';
+    return languageCode == 'ar'
+        ? 'مصدر صوتي موثّق غير متوفر حاليًا'
+        : 'Verified audio source not available yet';
   }
 }
