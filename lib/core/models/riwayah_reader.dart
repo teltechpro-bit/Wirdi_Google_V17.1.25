@@ -1,6 +1,7 @@
 class RiwayahReader {
   final String id;
   final String name;
+  final String? nameAr;
   final String riwayahId;
   final String source;
   final String server;
@@ -11,6 +12,7 @@ class RiwayahReader {
   const RiwayahReader({
     required this.id,
     required this.name,
+    this.nameAr,
     required this.riwayahId,
     required this.source,
     required this.server,
@@ -18,6 +20,9 @@ class RiwayahReader {
     this.hasAyahAudio = false,
     this.surahUrls = const <int, String>{},
   });
+
+  String nameFor(String languageCode) =>
+      languageCode == 'ar' && nameAr != null && nameAr!.trim().isNotEmpty ? nameAr! : name;
 
   bool supportsSurah(int surahNumber) => surahs.contains(surahNumber);
 }
