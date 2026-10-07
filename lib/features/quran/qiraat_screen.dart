@@ -50,7 +50,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                     : 'Wirdi lists the ten canonical readings and two famous riwayat for each. Audio is only marked available when a verified verse-by-verse source exists; Wirdi never silently falls back to Hafs.',
                 textAlign: ar ? TextAlign.right : TextAlign.left,
                 textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
-                style: TextStyle(height: 1.6),
+                style: const TextStyle(height: 1.6),
               ),
             ),
           ),
@@ -60,7 +60,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
               padding: const EdgeInsets.only(top: 8, bottom: 4),
               child: Text(
                 q.nameFor(ar ? 'ar' : 'en'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.primaryEmerald,
