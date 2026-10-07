@@ -110,13 +110,18 @@ class QiraatService {
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
   }
 
-  static const Map<String, int> _mp3QuranRiwayahIds = {\n    'hafs': 1,\n    'qalun': 5,\n    'warsh': 10,\n    'al_bazzi': 11,\n    'qunbul': 11,\n    'al_duri_kisai': 12,\n  };\n\n  Fu
-      return;
-    }
-  }
-ure<Map<String, List<RiwayahReader>>> _fetchReaders() async {
-    try {
+    static const Map<String, int> _mp3QuranRiwayahIds = {
+    'hafs': 1,
+    'qalun': 5,
+    'warsh': 10,
+    'al_bazzi': 11,
+    'qunbul': 11,
+    'al_duri_kisai': 12,
+  };
 
+  Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
+    try {
+      final result = <String, List<RiwayahReader>>{};
       final targeted = <int>{};
       for (final entry in _mp3QuranRiwayahIds.entries) {
         if (!targeted.add(entry.value)) continue;
@@ -135,6 +140,7 @@ ure<Map<String, List<RiwayahReader>>> _fetchReaders() async {
               .toSet(),
         );
       }
+
       // Keep the full catalog for narrations whose current public API
       // documentation does not expose a stable ID in the documented list.
       await _fetchReadersFromUri(Uri.parse(_catalogUrl), result);
@@ -150,43 +156,49 @@ ure<Map<String, List<RiwayahReader>>> _fetchReaders() async {
     Set<String>? onlyRiwayat,
   }) async {
     final response = await http.get(uri).timeout(const Duration(seconds: 20));
-      if (response.statusCode != 200) return const {};
-      final json = jsonDecode(response.body);
-      if (json is! Map<String, dynamic> || json['reciters'] is! List) return const {};
-      final result = <String, List<RiwayahReader>>{};
-      for (final item in json['reciters'] as List) {
-        if (item is! Map) continue;
-        final reciterId = '${item['id'] ?? ''}';
-        final reciterName = '${item['name'] ?? ''}'.trim();
-        final moshaf = item['moshaf'];
-        if (reciterId.isEmpty || reciterName.isEmpty || moshaf is! List) continue;
-        for (final read in moshaf) {
-          if (read is! Map) continue;
-          final name = _normalize('${read['name'] ?? ''}');
-          final serverRaw = '${read['server'] ?? ''}';
-          final total = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
-          if (serverRaw.isEmpty || total < 114) continue;
-          final server = serverRaw.endsWith('/') ? serverRaw : '$serverRaw/';
-          var matches = _matches(name);\n          if (onlyRiwayat != null) {\n            matches = matches.where(onlyRiwayat.contains).toList(growable: false);\n          }\n          for (final riwayahId in matches) {
-            final surahList = '${read['surah_list'] ?? ''}'.split(',').map(int.tryParse).whereType<int>().toSet();
-            final reader = RiwayahReader(
-              id: '$reciterId-${read['id'] ?? riwayahId}',
-              name: reciterName,
-              riwayahId: riwayahId,
-              source: 'MP3Quran',
-              server: server,
-              hasAyahAudio: false,
-              surahs: surahList.isEmpty ? {for (var i = 1; i <= 114; i++) i} : surahList,
-            );
-            final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);
-            if (!list.any((r) => r.id == reader.id)) list.add(reader);
-          }
+    if (response.statusCode != 200) return;
+    final json = jsonDecode(response.body);
+    if (json is! Map<String, dynamic> || json['reciters'] is! List) return;
+    for (final item in json['reciters'] as List) {
+      if (item is! Map) continue;
+      final reciterId = '${item['id'] ?? ''}';
+      final reciterName = '${item['name'] ?? ''}'.trim();
+      final moshaf = item['moshaf'];
+      if (reciterId.isEmpty || reciterName.isEmpty || moshaf is! List) continue;
+      for (final read in moshaf) {
+        if (read is! Map) continue;
+        final name = _normalize('${read['name'] ?? ''}');
+        final serverRaw = '${read['server'] ?? ''}';
+        final total = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
+        if (serverRaw.isEmpty || total < 114) continue;
+        final server = serverRaw.endsWith('/') ? serverRaw : '$serverRaw/';
+        var matches = _matches(name);
+        if (onlyRiwayat != null) {
+          matches = matches.where(onlyRiwayat.contains).toList(growable: false);
+        }
+        final surahList = '${read['surah_list'] ?? ''}'
+            .split(',')
+            .map(int.tryParse)
+            .whereType<int>()
+            .toSet();
+        for (final riwayahId in matches) {
+          final reader = RiwayahReader(
+            id: '$reciterId-${read['id'] ?? riwayahId}',
+            name: reciterName,
+            riwayahId: riwayahId,
+            source: 'MP3Quran',
+            server: server,
+            hasAyahAudio: false,
+            surahs: surahList.isEmpty
+                ? {for (var i = 1; i <= 114; i++) i}
+                : surahList,
+          );
+          final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);
+          if (!list.any((r) => r.id == reader.id)) list.add(reader);
         }
       }
-      return result;
-    } catch (_) { return const {}; }
+    }
   }
-
   Future<Map<String, String>> _loadSurahServers() {
     final cached = _surahServers;
     if (cached != null) return Future.value(cached);
