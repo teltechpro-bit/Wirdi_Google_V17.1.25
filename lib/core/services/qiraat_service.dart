@@ -118,7 +118,7 @@ class QiraatService {
           for (final riwayahId in _matches(name)) {
             final surahList = '${read['surah_list'] ?? ''}'.split(',').map(int.tryParse).whereType<int>().toSet();
             final reader = RiwayahReader(
-              id: '${reciterId}-${read['id'] ?? riwayahId}',
+              id: '$reciterId-${read['id'] ?? riwayahId}',
               name: reciterName,
               riwayahId: riwayahId,
               source: 'MP3Quran',
