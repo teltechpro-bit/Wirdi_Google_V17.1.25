@@ -38,7 +38,7 @@ class _QiraatCompareScreenState extends State<QiraatCompareScreen> {
                 ar
                     ? 'اختر روايتين للمقارنة. هذه الشاشة تعرض حالة المصدر الصوتي المتحقق لكل رواية، ولن تنسب اختلافًا نصيًا إلا بعد ربط مصدر نصي موثوق.'
                     : 'Choose two riwayat to compare. This screen shows verified audio-source status and does not claim textual differences until a verified text dataset is connected.',
-                style: const TextStyle(height: 1.6),
+                style: TextStyle(height: 1.6),
                 textAlign: ar ? TextAlign.right : TextAlign.left,
                 textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
               ),
