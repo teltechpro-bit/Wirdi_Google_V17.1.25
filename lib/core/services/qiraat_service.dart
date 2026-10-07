@@ -250,6 +250,46 @@ class QiraatService {
           }
         }
       }
+      // Fetch the Arabic API projection as well so the same reader ID can
+      // display a localized name without changing its audio source.
+      final arabic = <String, List<RiwayahReader>>{};
+      for (final entry in idsByRiwayah.entries) {
+        for (final apiId in entry.value) {
+          final uri = Uri.parse(_catalogUrl).replace(
+            queryParameters: <String, String>{
+              'language': 'ar',
+              'rewaya': apiId.toString(),
+            },
+          );
+          await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+        }
+      }
+      for (final entry in result.entries) {
+        for (var i = 0; i < entry.value.length; i++) {
+          final reader = entry.value[i];
+          final matches = arabic[entry.key] ?? const <RiwayahReader>[];
+          RiwayahReader? localized;
+          for (final candidate in matches) {
+            if (candidate.id == reader.id) {
+              localized = candidate;
+              break;
+            }
+          }
+          if (localized != null) {
+            entry.value[i] = RiwayahReader(
+              id: reader.id,
+              name: reader.name,
+              nameAr: localized.name,
+              riwayahId: reader.riwayahId,
+              source: reader.source,
+              server: reader.server,
+              surahs: reader.surahs,
+              hasAyahAudio: reader.hasAyahAudio,
+              surahUrls: reader.surahUrls,
+            );
+          }
+        }
+      }
       return result;
     } catch (_) {
       return const {};
