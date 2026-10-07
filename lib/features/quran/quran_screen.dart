@@ -27,6 +27,7 @@ import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
 import 'qiraat_screen.dart';
 import 'ten_qiraat_screen.dart';
+import 'riwayat_directory_screen.dart';
 import 'widgets/quran_playback_bar.dart';
 
 class QuranScreen extends StatefulWidget {
@@ -105,6 +106,16 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const TenQiraatScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'الروايات'
+                : 'Riwayat',
+            icon: const Icon(Icons.library_music_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RiwayatDirectoryScreen()),
             ),
           ),
           IconButton(
