@@ -133,6 +133,9 @@ class QiraatService {
     if (r.hasVerifiedAyahAudio) {
       return languageCode == 'ar' ? 'صوت آية-بآية متحقق' : 'Verified verse-by-verse audio';
     }
-    return languageCode == 'ar' ? 'صوت السورة من مصدر الرواية متحقق' : 'Full-surah riwayah audio source verified';
+    if (r.hasSurahAudio) {
+      return languageCode == 'ar' ? 'صوت السورة من مصدر الرواية متحقق' : 'Verified full-surah riwayah audio';
+    }
+    return languageCode == 'ar' ? 'مصدر صوتي موثّق غير متوفر حاليًا' : 'Verified audio source not available yet';
   }
 }
