@@ -66,14 +66,14 @@ class QiraatCatalog {
     ]),
     QiraatReading(id: 'hamza', nameAr: 'حمزة الزيات', nameEn: 'Hamzah al-Zayyat', imamAr: 'حمزة', imamEn: 'Hamzah', riwayat: [
       RiwayahOption(id: 'khalaf_hamza', hasSurahAudio: true, nameAr: 'خلف عن حمزة', nameEn: 'Khalaf ʿan Hamzah', qiraatId: 'hamza', audioLabel: 'MP3Quran — riwayah source'),
-      RiwayahOption(id: 'khallad', nameAr: 'خلاد عن حمزة', nameEn: 'Khallad ʿan Hamzah', qiraatId: 'hamza', audioLabel: 'MP3Quran — riwayah source'),
+      RiwayahOption(id: 'khallad', nameAr: 'خلاد عن حمزة', nameEn: 'Khallad ʿan Hamzah', qiraatId: 'hamza'),
     ]),
     QiraatReading(id: 'alkisai', nameAr: 'الكسائي', nameEn: 'Al-Kisaʾi', imamAr: 'الكسائي', imamEn: 'Al-Kisaʾi', riwayat: [
-      RiwayahOption(id: 'abu_al_harith', nameAr: 'أبو الحارث عن الكسائي', nameEn: 'Abu al-Harith ʿan al-Kisaʾi', qiraatId: 'alkisai', audioLabel: 'MP3Quran — riwayah source'),
+      RiwayahOption(id: 'abu_al_harith', nameAr: 'أبو الحارث عن الكسائي', nameEn: 'Abu al-Harith ʿan al-Kisaʾi', qiraatId: 'alkisai'),
       RiwayahOption(id: 'al_duri_kisai', hasSurahAudio: true, nameAr: 'الدوري عن الكسائي', nameEn: 'Al-Duri ʿan al-Kisaʾi', qiraatId: 'alkisai', audioLabel: 'MP3Quran — riwayah source'),
     ]),
     QiraatReading(id: 'abu_jafar', nameAr: 'أبو جعفر المدني', nameEn: 'Abu Jaʿfar al-Madani', imamAr: 'أبو جعفر', imamEn: 'Abu Jaʿfar', riwayat: [
-      RiwayahOption(id: 'ibn_wardan', nameAr: 'ابن وردان عن أبي جعفر', nameEn: 'Ibn Wardan ʿan Abu Jaʿfar', qiraatId: 'abu_jafar', audioLabel: 'MP3Quran — riwayah source'),
+      RiwayahOption(id: 'ibn_wardan', nameAr: 'ابن وردان عن أبي جعفر', nameEn: 'Ibn Wardan ʿan Abu Jaʿfar', qiraatId: 'abu_jafar'),
       RiwayahOption(id: 'ibn_jammaz', nameAr: 'ابن جماز عن أبي جعفر', nameEn: 'Ibn Jammaz ʿan Abu Jaʿfar', qiraatId: 'abu_jafar', audioLabel: 'MP3Quran — riwayah source'),
     ]),
     QiraatReading(id: 'yaqub', nameAr: 'يعقوب الحضرمي', nameEn: 'Yaʿqub al-Hadrami', imamAr: 'يعقوب', imamEn: 'Yaʿqub', riwayat: [
@@ -81,8 +81,8 @@ class QiraatCatalog {
       RiwayahOption(id: 'rawh', hasSurahAudio: true, nameAr: 'روح عن يعقوب', nameEn: 'Rawh ʿan Yaʿqub', qiraatId: 'yaqub', audioLabel: 'MP3Quran — riwayah source'),
     ]),
     QiraatReading(id: 'khalaf', nameAr: 'خلف العاشر', nameEn: 'Khalaf al-ʿAshir', imamAr: 'خلف', imamEn: 'Khalaf', riwayat: [
-      RiwayahOption(id: 'ishaq', nameAr: 'إسحاق عن خلف', nameEn: 'Ishaq ʿan Khalaf', qiraatId: 'khalaf', audioLabel: 'MP3Quran — riwayah source'),
-      RiwayahOption(id: 'idris', nameAr: 'إدريس عن خلف', nameEn: 'Idris ʿan Khalaf', qiraatId: 'khalaf', audioLabel: 'MP3Quran — riwayah source'),
+      RiwayahOption(id: 'ishaq', nameAr: 'إسحاق عن خلف', nameEn: 'Ishaq ʿan Khalaf', qiraatId: 'khalaf'),
+      RiwayahOption(id: 'idris', nameAr: 'إدريس عن خلف', nameEn: 'Idris ʿan Khalaf', qiraatId: 'khalaf'),
     ]),
   ];
 
