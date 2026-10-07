@@ -100,7 +100,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                           ),
                           items: readers.map((reader) => DropdownMenuItem<String>(
                             value: reader.id,
-                            child: Text(reader.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(reader.nameFor(ar ? 'ar' : 'en'), maxLines: 1, overflow: TextOverflow.ellipsis),
                           )).toList(),
                           onChanged: (value) async {
                             if (value == null) return;
@@ -113,7 +113,7 @@ class _QiraatScreenState extends State<QiraatScreen> {
                           (ar ? 'الرواية: ' : 'Riwayah: ') +
                               QiraatCatalog.byId(current).nameFor(ar ? 'ar' : 'en') +
                               '\n' +
-                              (ar ? 'القارئ: ' : 'Reader: ') + selectedReader.name +
+                              (ar ? 'القارئ: ' : 'Reader: ') + selectedReader.nameFor(ar ? 'ar' : 'en') +
                               '\n' +
                               (ar ? 'المصدر: ' : 'Source: ') + selectedReader.source,
                           style: const TextStyle(fontSize: 12),
