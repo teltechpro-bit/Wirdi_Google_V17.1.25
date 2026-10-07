@@ -194,10 +194,20 @@ class FamilyKhatmaService {
             }
           }
         }
-        tx.set(ref, <String, dynamic>{
-          'claims.' + user.uid + '.name': _displayName,
-          'claims.' + user.uid + '.juzs.' + juz.toString(): false,
-        }, SetOptions(merge: true));
+        final existingMine = rawClaims is Map ? rawClaims[user.uid] : null;
+        final mergedJuzs = <String, dynamic>{};
+        if (existingMine is Map && existingMine['juzs'] is Map) {
+          (existingMine['juzs'] as Map).forEach((key, value) {
+            mergedJuzs[key.toString()] = value == true;
+          });
+        }
+        mergedJuzs[juz.toString()] = false;
+        tx.update(ref, <String, dynamic>{
+          'claims.' + user.uid: <String, dynamic>{
+            'name': _displayName,
+            'juzs': mergedJuzs,
+          },
+        });
       });
     } catch (e) { _rethrow(e); }
   }
