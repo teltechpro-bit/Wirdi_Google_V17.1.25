@@ -13,8 +13,8 @@ class QiraatDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
-    final qiraat = QiraatCatalog.all.firstWhere((q) => q.id == qiraatId);
-    final index = QiraatCatalog.all.indexWhere((q) => q.id == qiraatId);
+    final qiraat = QiraatCatalog.directoryReadings.firstWhere((q) => q.id == qiraatId);
+    final index = QiraatCatalog.directoryReadings.indexWhere((q) => q.id == qiraatId);
     final service = QiraatService.instance;
 
     return Scaffold(
@@ -93,7 +93,7 @@ class QiraatDetailScreen extends StatelessWidget {
                   ),
                 ),
               ],
-              if (index > 0 || index < QiraatCatalog.all.length - 1) ...[
+              if (index > 0 || index < QiraatCatalog.directoryReadings.length - 1) ...[
                 const SizedBox(height: 18),
                 Row(
                   children: [
@@ -104,7 +104,7 @@ class QiraatDetailScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => QiraatDetailScreen(
-                                qiraatId: QiraatCatalog.all[index - 1].id,
+                                qiraatId: QiraatCatalog.directoryReadings[index - 1].id,
                               ),
                             ),
                           ),
@@ -121,7 +121,7 @@ class QiraatDetailScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => QiraatDetailScreen(
-                                qiraatId: QiraatCatalog.all[index + 1].id,
+                                qiraatId: QiraatCatalog.directoryReadings[index + 1].id,
                               ),
                             ),
                           ),
