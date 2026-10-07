@@ -16,6 +16,8 @@ class QiraatService {
   String _selectedRiwayahId = 'hafs';
   Map<String, String>? _surahServers;
   Map<String, List<RiwayahReader>>? _readers;
+  final Set<String> _healthyAudioServers = <String>{};
+  final Set<String> _unhealthyAudioServers = <String>{};
   Map<String, String>? _selectedReaderIds;
   Future<Map<String, List<RiwayahReader>>>? _readersFuture;
   Future<Map<String, String>>? _catalogFuture;
@@ -106,8 +108,40 @@ class QiraatService {
     final servers = await _loadSurahServers();
     final reader = selectedReader ?? defaultReaderFor(_selectedRiwayahId);
     final server = reader?.server ?? servers[_selectedRiwayahId];
-    if (server == null) return null;
+    if (server == null || !await _isHealthyAudioServer(server)) return null;
     return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
+  }
+
+  Future<bool> _isHealthyAudioServer(String server) async {
+    if (_healthyAudioServers.contains(server)) return true;
+    if (_unhealthyAudioServers.contains(server)) return false;
+
+    final probeUrl = server + '001.mp3';
+    try {
+      final head = await http
+          .head(Uri.parse(probeUrl))
+          .timeout(const Duration(seconds: 8));
+      if (head.statusCode >= 200 && head.statusCode < 400) {
+        _healthyAudioServers.add(server);
+        return true;
+      }
+
+      final ranged = await http
+          .get(
+            Uri.parse(probeUrl),
+            headers: const {'Range': 'bytes=0-0'},
+          )
+          .timeout(const Duration(seconds: 8));
+      if (ranged.statusCode == 200 || ranged.statusCode == 206) {
+        _healthyAudioServers.add(server);
+        return true;
+      }
+    } catch (_) {
+      // A failed probe must never cause fallback to another riwayah.
+    }
+
+    _unhealthyAudioServers.add(server);
+    return false;
   }
 
     static const Map<String, int> _mp3QuranRiwayahIds = {
