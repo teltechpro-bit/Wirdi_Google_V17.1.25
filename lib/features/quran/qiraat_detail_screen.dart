@@ -35,7 +35,7 @@ class QiraatDetailScreen extends StatelessWidget {
               _HeroCard(
                 title: qiraat.nameFor(ar ? 'ar' : 'en'),
                 subtitle: ar
-                    ? 'القراءة \${index + 1} من القراءات العشر المتواترة'
+                    ? 'القراءة ${index + 1} من القراءات العشر المتواترة'
                     : 'Reading \${index + 1} of the ten canonical Qira’at',
                 body: ar ? qiraat.descriptionAr : qiraat.descriptionEn,
               ),
@@ -191,14 +191,14 @@ class _StatsCard extends StatelessWidget {
           children: [
             Expanded(
               child: _Stat(
-                value: '\$riwayatCount',
+                value: '$riwayatCount',
                 label: ar ? 'رواية أساسية' : 'Core riwayat',
               ),
             ),
             Container(width: 1, height: 42, color: AppColors.divider),
             Expanded(
               child: _Stat(
-                value: '\$readerCount',
+                value: '$readerCount',
                 label: ar ? 'مصدر قارئ مكتشف' : 'Runtime reader sources',
               ),
             ),
@@ -309,7 +309,7 @@ class _RiwayahCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 5),
           child: Text(
             available
-                ? (ar ? '\${readers.length} قارئ متاح في وردي' : '\${readers.length} reader sources in Wirdi')
+                ? (ar ? '${readers.length} قارئ متاح في وردي' : '\${readers.length} reader sources in Wirdi')
                 : (ar ? 'لا يوجد مصدر قارئ مكتشف حاليًا' : 'No runtime reader source discovered yet'),
           ),
         ),
