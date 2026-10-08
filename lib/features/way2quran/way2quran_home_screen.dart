@@ -3,6 +3,9 @@ import '../../core/services/quran_audio_service.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
+import 'way2quran_mushaf_screen.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 
@@ -258,6 +261,26 @@ class Way2QuranReciterScreen extends StatefulWidget {
   @override State<Way2QuranReciterScreen> createState() => _Way2QuranReciterScreenState();
 }
 class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
+  bool _downloading = false;
+  Future<void> _downloadRecitation(Way2QuranRecitationAudio rec, bool ar) async {
+    if (rec.downloadUrl.isEmpty) return;
+    setState(() => _downloading = true);
+    try {
+      final bytes = await Way2QuranRepository().downloadBytes(rec.downloadUrl);
+      final dir = await getApplicationDocumentsDirectory();
+      final folder = Directory(dir.path + '/way2quran/recitations');
+      await folder.create(recursive: true);
+      final file = File(folder.path + '/' + rec.slug + '.mp3');
+      await file.writeAsBytes(bytes, flush: true);
+      await Way2QuranRepository().incrementDownload(rec.slug);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تنزيل التلاوة' : 'Could not download the recitation')));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
   late Future<Way2QuranReciter> future; int selected = 0;
   String? _playingUrl; bool _loadingAudio = false;
   @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); }
@@ -293,7 +316,9 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
           final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
           return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.surahName.isEmpty ? 'سورة ' + a.surahNumber.toString() : a.surahName), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
         }),
-        if (rec.downloadUrl.isNotEmpty) FilledButton.icon(onPressed: () => Way2QuranRepository().incrementDownload(rec.slug), icon: const Icon(Icons.download), label: Text(ar ? 'تحميل المصحف' : 'Download Mushaf')),
+        if (rec.downloadUrl.isNotEmpty) FilledButton.icon(onPressed: _downloading ? null : () => _downloadRecitation(rec, ar), icon: _downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download), label: Text(ar ? 'تنزيل التلاوة' : 'Download Recitation')),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranMushafScreen())), icon: const Icon(Icons.menu_book_rounded), label: Text(ar ? 'المصاحف' : 'Mushaf Library')),
       ]);
     }));
   }
