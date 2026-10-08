@@ -61,7 +61,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranRecitersScreen(recitation: Way2QuranRepository.recitations.first)),),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranAllRecitersScreen()),),
                 icon: const Icon(Icons.headphones_rounded),
                 label: Text(ar ? 'استمع الآن' : 'Start Listening'),
               ),
