@@ -26,6 +26,21 @@ class Way2QuranRepository {
     return raw.whereType<Map>().map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
+  Future<Way2QuranRecitersPage> getRecitersPage({String recitationSlug = '', String isTopReciter = '', String search = '', String sort = 'arabicName', int page = 1, int pageSize = 50}) async {
+    final uri = Uri.parse('$baseUrl/reciters').replace(queryParameters: {
+      'recitationSlug': recitationSlug, 'isTopReciter': isTopReciter, 'search': search,
+      'currentPage': '$page', 'sort': sort, 'pageSize': '$pageSize',
+    });
+    final data = await _getJson(uri);
+    final raw = data is Map && data['reciters'] is List ? data['reciters'] as List : const [];
+    final p = data is Map && data['pagination'] is Map ? Map<String,dynamic>.from(data['pagination']) : const <String,dynamic>{};
+    return Way2QuranRecitersPage(
+      reciters: raw.whereType<Map>().map((e) => Way2QuranReciter.fromJson(Map<String,dynamic>.from(e))).toList(),
+      totalCount: int.tryParse('${p['totalCount'] ?? 0}') ?? 0, page: int.tryParse('${p['page'] ?? page}') ?? page,
+      pages: int.tryParse('${p['pages'] ?? 1}') ?? 1,
+    );
+  }
+
   Future<Way2QuranReciter> getReciter(String slug, {bool increaseViews = true}) async {
     final uri = Uri.parse('$baseUrl/reciters/reciter-profile/${Uri.encodeComponent(slug)}').replace(
       queryParameters: {'increaseViews': '$increaseViews'},
