@@ -83,6 +83,8 @@ class QuranAudioService extends ChangeNotifier {
   bool isPaused = false;
   double playbackRate = 1.0;
   bool repeatSurah = false;
+  String? externalTitle;
+  String? externalUrl;
 
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
@@ -584,6 +586,42 @@ class QuranAudioService extends ChangeNotifier {
     return ja.LoopMode.off;
   }
 
+  Future<void> playExternalUrl(String url, {String? title}) async {
+    if (url.isEmpty) return;
+    await PlaybackCoordinator.stopRadioForQuran();
+    _playToken++;
+    _stopping = false;
+    _rangeStartAyah = null;
+    _rangeEndAyah = null;
+    _fullSurahOnly = false;
+    _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
+    playingAyah = null;
+    playingWholeSurah = false;
+    externalUrl = url;
+    externalTitle = title;
+    isPaused = false;
+    isBuffering = true;
+    position = Duration.zero;
+    duration = Duration.zero;
+    notifyListeners();
+    try {
+      await _player.stop();
+      await _player.setLoopMode(ja.LoopMode.off);
+      await _player.setAudioSource(ja.AudioSource.uri(Uri.parse(url)));
+      await _player.setSpeed(playbackRate);
+      unawaited(_player.play());
+      isBuffering = false;
+      duration = _player.duration ?? Duration.zero;
+      notifyListeners();
+    } catch (e, st) {
+      isBuffering = false;
+      externalUrl = null;
+      externalTitle = null;
+      AppLogger.error('Failed to start external Quran audio', error: e, stackTrace: st);
+      notifyListeners();
+    }
+  }
+
   Future<void> pause() async {
     try {
       await _player.pause();
@@ -740,6 +778,8 @@ class QuranAudioService extends ChangeNotifier {
 
     playingAyah = null;
     playingWholeSurah = false;
+    externalUrl = null;
+    externalTitle = null;
     _fullSurahOnly = false;
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     isPaused = false;
