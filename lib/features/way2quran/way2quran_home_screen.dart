@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import '../../core/services/quran_audio_service.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 
@@ -122,21 +122,20 @@ class Way2QuranReciterScreen extends StatefulWidget {
 }
 class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   late Future<Way2QuranReciter> future; int selected = 0;
-  final AudioPlayer _player = AudioPlayer();
   String? _playingUrl;
   bool _loadingAudio = false;
   @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); }
-  @override void dispose() { _player.dispose(); super.dispose(); }
+  @override void dispose() { super.dispose(); }
   Future<void> _play(Way2QuranAudioFile audio, bool ar) async {
     final url = audio.url.isNotEmpty ? audio.url : audio.downloadUrl;
     if (url.isEmpty) return;
     final same = _playingUrl == url;
     setState(() { _playingUrl = url; _loadingAudio = true; });
     try {
-      if (same && _player.state == PlayerState.playing) {
-        await _player.pause();
+      if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
+        await quranAudio.pause();
       } else {
-        await _player.play(UrlSource(url));
+        await quranAudio.playExternalUrl(url, title: audio.surahName.isEmpty ? 'Surah ${audio.surahNumber}' : audio.surahName);
       }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تشغيل الملف الصوتي' : 'Could not play this audio file')));
@@ -158,7 +157,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         const SizedBox(height: 12),
         ...rec.audioFiles.map((a) {
           final url = a.url.isNotEmpty ? a.url : a.downloadUrl;
-          final playing = _playingUrl == url && _player.state == PlayerState.playing;
+          final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
           return Card(child: ListTile(
             onTap: () => _play(a, ar),
             leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
