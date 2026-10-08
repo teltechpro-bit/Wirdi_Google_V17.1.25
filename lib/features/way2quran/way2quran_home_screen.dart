@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/models/quran_models.dart;
+import '../../core/services/quran_repository.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
@@ -18,7 +20,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
   late Future<List<Way2QuranRecitation>> recitationsFuture;
   @override void initState() {
     super.initState();
-    future = repo.getReciters(recitationSlug: 'hafs-an-asim');
+    future = repo.getReciters(isTopReciter: 'true', pageSize: 10);
     recitationsFuture = repo.getRecitations();
   }
   @override void dispose() { search.dispose(); super.dispose(); }
@@ -203,9 +205,10 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
   final repo = Way2QuranRepository();
   late final TextEditingController query;
   Future<List<Way2QuranReciter>>? future;
-  @override void initState() { super.initState(); query = TextEditingController(text: widget.initialQuery); if (widget.initialQuery.trim().isNotEmpty) future = repo.getReciters(search: widget.initialQuery.trim()); }
+  Future<List<SurahModel>>? surahsFuture;
+  @override void initState() { super.initState(); query = TextEditingController(text: widget.initialQuery); if (widget.initialQuery.trim().isNotEmpty) { future = repo.getReciters(search: widget.initialQuery.trim()); surahsFuture = QuranRepository.load(); } }
   @override void dispose() { query.dispose(); super.dispose(); }
-  void submit() { final q = query.text.trim(); setState(() => future = q.isEmpty ? null : repo.getReciters(search: q)); }
+  void submit() { final q = query.text.trim(); setState(() { future = q.isEmpty ? null : repo.getReciters(search: q); surahsFuture = q.isEmpty ? null : QuranRepository.load(); }); }
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
