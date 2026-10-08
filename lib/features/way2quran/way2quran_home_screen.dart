@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
+import '../quran/ten_qiraat_screen.dart';
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
@@ -94,7 +95,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        _ExploreCard(icon: Icons.auto_stories_rounded, title: ar ? 'القراءات العشر المتواترة' : 'The Ten Mutawatir Qira’at', subtitle: ar ? 'الوصول السريع إلى دليل القراءات والروايات' : 'Quick access to the Qira’at and Riwayat directory', onTap: () => Navigator.pop(context)),
+        _ExploreCard(icon: Icons.auto_stories_rounded, title: ar ? 'القراءات العشر المتواترة' : 'The Ten Mutawatir Qira’at', subtitle: ar ? 'الوصول السريع إلى دليل القراءات والروايات' : 'Quick access to the Qira’at and Riwayat directory', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TenQiraatScreen())),
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.menu_book_rounded, title: ar ? 'مصحف Wirdi' : 'Wirdi Mushaf', subtitle: ar ? 'اقرأ واستمع داخل تجربة Wirdi الأصلية' : 'Read and listen inside the native Wirdi experience', onTap: () => Navigator.pop(context)),
       ]),
