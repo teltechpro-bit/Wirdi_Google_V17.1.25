@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
-import '../../core/models/quran_models.dart';
-import '../../core/services/quran_repository.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
@@ -341,7 +339,31 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         if (snapshot.hasError) return Center(child: FilledButton.icon(onPressed: () => _load(), icon: const Icon(Icons.refresh), label: Text(ar ? 'إعادة المحاولة' : 'Retry')));
         final data = snapshot.data!; if (data.reciters.isEmpty) return Center(child: Text(ar ? 'لا توجد نتائج' : 'No reciters found'));
         return Column(children: [
-          Expanded(child: GridView.builder(padding: const EdgeInsets.fromLTRB(16,0,16,12), gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: width >= 1100 ? 5 : width >= 900 ? 4 : width >= 600 ? 3 : 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .82), itemCount: data.reciters.length, itemBuilder: (context, i) => _ReciterCard(reciter: data.reciters[i], ar: ar, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: data.reciters[i].slug)))))),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: width >= 1100 ? 5 : width >= 900 ? 4 : width >= 600 ? 3 : 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: .82,
+              ),
+              itemCount: data.reciters.length,
+              itemBuilder: (context, i) {
+                final reciter = data.reciters[i];
+                return _ReciterCard(
+                  reciter: reciter,
+                  ar: ar,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           Padding(padding: const EdgeInsets.fromLTRB(16,4,16,16), child: Row(children: [
             Text(ar ? 'صفحة ' + page.toString() + ' من ' + data.pages.toString() : 'Page ' + page.toString() + ' of ' + data.pages.toString()), const Spacer(),
             IconButton(tooltip: ar ? 'السابق' : 'Previous', onPressed: page > 1 ? () => _load(nextPage: page - 1) : null, icon: const Icon(Icons.chevron_left_rounded)),
