@@ -6,7 +6,7 @@ class Way2QuranRepository {
   static const baseUrl = 'https://way2quran.com/api';
   Future<List<Way2QuranReciter>> getReciters({String recitationSlug='', String isTopReciter='', String search='', String sort='arabicName', int page=1, int pageSize=50}) async {
     final apiSort = _apiSort(sort);
-    final uri=Uri.parse('$baseUrl/reciters').replace(queryParameters:{'recitationSlug':recitationSlug,'isTopReciter':isTopReciter,'search':search,'currentPage':'$page','sort':sort,'pageSize':'$pageSize'});
+    final uri=Uri.parse('$baseUrl/reciters').replace(queryParameters:{'recitationSlug':recitationSlug,'isTopReciter':isTopReciter,'search':search,'currentPage':'$page','sort':_apiSort(sort),'pageSize':'$pageSize'});
     final data=await _getJson(uri); final raw=data is Map&&data['reciters'] is List?data['reciters'] as List:const [];
     return raw.whereType<Map>().map((e)=>Way2QuranReciter.fromJson(Map<String,dynamic>.from(e))).toList();
   }
