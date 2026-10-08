@@ -586,6 +586,38 @@ class QuranAudioService extends ChangeNotifier {
     return ja.LoopMode.off;
   }
 
+  Future<void> playExternalFile(String path, {String? title}) async {
+    if (path.isEmpty) return;
+    await PlaybackCoordinator.stopRadioForQuran();
+    _playToken++;
+    _stopping = false;
+    playingAyah = null;
+    playingWholeSurah = false;
+    externalUrl = path;
+    externalTitle = title;
+    isPaused = false;
+    isBuffering = true;
+    position = Duration.zero;
+    duration = Duration.zero;
+    notifyListeners();
+    try {
+      await _player.stop();
+      await _player.setLoopMode(ja.LoopMode.off);
+      await _player.setAudioSource(ja.AudioSource.file(path));
+      await _player.setSpeed(playbackRate);
+      unawaited(_player.play());
+      isBuffering = false;
+      duration = _player.duration ?? Duration.zero;
+      notifyListeners();
+    } catch (e, st) {
+      isBuffering = false;
+      externalUrl = null;
+      externalTitle = null;
+      AppLogger.error('Failed to start local Way2Quran audio', error: e, stackTrace: st);
+      notifyListeners();
+    }
+  }
+
   Future<void> playExternalUrl(String url, {String? title}) async {
     if (url.isEmpty) return;
     await PlaybackCoordinator.stopRadioForQuran();
