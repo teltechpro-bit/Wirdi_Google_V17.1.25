@@ -5,8 +5,8 @@ import '../../core/services/quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
 
-class Way2QuranReadListenScreen extends StatefulWidget {
-  const Way2QuranReadListenScreen({super.key});
+class Way2QuranReadListenScreen extends StatefulWidget {\n  final int? initialSurah;
+  const Way2QuranReadListenScreen({super.key, this.initialSurah});
   @override State<Way2QuranReadListenScreen> createState() => _Way2QuranReadListenScreenState();
 }
 
@@ -26,6 +26,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   void initState() {
     super.initState();
     surahsFuture = QuranRepository.load();
+    selectedSurah = widget.initialSurah;
     recitersFuture = repo.getRecitersPage(pageSize: 50);
   }
 
@@ -193,7 +194,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       DropdownButtonFormField<double>(
                         value: speed,
                         decoration: InputDecoration(labelText: ar ? 'السرعة' : 'Speed', border: const OutlineInputBorder()),
-                        items: const [0.75, 1.0, 1.25, 1.5, 2.0].map((v) => DropdownMenuItem(value: v, child: Text('Playback speed'))).toList(),
+                        items: const [0.75, 1.0, 1.25, 1.5, 2.0].map((v) => DropdownMenuItem(value: v, child: Text(v.toString() + 'x'))).toList(),
                         onChanged: (v) {
                           if (v != null) {
                             setState(() => speed = v);
