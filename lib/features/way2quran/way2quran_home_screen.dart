@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 
@@ -21,15 +22,25 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
-      appBar: AppBar(title: Text(ar ? 'Way2Quran — القراءات' : 'Way2Quran — Recitations'), centerTitle: true),
+      appBar: AppBar(title: const Text('Way2Quran'), centerTitle: false, actions: [
+        IconButton(onPressed: doSearch, icon: const Icon(Icons.search_rounded)),
+      ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-          Icon(Icons.menu_book_rounded, size: 64, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 12),
-          Text(ar ? 'طريقك إلى القرآن' : 'Your way to the Quran', textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          Text(ar ? 'استمع إلى تلاوات القرآن الكريم من كبار القراء.' : 'Listen to Quran recitations from renowned reciters.', textAlign: TextAlign.center),
-        ]))),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              colors: [Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.secondaryContainer],
+            ),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.menu_book_rounded, size: 44, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 14),
+            Text(ar ? 'طريقك إلى القرآن' : 'Your way to the Quran', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(ar ? 'استكشف القراءات والروايات واستمع إلى تلاوات القراء.' : 'Explore Quranic readings and listen to recitations.'),
+          ])),
         const SizedBox(height: 20),
         TextField(controller: search, onSubmitted: (_) => doSearch(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ...' : 'Search for a reciter...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: doSearch, icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
         const SizedBox(height: 24),
@@ -111,7 +122,28 @@ class Way2QuranReciterScreen extends StatefulWidget {
 }
 class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   late Future<Way2QuranReciter> future; int selected = 0;
+  final AudioPlayer _player = AudioPlayer();
+  String? _playingUrl;
+  bool _loadingAudio = false;
   @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); }
+  @override void dispose() { _player.dispose(); super.dispose(); }
+  Future<void> _play(Way2QuranAudioFile audio, bool ar) async {
+    final url = audio.url.isNotEmpty ? audio.url : audio.downloadUrl;
+    if (url.isEmpty) return;
+    final same = _playingUrl == url;
+    setState(() { _playingUrl = url; _loadingAudio = true; });
+    try {
+      if (same && _player.state == PlayerState.playing) {
+        await _player.pause();
+      } else {
+        await _player.play(UrlSource(url));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تشغيل الملف الصوتي' : 'Could not play this audio file')));
+    } finally {
+      if (mounted) setState(() => _loadingAudio = false);
+    }
+  }
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(appBar: AppBar(title: Text(ar ? 'القارئ' : 'Reciter')), body: FutureBuilder<Way2QuranReciter>(future: future, builder: (context, snapshot) {
@@ -124,7 +156,16 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(value: index, decoration: InputDecoration(labelText: ar ? 'الرواية' : 'Riwayah', border: const OutlineInputBorder()), items: List.generate(r.recitations.length, (i) => DropdownMenuItem(value: i, child: Text(r.recitations[i].name(ar)))), onChanged: (v) { if (v != null) setState(() => selected = v); }),
         const SizedBox(height: 12),
-        ...rec.audioFiles.map((a) => Card(child: ListTile(leading: const Icon(Icons.play_circle_outline), title: Text(a.surahName.isEmpty ? 'سورة ' + a.surahNumber.toString() : a.surahName), subtitle: Text(a.url.isEmpty ? a.downloadUrl : a.url)))),
+        ...rec.audioFiles.map((a) {
+          final url = a.url.isNotEmpty ? a.url : a.downloadUrl;
+          final playing = _playingUrl == url && _player.state == PlayerState.playing;
+          return Card(child: ListTile(
+            onTap: () => _play(a, ar),
+            leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
+            title: Text(a.surahName.isEmpty ? 'سورة ' + a.surahNumber.toString() : a.surahName),
+            subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen'),
+          ));
+        }),
         if (rec.downloadUrl.isNotEmpty) FilledButton.icon(onPressed: () => Way2QuranRepository().incrementDownload(rec.slug), icon: const Icon(Icons.download), label: Text(ar ? 'تحميل المصحف' : 'Download Mushaf')),
       ]);
     }));
