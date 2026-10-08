@@ -322,7 +322,10 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
           DropdownMenuItem(value: 'arabicName', child: Text(ar ? 'أبجدي' : 'A–Z')),
           DropdownMenuItem(value: 'mostListened', child: Text(ar ? 'الأكثر استماعًا' : 'Most listened')),
           DropdownMenuItem(value: 'views', child: Text(ar ? 'الأكثر مشاهدة' : 'Most viewed')),
-        ], onChanged: (v) { if (v != null) {\n          sort = v;\n          _load(nextPage: 1);\n        } }),
+        ], onChanged: (v) { if (v != null) {
+          sort = v;
+          _load(nextPage: 1);
+        } }),
       ])),
       Expanded(child: FutureBuilder<Way2QuranRecitersPage>(future: future, builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
