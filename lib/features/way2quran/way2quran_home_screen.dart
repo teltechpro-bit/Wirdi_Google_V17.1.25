@@ -263,8 +263,11 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     final same = _playingUrl == url;
     setState(() { _playingUrl = url; _loadingAudio = true; });
     try {
-      if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) await quranAudio.pause();
-      else await quranAudio.playExternalUrl(url, title: audio.surahName.isEmpty ? 'Surah ' + audio.surahNumber.toString() : audio.surahName);
+      if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
+        await quranAudio.pause();
+      } else {
+        await quranAudio.playExternalUrl(url, title: audio.surahName.isEmpty ? 'Surah ' + audio.surahNumber.toString() : audio.surahName);
+      }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تشغيل الملف الصوتي' : 'Could not play this audio file')));
     } finally { if (mounted) setState(() => _loadingAudio = false); }
