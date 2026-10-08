@@ -54,7 +54,11 @@ class Way2QuranSearchResults {
 class Way2QuranMushaf {
   final String slug, arabicName, englishName, downloadUrl, imageUrl;
   final int totalDownloads;
-  const Way2QuranMushaf({required this.slug,required this.arabicName,required this.englishName,required this.downloadUrl,required this.imageUrl,required this.totalDownloads});
-  String name(bool ar)=>ar?arabicName:englishName;
-  factory Way2QuranMushaf.fromJson(Map<String,dynamic> j)=>Way2QuranMushaf(slug:'${'{'}j['slug']??''}',arabicName:'${'{'}j['arabicName']??''}',englishName:'${'{'}j['englishName']??''}',downloadUrl:'${'{'}j['downloadURL']??j['downloadUrl']??''}',imageUrl:'${'{'}j['imageURL']??j['imageUrl']??''}',totalDownloads:int.tryParse('${'{'}j['totalDownloads']??0}')??0);
+  const Way2QuranMushaf({required this.slug, required this.arabicName, required this.englishName, required this.downloadUrl, required this.imageUrl, required this.totalDownloads});
+  String name(bool ar) => ar ? arabicName : englishName;
+  factory Way2QuranMushaf.fromJson(Map<String, dynamic> j) => Way2QuranMushaf(
+    slug: '\${j['slug'] ?? ''}', arabicName: '\${j['arabicName'] ?? ''}', englishName: '\${j['englishName'] ?? ''}',
+    downloadUrl: '\${j['downloadURL'] ?? j['downloadUrl'] ?? ''}', imageUrl: '\${j['imageURL'] ?? j['imageUrl'] ?? ''}',
+    totalDownloads: int.tryParse('\${j['totalDownloads'] ?? 0}') ?? 0,
+  );
 }
