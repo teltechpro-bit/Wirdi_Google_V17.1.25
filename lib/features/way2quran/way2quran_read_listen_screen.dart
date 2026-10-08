@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/models/quran_models.dart';
 import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
@@ -22,6 +24,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   int toAyah = 1;
   double speed = 1.0;
   bool loadingReciter = false;
+  bool downloading = false;
 
   @override
   void initState() {
@@ -73,6 +76,34 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
     await quranAudio.playExternalUrl(url, title: title);
   }
+
+  Future<void> _download(SurahModel surah) async {
+    final audio = _audioFor(surah);
+    final url = audio?.downloadUrl.isNotEmpty == true ? audio!.downloadUrl : audio?.url ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة قابلة للتنزيل')));
+      return;
+    }
+    setState(() => downloading = true);
+    try {
+      final bytes = await repo.downloadBytes(url);
+      final dir = await getApplicationDocumentsDirectory();
+      final folder = Directory('${dir.path}/way2quran/audio');
+      await folder.create(recursive: true);
+      final reciterSlug = selectedReciter?.slug ?? 'reciter';
+      final recitationSlug = selectedRecitation ?? 'recitation';
+      final file = File('${folder.path}/${reciterSlug}_${recitationSlug}_${surah.number}.mp3');
+      await file.writeAsBytes(bytes, flush: true);
+      if (selectedRecitation != null) await repo.incrementDownload(selectedRecitation!);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تنزيل التلاوة')));
+    } finally {
+      if (mounted) setState(() => downloading = false);
+    }
+  }
+
+  bool arSafe() => Localizations.localeOf(context).languageCode == 'ar';
 
   void _setSurah(int value, List<SurahModel> surahs) {
     final s = surahs.firstWhere((x) => x.number == value);
@@ -203,11 +234,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: Text(ar ? 'تشغيل' : 'Play'),
-                      ),
+                      Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل' : 'Play'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
                     ],
                   ),
                 ),
