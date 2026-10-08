@@ -198,45 +198,41 @@ class _ReciterCard extends StatelessWidget {
 
 class Way2QuranSearchScreen extends StatefulWidget {
   final String initialQuery;
-  const Way2QuranSearchScreen({super.key, this.initialQuery = ''});
-  @override State<Way2QuranSearchScreen> createState() => _Way2QuranSearchScreenState();
+  const Way2QuranSearchScreen({super.key,this.initialQuery=''});
+  @override State<Way2QuranSearchScreen> createState()=>_Way2QuranSearchScreenState();
 }
 class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
-  final repo = Way2QuranRepository();
+  final repo=Way2QuranRepository();
   late final TextEditingController query;
-  Future<List<Way2QuranReciter>>? future;
-  Future<List<SurahModel>>? surahsFuture;
-  @override void initState() { super.initState(); query = TextEditingController(text: widget.initialQuery); if (widget.initialQuery.trim().isNotEmpty) submit(); }
-  @override void dispose() { query.dispose(); super.dispose(); }
-  void submit() { final q = query.text.trim(); setState(() { future = q.isEmpty ? null : repo.getReciters(search: q); surahsFuture = q.isEmpty ? null : QuranRepository.load(); }); }
-  @override Widget build(BuildContext context) {
-    final ar = Localizations.localeOf(context).languageCode == 'ar';
-    final q = query.text.trim().toLowerCase();
-    return Scaffold(appBar: AppBar(title: Text(ar ? 'البحث في الطريق إلى القرآن' : 'Search Way2Quran')), body: Column(children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16,16,16,12), child: TextField(controller: query, autofocus: widget.initialQuery.isEmpty, textInputAction: TextInputAction.search, onSubmitted: (_) => submit(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search_rounded), suffixIcon: IconButton(onPressed: submit, icon: const Icon(Icons.search)), border: const OutlineInputBorder()))),
-      Expanded(child: (future == null && surahsFuture == null) ? Center(child: Text(ar ? 'اكتب اسم القارئ أو السورة ثم اضغط بحث' : 'Enter a reciter or surah and search')) : FutureBuilder<List<dynamic>>(
-        future: Future.wait<dynamic>([future ?? Future.value(const <Way2QuranReciter>[]), surahsFuture ?? Future.value(const <SurahModel>[])]),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError) return Center(child: FilledButton.icon(onPressed: submit, icon: const Icon(Icons.refresh), label: Text(ar ? 'إعادة البحث' : 'Retry')));
-          final reciters = (snapshot.data?[0] as List<Way2QuranReciter>?) ?? const <Way2QuranReciter>[];
-          final allSurahs = (snapshot.data?[1] as List<SurahModel>?) ?? const <SurahModel>[];
-          final surahs = q.isEmpty ? allSurahs : allSurahs.where((s) => s.name.toLowerCase().contains(q) || s.englishName.toLowerCase().contains(q) || s.number.toString() == q).toList();
-          if (reciters.isEmpty && surahs.isEmpty) return Center(child: Text(ar ? 'لا توجد نتائج مطابقة' : 'No matching results'));
-          return ListView(padding: const EdgeInsets.fromLTRB(16,0,16,24), children: [
-            if (reciters.isNotEmpty) ...[
-              Text(ar ? 'القراء' : 'Reciters', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 8),
-              ...reciters.map((r) => Card(child: ListTile(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: r.slug))), leading: CircleAvatar(radius: 28, backgroundImage: r.photo.isEmpty ? null : NetworkImage(r.photo), child: r.photo.isEmpty ? const Icon(Icons.person) : null), title: Text(r.name(ar), style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(r.totalViews.toString() + ' ' + (ar ? 'مشاهدة' : 'views')), trailing: const Icon(Icons.chevron_right_rounded)))),
-              const SizedBox(height: 18),
-            ],
-            if (surahs.isNotEmpty) ...[
-              Text(ar ? 'السور' : 'Surahs', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 8),
-              ...surahs.map((s) => Card(child: ListTile(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReadListenScreen(initialSurah: s.number))), leading: CircleAvatar(child: Text(s.number.toString())), title: Text(ar ? s.name : s.englishName, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(s.ayahs.length.toString() + ' ' + (ar ? 'آية' : 'ayahs')), trailing: const Icon(Icons.play_circle_outline_rounded)))),
+  Future<Way2QuranSearchResults>? future;
+  @override void initState(){super.initState(); query=TextEditingController(text:widget.initialQuery); if(widget.initialQuery.trim().isNotEmpty) submit();}
+  @override void dispose(){query.dispose();super.dispose();}
+  void submit(){final q=query.text.trim();setState(()=>future=q.isEmpty?null:repo.globalSearch(q));}
+  @override Widget build(BuildContext context){
+    final ar=Localizations.localeOf(context).languageCode=='ar';
+    return Scaffold(appBar:AppBar(title:Text(ar?'البحث في الطريق إلى القرآن':'Search Way2Quran')),
+      body:Column(children:[
+        Padding(padding:const EdgeInsets.fromLTRB(16,16,16,12),child:TextField(controller:query,autofocus:widget.initialQuery.isEmpty,textInputAction:TextInputAction.search,onSubmitted:(_)=>submit(),decoration:InputDecoration(hintText:ar?'ابحث عن قارئ أو سورة أو رواية...':'Search for a reciter, surah or recitation...',prefixIcon:const Icon(Icons.search_rounded),suffixIcon:IconButton(onPressed:submit,icon:const Icon(Icons.search)),border:const OutlineInputBorder()))),
+        Expanded(child:future==null?Center(child:Text(ar?'اكتب كلمة البحث ثم اضغط بحث':'Enter a search term and search')):FutureBuilder<Way2QuranSearchResults>(future:future,builder:(context,snapshot){
+          if(snapshot.connectionState!=ConnectionState.done)return const Center(child:CircularProgressIndicator());
+          if(snapshot.hasError)return Center(child:FilledButton.icon(onPressed:submit,icon:const Icon(Icons.refresh),label:Text(ar?'إعادة البحث':'Retry')));
+          final data=snapshot.data!; if(data.reciters.isEmpty&&data.recitations.isEmpty&&data.surahs.isEmpty)return Center(child:Text(ar?'لا توجد نتائج مطابقة':'No matching results'));
+          return ListView(padding:const EdgeInsets.fromLTRB(16,0,16,24),children:[
+            if(data.reciters.isNotEmpty)...[
+              Text(ar?'القراء':'Reciters',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
+              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(r.totalViews.toString()+' '+(ar?'مشاهدة':'views')),trailing:const Icon(Icons.chevron_right_rounded)))),
+              const SizedBox(height:18)],
+            if(data.recitations.isNotEmpty)...[
+              Text(ar?'القراءات والروايات':'Recitations',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
+              ...data.recitations.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranRecitersScreen(recitation:r))),leading:const CircleAvatar(child:Icon(Icons.auto_stories_rounded)),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),trailing:const Icon(Icons.chevron_right_rounded)))),
+              const SizedBox(height:18)],
+            if(data.surahs.isNotEmpty)...[
+              Text(ar?'السور':'Surahs',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
+              ...data.surahs.map((s)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReadListenScreen(initialSurah:s.number))),leading:CircleAvatar(child:Text(s.number.toString())),title:Text(ar?s.arabicName:s.englishName,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(ar?'صفحة '+s.pageNumber.toString():'Page '+s.pageNumber.toString()),trailing:const Icon(Icons.play_circle_outline_rounded)))),
             ],
           ]);
-        },
-      )),
-    ]));
+        })),
+      ]);
   }
 }
 class Way2QuranRecitersScreen extends StatefulWidget {
