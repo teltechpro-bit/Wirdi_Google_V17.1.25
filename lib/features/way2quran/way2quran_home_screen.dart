@@ -26,7 +26,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
       appBar: AppBar(title: const Text('Way2Quran'), centerTitle: false, actions: [
-        IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranSearchScreen())), icon: const Icon(Icons.search_rounded)),
+        IconButton(onPressed: doSearch, icon: const Icon(Icons.search_rounded)),
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Container(
@@ -45,7 +45,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
             Text(ar ? 'استكشف القراءات والروايات واستمع إلى تلاوات القراء.' : 'Explore Quranic readings and listen to recitations.'),
           ])),
         const SizedBox(height: 20),
-        TextField(controller: search, onSubmitted: (_) => doSearch(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: doSearch, icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
+        TextField(controller: search, onSubmitted: (_) => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -189,7 +189,69 @@ class _ReciterCard extends StatelessWidget {
   ])));
 }
 
-$insert$marker {
+
+class Way2QuranSearchScreen extends StatefulWidget {
+  final String initialQuery;
+  const Way2QuranSearchScreen({super.key, this.initialQuery = ''});
+  @override State<Way2QuranSearchScreen> createState() => _Way2QuranSearchScreenState();
+}
+class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
+  final repo = Way2QuranRepository();
+  late final TextEditingController query;
+  Future<List<Way2QuranReciter>>? future;
+  @override void initState() {
+    super.initState();
+    query = TextEditingController(text: widget.initialQuery);
+    if (widget.initialQuery.trim().isNotEmpty) future = repo.getReciters(search: widget.initialQuery.trim());
+  }
+  @override void dispose() { query.dispose(); super.dispose(); }
+  void submit() {
+    final q = query.text.trim();
+    setState(() => future = q.isEmpty ? null : repo.getReciters(search: q));
+  }
+  @override Widget build(BuildContext context) {
+    final ar = Localizations.localeOf(context).languageCode == 'ar';
+    return Scaffold(
+      appBar: AppBar(title: Text(ar ? 'البحث في الطريق إلى القرآن' : 'Search Way2Quran')),
+      body: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16,16,16,12), child: TextField(
+          controller: query, autofocus: widget.initialQuery.isEmpty,
+          textInputAction: TextInputAction.search, onSubmitted: (_) => submit(),
+          decoration: InputDecoration(
+            hintText: ar ? 'ابحث عن قارئ...' : 'Search for a reciter...',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: IconButton(onPressed: submit, icon: const Icon(Icons.search)),
+            border: const OutlineInputBorder(),
+          ),
+        )),
+        Expanded(child: future == null
+          ? Center(child: Text(ar ? 'اكتب اسم القارئ ثم اضغط بحث' : 'Enter a reciter name and search'))
+          : FutureBuilder<List<Way2QuranReciter>>(future: future, builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+              if (snapshot.hasError) return Center(child: FilledButton.icon(onPressed: submit, icon: const Icon(Icons.refresh), label: Text(ar ? 'إعادة البحث' : 'Retry')));
+              final list = snapshot.data ?? const <Way2QuranReciter>[];
+              if (list.isEmpty) return Center(child: Text(ar ? 'لا توجد نتائج مطابقة' : 'No matching reciters'));
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16,0,16,24), itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  final r = list[i];
+                  return Card(child: ListTile(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: r.slug))),
+                    leading: CircleAvatar(radius: 28, backgroundImage: r.photo.isEmpty ? null : NetworkImage(r.photo), child: r.photo.isEmpty ? const Icon(Icons.person) : null),
+                    title: Text(r.name(ar), style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text('${r.totalViews} ${ar ? 'مشاهدة' : 'views'}'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                  ));
+                },
+              );
+            })),
+      ]),
+    );
+  }
+}
+
+class Way2QuranRecitersScreen extends StatefulWidget {
   final Way2QuranRecitation recitation;
   const Way2QuranRecitersScreen({super.key, required this.recitation});
   @override State<Way2QuranRecitersScreen> createState() => _Way2QuranRecitersScreenState();
