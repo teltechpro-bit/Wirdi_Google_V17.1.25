@@ -5,6 +5,11 @@ import 'way2quran_models.dart';
 /// Native client following the original Way2Quran source project's API contract.
 class Way2QuranRepository {
   static const baseUrl = 'https://way2quran.com/api';
+  static const recitations = <Way2QuranRecitation>[
+    Way2QuranRecitation(slug: 'hafs-an-asim', nameAr: 'حفص عن عاصم', nameEn: 'Hafs an Asim'),
+    Way2QuranRecitation(slug: 'warsh-an-nafi', nameAr: 'ورش عن نافع', nameEn: 'Warsh an Nafi'),
+    Way2QuranRecitation(slug: 'qalun-an-nafi', nameAr: 'قالون عن نافع', nameEn: 'Qalun an Nafi'),
+  ];
 
   Future<List<Way2QuranReciter>> getReciters({
     String recitationSlug = '',
@@ -60,6 +65,10 @@ class Way2QuranRepository {
 
   Future<dynamic> getSurahs() => _getJson(Uri.parse('$baseUrl/surah'));
   Future<dynamic> getMushafs() => _getJson(Uri.parse('$baseUrl/mushaf'));
+
+  Future<void> incrementDownload(String slug) async {
+    await _request('POST', Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}'));
+  }
 
   Future<void> incrementDownload(String slug) async { await _request('POST', Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}')); }
 
