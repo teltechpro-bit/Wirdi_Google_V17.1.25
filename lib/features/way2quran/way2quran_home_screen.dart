@@ -230,7 +230,7 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
             ],
           ]);
         })),
-      ]);
+      ]));
   }
 }
 class Way2QuranRecitersScreen extends StatefulWidget {
