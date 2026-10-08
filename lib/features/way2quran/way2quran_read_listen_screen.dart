@@ -30,6 +30,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   Map<int, String> translatedAyahs = {};
   bool loadingTranslation = false;
   String? translationError;
+  int _translationRequestId = 0;
   bool loadingReciter = false;
   bool downloading = false;
 
@@ -42,6 +43,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _loadTranslation(int surahNumber, String edition) async {
+    final requestId = ++_translationRequestId;
     setState(() {
       loadingTranslation = true;
       translationError = null;
@@ -65,13 +67,13 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
         }
       }
       if (result.isEmpty) throw Exception('No translation data');
-      if (!mounted) return;
+      if (!mounted || requestId != _translationRequestId) return;
       setState(() {
         translatedAyahs = result;
         loadingTranslation = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || requestId != _translationRequestId) return;
       setState(() {
         translatedAyahs = {};
         loadingTranslation = false;
@@ -183,7 +185,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
           }
           final surahs = surahSnap.data!;
           final surah = surahs.firstWhere((s) => s.number == (selectedSurah ?? 1), orElse: () => surahs.first);
-          if (translatedAyahs.isEmpty && !loadingTranslation && translationError == null) {
+          if (selectedSurah != null && translatedAyahs.isEmpty && !loadingTranslation && translationError == null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _loadTranslation(surah.number, selectedTranslation);
             });
