@@ -30,9 +30,10 @@ class Way2QuranRepository {
   Future<Way2QuranRecitation> getRecitation(String slug) async { final data=await _getJson(Uri.parse('$baseUrl/recitations/${Uri.encodeComponent(slug)}')); final value=data is Map&&data['recitation'] is Map?data['recitation']:data; return Way2QuranRecitation.fromJson(Map<String,dynamic>.from(value as Map)); }
   Future<dynamic> getSurah(String slug,{String select=''})=>_getJson(Uri.parse('$baseUrl/surah/${Uri.encodeComponent(slug)}').replace(queryParameters:{'selectField':select}));
   Future<dynamic> getSurahs()=>_getJson(Uri.parse('$baseUrl/surah'));
-  Future<dynamic> getMushafs()=>_getJson(Uri.parse('$baseUrl/mushaf'));
+  Future<List<Way2QuranMushaf>> getMushafs() async { final data=await _getJson(Uri.parse('$baseUrl/mushaf')); final raw=data is Map&&data['data'] is List?data['data'] as List:data is Map&&data['mushafs'] is List?data['mushafs'] as List:data is List?data:const []; return raw.whereType<Map>().map((e)=>Way2QuranMushaf.fromJson(Map<String,dynamic>.from(e))).toList(); }
   Future<void> incrementDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}'));
   Future<void> incrementMushafDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
+  Future<List<int>> downloadBytes(String url) async { if(url.isEmpty) throw Exception('Empty download URL'); final response=await http.get(Uri.parse(url)).timeout(const Duration(minutes:2)); if(response.statusCode<200||response.statusCode>=300) throw Exception('Download failed: ${response.statusCode}'); return response.bodyBytes; }
   Future<dynamic> _getJson(Uri uri) async=>jsonDecode((await _request('GET',uri)).body);
   Future<http.Response> _request(String method,Uri uri) async { final response=method=='POST'?await http.post(uri).timeout(const Duration(seconds:30)):await http.get(uri).timeout(const Duration(seconds:30)); if(response.statusCode<200||response.statusCode>=300)throw Exception('Way2Quran API ${response.statusCode}: ${uri.path}'); return response; }
 }
