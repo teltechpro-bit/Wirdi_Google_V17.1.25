@@ -100,7 +100,6 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       final recitationSlug = selectedRecitation ?? 'recitation';
       final file = File('${folder.path}/${reciterSlug}_${recitationSlug}_${surah.number}.mp3');
       await file.writeAsBytes(bytes, flush: true);
-      if (selectedRecitation != null) await repo.incrementDownload(selectedRecitation!);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تنزيل التلاوة')));
