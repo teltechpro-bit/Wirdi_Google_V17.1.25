@@ -4,6 +4,7 @@ import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
+import '../quran/quran_screen.dart';
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
@@ -44,7 +45,27 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
             Text(ar ? 'استكشف القراءات والروايات واستمع إلى تلاوات القراء.' : 'Explore Quranic readings and listen to recitations.'),
           ])),
         const SizedBox(height: 20),
-        TextField(controller: search, onSubmitted: (_) => doSearch(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ...' : 'Search for a reciter...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: doSearch, icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
+        TextField(controller: search, onSubmitted: (_) => doSearch(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: doSearch, icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuranScreen())),
+                icon: const Icon(Icons.menu_book_rounded),
+                label: Text(ar ? 'قراءة واستماع' : 'Read & Listen'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 300)),
+                icon: const Icon(Icons.headphones_rounded),
+                label: Text(ar ? 'استمع الآن' : 'Start Listening'),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 24),
         Text(ar ? 'استمع الآن' : 'Listening now', textAlign: ar ? TextAlign.right : TextAlign.left, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
@@ -107,7 +128,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
 class _SectionHeader extends StatelessWidget {
   final String title, subtitle;
   const _SectionHeader({required this.title, required this.subtitle});
-  @override Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  @override Widget build(BuildContext context) => Column(crossAxisAlignment: Localizations.localeOf(context).languageCode == 'ar' ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
     Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
     const SizedBox(height: 4),
     Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
