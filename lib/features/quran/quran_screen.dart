@@ -25,7 +25,6 @@ import '../../l10n/generated/app_localizations.dart';
 import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
-import 'qiraat_screen.dart';
 import '../way2quran/way2quran_home_screen.dart';
 import 'ten_qiraat_screen.dart';
 import 'riwayat_directory_screen.dart';
