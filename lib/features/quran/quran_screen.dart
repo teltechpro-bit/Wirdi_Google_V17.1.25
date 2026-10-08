@@ -25,7 +25,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
-import '../way2quran/way2quran_webview_screen.dart';
+import '../way2quran/way2quran_home_screen.dart';
 import 'ten_qiraat_screen.dart';
 import 'riwayat_directory_screen.dart';
 import 'widgets/quran_playback_bar.dart';
@@ -1183,7 +1183,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               } else if (value == 'reciter') {
                 _pickReciter();
               } else if (value == 'qiraat') {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranWebViewScreen())).then((_) => setState(() {}));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranHomeScreen())).then((_) => setState(() {}));
               } else if (value == 'fontDec') {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
