@@ -5,7 +5,6 @@ import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
-import '../quran/quran_screen.dart';
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
