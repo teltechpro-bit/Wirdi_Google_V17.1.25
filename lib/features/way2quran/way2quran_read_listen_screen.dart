@@ -119,9 +119,11 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         value: selectedSurah,
                         decoration: InputDecoration(labelText: ar ? 'السورة' : 'Surah', border: const OutlineInputBorder()),
                         items: surahs.map((s) => DropdownMenuItem(value: s.number, child: Text(s.number.toString() + '. ' + s.name))).toList(),
-                        onChanged: (v) { if (v != null) {
+                        onChanged: (v) {
+                          if (v != null) {
                             _setSurah(v, surahs);
-                          } },
+                          }
+                        },
                       ),
                       const SizedBox(height: 12),
                       FutureBuilder<Way2QuranRecitersPage>(
@@ -158,12 +160,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                               decoration: InputDecoration(labelText: ar ? 'من الآية' : 'From Ayah', border: const OutlineInputBorder()),
                               items: List.generate(surah.ayahs.length, (i) => DropdownMenuItem(value: i + 1, child: Text((i + 1).toString()))),
                               onChanged: (v) {
-                                if (v != null) setState(() {
-                                  fromAyah = v;
-                                  if (toAyah < v) {
-                                    toAyah = v;
-                                  }
-                                });
+                                if (v != null) {
+                                  setState(() {
+                                    fromAyah = v;
+                                    if (toAyah < v) {
+                                      toAyah = v;
+                                    }
+                                  });
+                                }
                               },
                             ),
                           ),
@@ -176,7 +180,11 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                                 final n = fromAyah + i;
                                 return DropdownMenuItem(value: n, child: Text(n.toString()));
                               }),
-                              onChanged: (v) { if (v != null) setState(() => toAyah = v); },
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() => toAyah = v);
+                                }
+                              },
                             ),
                           ),
                         ],
@@ -186,7 +194,11 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         value: speed,
                         decoration: InputDecoration(labelText: ar ? 'السرعة' : 'Speed', border: const OutlineInputBorder()),
                         items: const [0.75, 1.0, 1.25, 1.5, 2.0].map((v) => DropdownMenuItem(value: v, child: Text('Playback speed'))).toList(),
-                        onChanged: (v) { if (v != null) setState(() => speed = v); },
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() => speed = v);
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
