@@ -15,9 +15,11 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
   final repo = Way2QuranRepository();
   final search = TextEditingController();
   late Future<List<Way2QuranReciter>> future;
+  late Future<List<Way2QuranRecitation>> recitationsFuture;
   @override void initState() {
     super.initState();
     future = repo.getReciters(recitationSlug: 'hafs-an-asim');
+    recitationsFuture = repo.getRecitations();
   }
   @override void dispose() { search.dispose(); super.dispose(); }
   void doSearch() => setState(() => future = repo.getReciters(search: search.text.trim()));
@@ -112,7 +114,21 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         const SizedBox(height: 24),
         Text(ar ? 'الروايات والقراءات' : 'Recitations', textAlign: ar ? TextAlign.right : TextAlign.left, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
-        Wrap(spacing: 8, runSpacing: 8, children: Way2QuranRepository.recitations.map((r) => ActionChip(label: Text(r.name(ar)), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranRecitersScreen(recitation: r))))).toList()),
+        FutureBuilder<List<Way2QuranRecitation>>(
+          future: recitationsFuture,
+          builder: (context, snapshot) {
+            final recitations = snapshot.data ?? const <Way2QuranRecitation>[];
+            if (recitations.isEmpty) return const SizedBox.shrink();
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: recitations.map((r) => ActionChip(
+                label: Text(r.name(ar)),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranRecitersScreen(recitation: r))),
+              )).toList(),
+            );
+          },
+        ),
         const SizedBox(height: 28),
         _SectionHeader(title: ar ? 'مكتبة الصوت' : 'Sound Library', subtitle: ar ? 'استكشف القراء والقراءات من مصدر Way2Quran' : 'Explore reciters and Quranic readings from Way2Quran'),
         const SizedBox(height: 12),
