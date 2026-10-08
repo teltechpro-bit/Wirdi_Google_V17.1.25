@@ -82,9 +82,71 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         Text(ar ? 'الروايات والقراءات' : 'Recitations', textAlign: ar ? TextAlign.right : TextAlign.left, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: Way2QuranRepository.recitations.map((r) => ActionChip(label: Text(r.name(ar)), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranRecitersScreen(recitation: r))))).toList()),
+        const SizedBox(height: 28),
+        _SectionHeader(title: ar ? 'مكتبة الصوت' : 'Sound Library', subtitle: ar ? 'استكشف القراء والقراءات من مصدر Way2Quran' : 'Explore reciters and Quranic readings from Way2Quran'),
+        const SizedBox(height: 12),
+        FutureBuilder<List<Way2QuranReciter>>(
+          future: future,
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? const <Way2QuranReciter>[];
+            if (items.isEmpty) return const SizedBox.shrink();
+            return Column(children: items.take(5).map((r) => _LibraryTile(reciter: r, ar: ar, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: r.slug))))).toList());
+          },
+        ),
+        const SizedBox(height: 16),
+        _ExploreCard(icon: Icons.auto_stories_rounded, title: ar ? 'القراءات العشر المتواترة' : 'The Ten Mutawatir Qira’at', subtitle: ar ? 'الوصول السريع إلى دليل القراءات والروايات' : 'Quick access to the Qira’at and Riwayat directory', onTap: () => Navigator.pop(context)),
+        const SizedBox(height: 12),
+        _ExploreCard(icon: Icons.menu_book_rounded, title: ar ? 'مصحف Wirdi' : 'Wirdi Mushaf', subtitle: ar ? 'اقرأ واستمع داخل تجربة Wirdi الأصلية' : 'Read and listen inside the native Wirdi experience', onTap: () => Navigator.pop(context)),
       ]),
     );
   }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title, subtitle;
+  const _SectionHeader({required this.title, required this.subtitle});
+  @override Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 4),
+    Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+  ]);
+}
+
+class _LibraryTile extends StatelessWidget {
+  final Way2QuranReciter reciter; final bool ar; final VoidCallback onTap;
+  const _LibraryTile({required this.reciter, required this.ar, required this.onTap});
+  @override Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.only(bottom: 8),
+    child: ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      leading: CircleAvatar(radius: 26, backgroundImage: reciter.photo.isEmpty ? null : NetworkImage(reciter.photo), child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null),
+      title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text('${reciter.totalViews} ${ar ? 'مشاهدة' : 'views'}'),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    ),
+  );
+}
+
+class _ExploreCard extends StatelessWidget {
+  final IconData icon; final String title, subtitle; final VoidCallback onTap;
+  const _ExploreCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  @override Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(onTap: onTap, child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(children: [
+        CircleAvatar(radius: 25, child: Icon(icon)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+        ])),
+        const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+      ]),
+    )),
+  );
 }
 
 class _ReciterCard extends StatelessWidget {
