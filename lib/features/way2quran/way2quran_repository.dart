@@ -34,7 +34,7 @@ class Way2QuranRepository {
   String _apiSort(String sort) {
     switch (sort) {
       case 'mostListened':
-        return '-number';
+        return '-totalViewers';
       case 'views':
         return '-totalViewers';
       case '-number':
