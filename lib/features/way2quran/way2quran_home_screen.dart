@@ -26,7 +26,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
       appBar: AppBar(title: const Text('Way2Quran'), centerTitle: false, actions: [
-        IconButton(onPressed: doSearch, icon: const Icon(Icons.search_rounded)),
+        IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranSearchScreen())), icon: const Icon(Icons.search_rounded)),
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Container(
@@ -189,7 +189,7 @@ class _ReciterCard extends StatelessWidget {
   ])));
 }
 
-class Way2QuranRecitersScreen extends StatefulWidget {
+$insert$marker {
   final Way2QuranRecitation recitation;
   const Way2QuranRecitersScreen({super.key, required this.recitation});
   @override State<Way2QuranRecitersScreen> createState() => _Way2QuranRecitersScreenState();
