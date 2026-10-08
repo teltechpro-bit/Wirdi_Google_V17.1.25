@@ -34,3 +34,19 @@ class Way2QuranRecitersPage {
   const Way2QuranRecitersPage({required this.reciters, required this.totalCount, required this.page, required this.pages});
   bool get hasNext => page < pages;
 }
+
+class Way2QuranSearchSurah {
+  final String slug, arabicName, englishName;
+  final int number, pageNumber;
+  const Way2QuranSearchSurah({required this.slug,required this.arabicName,required this.englishName,required this.number,required this.pageNumber});
+  factory Way2QuranSearchSurah.fromJson(Map<String,dynamic> j)=>Way2QuranSearchSurah(
+    slug:'${j['slug']??''}',arabicName:'${j['arabicName']??j['nameAr']??j['name']??''}',
+    englishName:'${j['englishName']??j['nameEn']??j['name']??''}',
+    number:int.tryParse('${j['number']??0}')??0,pageNumber:int.tryParse('${j['pageNumber']??0}')??0);
+}
+class Way2QuranSearchResults {
+  final List<Way2QuranReciter> reciters;
+  final List<Way2QuranRecitation> recitations;
+  final List<Way2QuranSearchSurah> surahs;
+  const Way2QuranSearchResults({required this.reciters,required this.recitations,required this.surahs});
+}
