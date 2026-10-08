@@ -6,6 +6,7 @@ import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
+import 'way2quran_recitations_directory_screen.dart';
 
 class Way2QuranReadListenScreen extends StatefulWidget {
   final int? initialSurah;
@@ -243,6 +244,12 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranRecitationsDirectoryScreen())),
+                icon: const Icon(Icons.auto_stories_rounded),
+                label: Text(ar ? 'دليل القراءات والروايات' : 'Qira’at & Riwayat Directory'),
               ),
               const SizedBox(height: 16),
               Card(
