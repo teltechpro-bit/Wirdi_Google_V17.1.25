@@ -15,13 +15,12 @@ class QiraatService {
   static const _qudCatalogUrl = 'https://audio.qud.dev/api/static/catalog.json';
 
   String _selectedRiwayahId = 'hafs';
-  Map<String, String>? _surahServers;
+  final Map<String, Map<int, ({int startMs, int endMs})>> _ayahTimingCache = <String, Map<int, ({int startMs, int endMs})>>{};
   Map<String, List<RiwayahReader>>? _readers;
   final Set<String> _healthyAudioServers = <String>{};
   final Set<String> _unhealthyAudioServers = <String>{};
   Map<String, String>? _selectedReaderIds;
   Future<Map<String, List<RiwayahReader>>>? _readersFuture;
-  Future<Map<String, String>>? _catalogFuture;
 
   String get selectedRiwayahId => _selectedRiwayahId;
   RiwayahOption get selectedRiwayah => QiraatCatalog.byId(_selectedRiwayahId);
@@ -29,6 +28,20 @@ class QiraatService {
   bool get isWarsh => _selectedRiwayahId == 'warsh';
 
   List<RiwayahReader> readersForSelectedRiwayah() => _readers?[_selectedRiwayahId] ?? const [];
+  List<RiwayahReader> readersForRiwayah(String riwayahId) => _readers?[riwayahId] ?? const [];
+
+  /// Number of riwayat with at least one complete reader source discovered at runtime.
+  int get discoveredRiwayahCount {
+    final readers = _readers;
+    if (readers == null) return 0;
+    return QiraatCatalog.allRiwayat
+        .where((r) => (readers[r.id] ?? const []).isNotEmpty)
+        .length;
+  }
+
+  bool hasRuntimeReaderSource(String riwayahId) {
+    return (_readers?[riwayahId] ?? const []).isNotEmpty;
+  }
 
   RiwayahReader? selectedReaderFor(String riwayahId) {
     final list = _readers?[riwayahId] ?? const [];
@@ -47,7 +60,7 @@ class QiraatService {
 
   bool selectedReaderHasAyahAudio() {
     final reader = selectedReaderFor(_selectedRiwayahId);
-    return reader?.hasAyahAudio ?? selectedRiwayah.hasVerifiedAyahAudio;
+    return reader?.hasAyahAudio ?? false;
   }
 
   Future<void> loadReaders() async {
@@ -61,6 +74,17 @@ class QiraatService {
     final future = _readersFuture ??= _fetchReaders();
     _readers = await future;
     _readersFuture = null;
+
+    // Establish an explicit initial reader for each discovered riwayah. This is
+    // the initial pairing, not a playback fallback: once a user changes it,
+    // playback must use that exact reader only.
+    for (final entry in _readers!.entries) {
+      if (entry.value.isEmpty) continue;
+      final current = _selectedReaderIds![entry.key];
+      if (current == null || !entry.value.any((reader) => reader.id == current)) {
+        _selectedReaderIds![entry.key] = entry.value.first.id;
+      }
+    }
   }
 
   Future<void> setReader(String riwayahId, String readerId) async {
@@ -89,30 +113,22 @@ class QiraatService {
   }
 
   String? ayahAudioUrl(int surahNumber, int ayahNumber, int globalAyahNumber, {String hafsEdition = 'ar.alafasy'}) {
-    switch (_selectedRiwayahId) {
-      case 'hafs':
-        return 'https://cdn.islamic.network/quran/audio/128/$hafsEdition/$globalAyahNumber.mp3';
-      case 'warsh':
-        final reader = selectedReaderFor('warsh') ?? defaultReaderFor('warsh');
-        if (reader == null || !reader.hasAyahAudio) return null;
-        final s = surahNumber.toString().padLeft(3, '0');
-        final a = ayahNumber.toString().padLeft(3, '0');
-        return reader.server + s + a + '.mp3';
-      default:
-        return null;
-    }
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    if (reader == null || !reader.hasAyahAudio || reader.server.isEmpty) return null;
+    final s = surahNumber.toString().padLeft(3, '0');
+    final a = ayahNumber.toString().padLeft(3, '0');
+    return reader.server + s + a + '.mp3';
   }
 
   Future<String?> surahAudioUrl(int surahNumber) async {
-    final selectedReader = selectedReaderFor(_selectedRiwayahId);
-    if (_selectedRiwayahId == 'hafs' && selectedReader == null) return null;
-    final reader = selectedReader ?? defaultReaderFor(_selectedRiwayahId);
-    final directUrl = reader?.surahUrls[surahNumber];
+    // Never substitute another reader or another riwayah. The selected reader
+    // is the complete playback identity.
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    if (reader == null) return null;
+    final directUrl = reader.surahUrls[surahNumber];
     if (directUrl != null && await _isHealthyAudioUrl(directUrl)) return directUrl;
-    final servers = await _loadSurahServers();
-    final server = reader?.server ?? servers[_selectedRiwayahId];
-    if (server == null || !await _isHealthyAudioServer(server)) return null;
-    return server + surahNumber.toString().padLeft(3, '0') + '.mp3';
+    if (reader.server.isEmpty || !await _isHealthyAudioServer(reader.server)) return null;
+    return reader.server + surahNumber.toString().padLeft(3, '0') + '.mp3';
   }
 
   Future<bool> _isHealthyAudioUrl(String url) async {
@@ -199,6 +215,51 @@ class QiraatService {
             result,
             onlyRiwayat: {entry.key},
           );
+        }
+      }
+      // Fetch the Arabic API projection as well so the same reader ID can
+      // display a localized name without changing its audio source.
+      final arabic = <String, List<RiwayahReader>>{};
+      for (final entry in idsByRiwayah.entries) {
+        for (final apiId in entry.value) {
+          try {
+            final uri = Uri.parse(_catalogUrl).replace(
+              queryParameters: <String, String>{
+                'language': 'ar',
+                'rewaya': apiId.toString(),
+              },
+            );
+            await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+          } catch (_) {
+            // Localization is optional; never discard the verified source.
+          }
+        }
+      }
+      for (final entry in result.entries) {
+        for (var i = 0; i < entry.value.length; i++) {
+          final reader = entry.value[i];
+          final matches = arabic[entry.key] ?? const <RiwayahReader>[];
+          RiwayahReader? localized;
+          for (final candidate in matches) {
+            if (candidate.id == reader.id) {
+              localized = candidate;
+              break;
+            }
+          }
+          if (localized != null) {
+            entry.value[i] = RiwayahReader(
+              id: reader.id,
+              name: reader.name,
+              nameAr: localized.name,
+              riwayahId: reader.riwayahId,
+              source: reader.source,
+              server: reader.server,
+              surahs: reader.surahs,
+              hasAyahAudio: reader.hasAyahAudio,
+              surahUrls: reader.surahUrls,
+              timingReadId: reader.timingReadId,
+            );
+          }
         }
       }
       return result;
@@ -354,6 +415,7 @@ class QiraatService {
             surahs: surahList.isEmpty
                 ? {for (var i = 1; i <= 114; i++) i}
                 : surahList,
+            timingReadId: int.tryParse('${read['id'] ?? ''}'),
           );
           final list = result.putIfAbsent(riwayahId, () => <RiwayahReader>[]);
           if (!list.any((r) => r.id == reader.id)) list.add(reader);
@@ -361,52 +423,38 @@ class QiraatService {
       }
     }
   }
-  Future<Map<String, String>> _loadSurahServers() {
-    final cached = _surahServers;
-    if (cached != null) return Future.value(cached);
-    final inFlight = _catalogFuture;
-    if (inFlight != null) return inFlight;
-    final future = _fetchSurahServers();
-    _catalogFuture = future;
-    future.then((value) {
-      _surahServers = value;
-      _catalogFuture = null;
-    }, onError: (_) {
-      _catalogFuture = null;
-    });
-    return future;
-  }
-
-  Future<Map<String, String>> _fetchSurahServers() async {
+  Future<Map<int, ({int startMs, int endMs})>> ayahTimings(int surahNumber) async {
+    final reader = selectedReaderFor(_selectedRiwayahId);
+    final readId = reader?.timingReadId;
+    if (reader == null || readId == null || reader.source != 'MP3Quran') {
+      return const <int, ({int startMs, int endMs})>{};
+    }
+    final key = reader.id + ':' + surahNumber.toString();
+    final cached = _ayahTimingCache[key];
+    if (cached != null) return cached;
     try {
-      final response = await http.get(Uri.parse(_catalogUrl)).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return const {};
+      final uri = Uri.parse('https://mp3quran.net/api/v3/ayat_timing').replace(
+        queryParameters: <String, String>{'surah': surahNumber.toString(), 'read': readId.toString()},
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return const <int, ({int startMs, int endMs})>{};
       final json = jsonDecode(response.body);
-      if (json is! Map<String, dynamic>) return const {};
-      final reciters = json['reciters'];
-      if (reciters is! List) return const {};
-      final result = <String, String>{};
-      for (final item in reciters) {
+      if (json is! List) return const <int, ({int startMs, int endMs})>{};
+      final timings = <int, ({int startMs, int endMs})>{};
+      for (final item in json) {
         if (item is! Map) continue;
-        final moshaf = item['moshaf'];
-        if (moshaf is! List) continue;
-        for (final read in moshaf) {
-          if (read is! Map) continue;
-          final name = (read['name'] ?? '').toString().toLowerCase();
-          final server = (read['server'] ?? '').toString();
-          final surahTotal = int.tryParse('${read['surah_total'] ?? 0}') ?? 0;
-          if (server.isEmpty || surahTotal < 114) continue;
-          for (final match in _matches(name)) {
-            result.putIfAbsent(match, () => server.endsWith('/') ? server : '$server/');
-          }
-        }
+        final ayah = int.tryParse('${item['ayah'] ?? ''}');
+        final start = int.tryParse('${item['start_time'] ?? ''}');
+        final end = int.tryParse('${item['end_time'] ?? ''}');
+        if (ayah == null || ayah <= 0 || start == null || end == null || end <= start) continue;
+        timings[ayah] = (startMs: start, endMs: end);
       }
-      return result;
+      _ayahTimingCache[key] = timings;
+      return timings;
     } catch (_) {
-      return const {};
+      return const <int, ({int startMs, int endMs})>{};
     }
   }
-
   List<String> _matches(String rawName) {
     final name = _normalize(rawName);
     final ids = <String>[];
@@ -450,12 +498,25 @@ class QiraatService {
   }
 
   String audioStatusFor(RiwayahOption r, String languageCode) {
-    if (r.hasVerifiedAyahAudio) {
-      return languageCode == 'ar' ? 'صوت آية-بآية متحقق' : 'Verified verse-by-verse audio';
+    final hasRuntimeSource = hasRuntimeReaderSource(r.id);
+    if (r.hasVerifiedAyahAudio && (r.id == 'hafs' || r.id == 'warsh')) {
+      return languageCode == 'ar'
+          ? 'صوت آية-بآية متحقق'
+          : 'Verified verse-by-verse audio';
+    }
+    if (hasRuntimeSource) {
+      final count = _readers![r.id]!.length;
+      return languageCode == 'ar'
+          ? 'مصدر موثّق متاح • ' + count.toString() + ' قارئ'
+          : 'Verified source available • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
     }
     if (r.hasSurahAudio) {
-      return languageCode == 'ar' ? 'صوت السورة من مصدر الرواية متحقق' : 'Verified full-surah riwayah audio';
+      return languageCode == 'ar'
+          ? 'مصدر الرواية مفعّل وسيظهر بعد التحقق'
+          : 'Riwayah source configured; waiting for runtime verification';
     }
-    return languageCode == 'ar' ? 'مصدر صوتي موثّق غير متوفر حاليًا' : 'Verified audio source not available yet';
+    return languageCode == 'ar'
+        ? 'مصدر صوتي موثّق غير متوفر حاليًا'
+        : 'Verified audio source not available yet';
   }
 }

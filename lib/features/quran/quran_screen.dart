@@ -25,7 +25,9 @@ import '../../l10n/generated/app_localizations.dart';
 import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
-import 'qiraat_screen.dart';
+import '../way2quran/way2quran_home_screen.dart';
+import 'ten_qiraat_screen.dart';
+import 'riwayat_directory_screen.dart';
 import 'widgets/quran_playback_bar.dart';
 
 class QuranScreen extends StatefulWidget {
@@ -96,6 +98,26 @@ class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStat
         title: Directionality(textDirection: TextDirection.rtl, child: Text(l10n.quranTitle)),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'القراءات العشر'
+                : 'The Ten Qira’at',
+            icon: const Icon(Icons.auto_stories_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TenQiraatScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'الروايات'
+                : 'Riwayat',
+            icon: const Icon(Icons.library_music_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RiwayatDirectoryScreen()),
+            ),
+          ),
           IconButton(
             tooltip: l10n.quranViewMushaf,
             icon: const Icon(Icons.import_contacts_outlined),
@@ -1161,7 +1183,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               } else if (value == 'reciter') {
                 _pickReciter();
               } else if (value == 'qiraat') {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const QiraatScreen())).then((_) => setState(() {}));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranHomeScreen())).then((_) => setState(() {}));
               } else if (value == 'fontDec') {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
@@ -1263,11 +1285,26 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '${ayah.text}  ﴿${ayah.number}﴾',
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * _fontScale, height: 2.2, fontWeight: FontWeight.normal),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => isPlayingThis ? _stopAudio() : _playAyah(ayah.number),
+                    child: Semantics(
+                      button: true,
+                      label: isPlayingThis
+                          ? l10n.quranStopPlayingAyahLabel
+                          : l10n.quranPlayAyahLabel(ayah.number),
+                      child: Text(
+                        '${ayah.text}  ﴿${ayah.number}﴾',
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontFamily: 'AmiriQuran',
+                          fontSize: 24 * _fontScale,
+                          height: 2.2,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
                   ),
                   if (appSettings.showTransliteration) ...[
                     const SizedBox(height: 6),
