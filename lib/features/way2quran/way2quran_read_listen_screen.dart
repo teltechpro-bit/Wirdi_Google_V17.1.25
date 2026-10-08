@@ -119,7 +119,9 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         value: selectedSurah,
                         decoration: InputDecoration(labelText: ar ? 'السورة' : 'Surah', border: const OutlineInputBorder()),
                         items: surahs.map((s) => DropdownMenuItem(value: s.number, child: Text(s.number.toString() + '. ' + s.name))).toList(),
-                        onChanged: (v) { if (v != null) {\n                            _setSurah(v, surahs);\n                          } },
+                        onChanged: (v) { if (v != null) {
+                            _setSurah(v, surahs);
+                          } },
                       ),
                       const SizedBox(height: 12),
                       FutureBuilder<Way2QuranRecitersPage>(
