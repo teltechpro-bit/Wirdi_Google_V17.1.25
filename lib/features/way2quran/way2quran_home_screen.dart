@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
-import '../../core/models/quran_models.dart;
+import '../../core/models/quran_models.dart';
 import '../../core/services/quran_repository.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
