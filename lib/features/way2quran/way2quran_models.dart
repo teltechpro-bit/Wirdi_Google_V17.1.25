@@ -27,3 +27,10 @@ class Way2QuranAudioFile {
  const Way2QuranAudioFile({required this.url,required this.downloadUrl,required this.surahNumber,required this.surahName});
  factory Way2QuranAudioFile.fromJson(Map j){ final info=j['surahInfo'] is Map?Map<String,dynamic>.from(j['surahInfo']):<String,dynamic>{}; return Way2QuranAudioFile(url:'${j['url']??''}',downloadUrl:'${j['downloadURL']??j['downloadUrl']??j['download_url']??j['url']??''}',surahNumber:int.tryParse('${j['surahNumber']??info['number']??0}')??0,surahName:'${info['arabicName']??info['englishName']??info['name']??j['surahName']??''}'); }
 }
+
+class Way2QuranRecitersPage {
+  final List<Way2QuranReciter> reciters;
+  final int totalCount, page, pages;
+  const Way2QuranRecitersPage({required this.reciters, required this.totalCount, required this.page, required this.pages});
+  bool get hasNext => page < pages;
+}
