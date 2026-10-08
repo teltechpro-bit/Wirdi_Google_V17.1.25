@@ -239,7 +239,42 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل' : 'Play'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
+                      Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل السورة' : 'Play Surah'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(ar ? 'نص الآيات المحددة' : 'Selected ayah range',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text(ar ? 'من الآية $fromAyah إلى الآية $toAyah' : 'Ayah $fromAyah through $toAyah',
+                        style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 12),
+                      ...surah.ayahs
+                          .where((a) => a.number >= fromAyah && a.number <= toAyah)
+                          .map((a) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Text(
+                                  '${a.text}  ﴿${a.number}﴾',
+                                  textAlign: TextAlign.right,
+                                  textDirection: TextDirection.rtl,
+                                  style: const TextStyle(fontSize: 22, height: 1.9),
+                                ),
+                              )),
+                      const Divider(),
+                      Text(
+                        ar
+                            ? 'تنبيه: مصدر الصوت يوفر ملف السورة كاملة؛ تحديد الآيات يحدد النص المعروض، لكنه لا يقص ملف الصوت.'
+                            : 'Note: the source provides full-surah audio. The ayah range filters the displayed text, but does not trim the audio file.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
