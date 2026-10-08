@@ -160,7 +160,9 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                               onChanged: (v) {
                                 if (v != null) setState(() {
                                   fromAyah = v;
-                                  if (toAyah < v) toAyah = v;
+                                  if (toAyah < v) {
+                                    toAyah = v;
+                                  }
                                 });
                               },
                             ),
