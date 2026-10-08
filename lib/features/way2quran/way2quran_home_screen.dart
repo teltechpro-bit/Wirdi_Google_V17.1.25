@@ -69,6 +69,14 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         const SizedBox(height: 24),
         Text(ar ? 'استمع الآن' : 'Listening now', textAlign: ar ? TextAlign.right : TextAlign.left, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
+        Align(
+          alignment: ar ? Alignment.centerLeft : Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranAllRecitersScreen())),
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: Text(ar ? 'استكشف كل القراء' : 'Explore all reciters'),
+          ),
+        ),
         FutureBuilder<List<Way2QuranReciter>>(
           future: future,
           builder: (context, snapshot) {
@@ -253,5 +261,32 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         if (rec.downloadUrl.isNotEmpty) FilledButton.icon(onPressed: () => Way2QuranRepository().incrementDownload(rec.slug), icon: const Icon(Icons.download), label: Text(ar ? 'تحميل المصحف' : 'Download Mushaf')),
       ]);
     }));
+  }
+}
+class Way2QuranAllRecitersScreen extends StatefulWidget {
+  const Way2QuranAllRecitersScreen({super.key});
+  @override State<Way2QuranAllRecitersScreen> createState() => _Way2QuranAllRecitersScreenState();
+}
+class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen> {
+  final repo = Way2QuranRepository();
+  final search = TextEditingController();
+  late Future<List<Way2QuranReciter>> future;
+  @override void initState() { super.initState(); future = repo.getReciters(); }
+  @override void dispose() { search.dispose(); super.dispose(); }
+  void _load() => setState(() => future = repo.getReciters(search: search.text.trim()));
+  @override Widget build(BuildContext context) {
+    final ar = Localizations.localeOf(context).languageCode == 'ar';
+    return Scaffold(
+      appBar: AppBar(title: Text(ar ? 'كل القراء' : 'All Reciters')),
+      body: Column(children: [
+        Padding(padding: const EdgeInsets.all(16), child: TextField(controller: search, onSubmitted: (_) => _load(), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ...' : 'Search reciters...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: _load, icon: const Icon(Icons.search)), border: const OutlineInputBorder()))),
+        Expanded(child: FutureBuilder<List<Way2QuranReciter>>(future: future, builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) return Center(child: Text(ar ? 'تعذر تحميل القراء' : 'Could not load reciters'));
+          final list = snapshot.data ?? const <Way2QuranReciter>[];
+          return GridView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: MediaQuery.sizeOf(context).width >= 900 ? 4 : MediaQuery.sizeOf(context).width >= 600 ? 3 : 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .82), itemCount: list.length, itemBuilder: (context, i) => _ReciterCard(reciter: list[i], ar: ar, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: list[i].slug)))));
+        })
+      ])
+    );
   }
 }
