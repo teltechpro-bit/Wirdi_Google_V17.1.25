@@ -285,7 +285,7 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
           if (snapshot.hasError) return Center(child: Text(ar ? 'تعذر تحميل القراء' : 'Could not load reciters'));
           final list = snapshot.data ?? const <Way2QuranReciter>[];
           return GridView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: MediaQuery.sizeOf(context).width >= 900 ? 4 : MediaQuery.sizeOf(context).width >= 600 ? 3 : 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .82), itemCount: list.length, itemBuilder: (context, i) => _ReciterCard(reciter: list[i], ar: ar, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: list[i].slug)))));
-        })
+        }))
       ])
     );
   }
