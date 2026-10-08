@@ -5,7 +5,8 @@ import '../../core/services/quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
 
-class Way2QuranReadListenScreen extends StatefulWidget {\n  final int? initialSurah;
+class Way2QuranReadListenScreen extends StatefulWidget {
+  final int? initialSurah;
   const Way2QuranReadListenScreen({super.key, this.initialSurah});
   @override State<Way2QuranReadListenScreen> createState() => _Way2QuranReadListenScreenState();
 }
