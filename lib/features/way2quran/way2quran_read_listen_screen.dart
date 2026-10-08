@@ -257,12 +257,12 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       Text(ar ? 'من الآية $fromAyah إلى الآية $toAyah' : 'Ayah $fromAyah through $toAyah',
                         style: Theme.of(context).textTheme.bodySmall),
                       const SizedBox(height: 12),
-                      ...surah.ayahs
-                          .where((a) => a.number >= fromAyah && a.number <= toAyah)
-                          .map((a) => Padding(
+                      ...surah.ayahs.asMap().entries
+                          .where((entry) => entry.key + 1 >= fromAyah && entry.key + 1 <= toAyah)
+                          .map((entry) => Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 child: Text(
-                                  '${a.text}  ﴿${a.number}﴾',
+                                  '${entry.value.text}  ﴿${entry.key + 1}﴾',
                                   textAlign: TextAlign.right,
                                   textDirection: TextDirection.rtl,
                                   style: const TextStyle(fontSize: 22, height: 1.9),
