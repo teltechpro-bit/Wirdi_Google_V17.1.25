@@ -13,10 +13,10 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
   late Future<List<Way2QuranReciter>> future;
   @override void initState() {
     super.initState();
-    future = repo.getReciters(recitationSlug: 'hafs-an-asim', isTopReciter: true, sortBy: '-totalViewers', pageSize: 9);
+    future = repo.getReciters(recitationSlug: 'hafs-an-asim');
   }
   @override void dispose() { search.dispose(); super.dispose(); }
-  void doSearch() => setState(() => future = repo.getReciters(search: search.text.trim(), sortBy: 'arabicName', pageSize: 50));
+  void doSearch() => setState(() => future = repo.getReciters(search: search.text.trim()));
 
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
