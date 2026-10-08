@@ -351,11 +351,13 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
   late Future<List<Way2QuranReciter>> future;
   String recitationSlug = '';
   String sort = 'arabicName';
+  late Future<List<Way2QuranRecitation>> recitationsFuture;
 
   @override
   void initState() {
     super.initState();
     future = _fetch();
+    recitationsFuture = repo.getRecitations();
   }
   Future<List<Way2QuranReciter>> _fetch() => repo.getReciters(recitationSlug: recitationSlug, search: search.text.trim(), sort: sort);
   void _load() => setState(() => future = _fetch());
@@ -387,10 +389,17 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
             scrollDirection: Axis.horizontal,
             children: [
               ChoiceChip(label: Text(ar ? 'كل الروايات' : 'All Riwayat'), selected: recitationSlug.isEmpty, onSelected: (_) { recitationSlug = ''; _load(); }),
-              ...Way2QuranRepository.recitations.take(8).map((r) => Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8),
-                child: ChoiceChip(label: Text(r.name(ar)), selected: recitationSlug == r.slug, onSelected: (_) { recitationSlug = r.slug; _load(); }),
-              )),
+              ...<Widget>[
+                FutureBuilder<List<Way2QuranRecitation>>(
+                  future: recitationsFuture,
+                  builder: (context, snapshot) => Row(
+                    children: (snapshot.data ?? const <Way2QuranRecitation>[]).take(8).map((r) => Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: ChoiceChip(label: Text(r.name(ar)), selected: recitationSlug == r.slug, onSelected: (_) { setState(() => recitationSlug = r.slug); _load(); }),
+                    )).toList(),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
