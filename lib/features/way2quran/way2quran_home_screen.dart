@@ -272,7 +272,6 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
       await folder.create(recursive: true);
       final file = File(folder.path + '/' + rec.slug + '.mp3');
       await file.writeAsBytes(bytes, flush: true);
-      await Way2QuranRepository().incrementDownload(rec.slug);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تنزيل التلاوة' : 'Could not download the recitation')));
