@@ -70,7 +70,6 @@ class Way2QuranRepository {
     await _request('POST', Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}'));
   }
 
-  Future<void> incrementDownload(String slug) async { await _request('POST', Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}')); }
 
   Future<void> incrementMushafDownload(String slug) async {
     await _request('POST', Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
