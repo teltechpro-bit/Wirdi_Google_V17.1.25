@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
 import 'way2quran_repository.dart';
+import 'way2quran_mushaf_screen.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
 import '../quran/ten_qiraat_screen.dart';
