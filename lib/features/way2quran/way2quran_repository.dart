@@ -9,7 +9,7 @@ class Way2QuranRepository {
     Way2QuranRecitation(slug:'douri-abi-amr',nameAr:'الدوري عن أبي عمرو',nameEn:'Al-Duri an Abi Amr'),
     Way2QuranRecitation(slug:'warsh-an-nafi',nameAr:'ورش عن نافع',nameEn:'Warsh an Nafi'),
     Way2QuranRecitation(slug:'qalun-an-nafi',nameAr:'قالون عن نافع',nameEn:'Qalun an Nafi'),
-    Way2QuranRecitation(slug:'shuba-an-asim',nameAr:'شعبة عن عاصم',nameEn:'Shu\'bah an Asim'),
+    Way2QuranRecitation(slug:'shuba-an-asim',nameAr:'شعبة عن عاصم',nameEn:'Shu\\'bah an Asim'),
     Way2QuranRecitation(slug:'al-bazzi-an-ibn-kathir',nameAr:'البزي عن ابن كثير',nameEn:'Al-Bazzi an Ibn Kathir'),
     Way2QuranRecitation(slug:'qunbul-an-ibn-kathir',nameAr:'قنبل عن ابن كثير',nameEn:'Qunbul an Ibn Kathir'),
     Way2QuranRecitation(slug:'hisham-an-ibn-amir',nameAr:'هشام عن ابن عامر',nameEn:'Hisham an Ibn Amir'),
@@ -21,8 +21,10 @@ class Way2QuranRepository {
     Way2QuranRecitation(slug:'ibn-wardan-an-abu-jafar',nameAr:'ابن وردان عن أبي جعفر',nameEn:'Ibn Wardan an Abu Jafar'),
     Way2QuranRecitation(slug:'ibn-jamaz-an-abu-jafar',nameAr:'ابن جماز عن أبي جعفر',nameEn:'Ibn Jamaz an Abu Jafar'),
   ];
-  Future<List<Way2QuranReciter>> getReciters({String recitationSlug='',String search='',int page=1}) async {
-    final u=Uri.parse('$baseUrl/reciters').replace(queryParameters:{'recitationSlug':recitationSlug,'search':search,'currentPage':'$page','sort':'arabicName','pageSize':'50'});
+  Future<List<Way2QuranReciter>> getReciters({String recitationSlug='',String search='',String sort='arabicName',int page=1}) async {
+    final u=Uri.parse('$baseUrl/reciters').replace(queryParameters:{
+      'recitationSlug':recitationSlug,'search':search,'currentPage':'$page','sort':sort,'pageSize':'50',
+    });
     final r=await http.get(u).timeout(const Duration(seconds:20));
     if(r.statusCode<200||r.statusCode>=300)throw Exception('Way2Quran reciters HTTP ${r.statusCode}');
     final b=jsonDecode(r.body); final list=b is Map?(b['reciters']??b['data']?['reciters']??b['data']):b;
