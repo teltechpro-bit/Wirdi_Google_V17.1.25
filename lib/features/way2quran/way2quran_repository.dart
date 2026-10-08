@@ -46,7 +46,7 @@ class Way2QuranRepository {
     }
   }
 
-  Future<void> incrementMushafDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
+  Future<void> incrementMushafDownload(String slug) async => _request('GET', Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
   Future<List<int>> downloadBytes(String url) async { if(url.isEmpty) throw Exception('Empty download URL'); final response=await http.get(Uri.parse(url)).timeout(const Duration(minutes:2)); if(response.statusCode<200||response.statusCode>=300) throw Exception('Download failed: ${response.statusCode}'); return response.bodyBytes; }
   Future<dynamic> _getJson(Uri uri) async=>jsonDecode((await _request('GET',uri)).body);
   Future<http.Response> _request(String method,Uri uri) async { final response=method=='POST'?await http.post(uri).timeout(const Duration(seconds:30)):await http.get(uri).timeout(const Duration(seconds:30)); if(response.statusCode<200||response.statusCode>=300)throw Exception('Way2Quran API ${response.statusCode}: ${uri.path}'); return response; }
