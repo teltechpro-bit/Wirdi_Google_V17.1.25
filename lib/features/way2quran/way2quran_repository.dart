@@ -10,7 +10,7 @@ class Way2QuranRepository {
     String recitationSlug = '',
     String isTopReciter = '',
     String search = '',
-    String sortBy = 'arabicName',
+    String sort = 'arabicName',
     int page = 1,
     int pageSize = 50,
   }) async {
@@ -19,7 +19,7 @@ class Way2QuranRepository {
       'isTopReciter': isTopReciter,
       'search': search,
       'currentPage': '$page',
-      'sort': sortBy,
+      'sort': sort,
       'pageSize': '$pageSize',
     });
     final data = await _getJson(uri);
@@ -60,6 +60,8 @@ class Way2QuranRepository {
 
   Future<dynamic> getSurahs() => _getJson(Uri.parse('$baseUrl/surah'));
   Future<dynamic> getMushafs() => _getJson(Uri.parse('$baseUrl/mushaf'));
+
+  Future<void> incrementDownload(String slug) async { await _request('POST', Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}')); }
 
   Future<void> incrementMushafDownload(String slug) async {
     await _request('POST', Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
