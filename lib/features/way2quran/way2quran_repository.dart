@@ -4,12 +4,12 @@ import 'way2quran_models.dart';
 
 class Way2QuranRepository {
   static const baseUrl = 'https://way2quran.com/api';
-  Future<List<Way2QuranReciter>> getReciters({String recitationSlug='', String isTopReciter='', String search='', String sort='arabicName', int page=1, int pageSize=50}) async {
+  Future<List<Way2QuranReciter>> getReciters({String recitationSlug='', String isTopReciter='', String search='', String sort='arabicName', int page=1, int pageSize=50}) async {\n    final apiSort = _apiSort(sort);
     final uri=Uri.parse('$baseUrl/reciters').replace(queryParameters:{'recitationSlug':recitationSlug,'isTopReciter':isTopReciter,'search':search,'currentPage':'$page','sort':sort,'pageSize':'$pageSize'});
     final data=await _getJson(uri); final raw=data is Map&&data['reciters'] is List?data['reciters'] as List:const [];
     return raw.whereType<Map>().map((e)=>Way2QuranReciter.fromJson(Map<String,dynamic>.from(e))).toList();
   }
-  Future<Way2QuranRecitersPage> getRecitersPage({String recitationSlug='',String isTopReciter='',String search='',String sort='arabicName',int page=1,int pageSize=50}) async {
+  Future<Way2QuranRecitersPage> getRecitersPage({String recitationSlug='',String isTopReciter='',String search='',String sort='arabicName',int page=1,int pageSize=50}) async {\n    final apiSort = _apiSort(sort);
     final uri=Uri.parse('$baseUrl/reciters').replace(queryParameters:{'recitationSlug':recitationSlug,'isTopReciter':isTopReciter,'search':search,'currentPage':'$page','sort':sort,'pageSize':'$pageSize'});
     final data=await _getJson(uri); final raw=data is Map&&data['reciters'] is List?data['reciters'] as List:const [];
     final p=data is Map&&data['pagination'] is Map?Map<String,dynamic>.from(data['pagination']):const <String,dynamic>{};
@@ -31,7 +31,7 @@ class Way2QuranRepository {
   Future<dynamic> getSurah(String slug,{String select=''})=>_getJson(Uri.parse('$baseUrl/surah/${Uri.encodeComponent(slug)}').replace(queryParameters:{'selectField':select}));
   Future<dynamic> getSurahs()=>_getJson(Uri.parse('$baseUrl/surah'));
   Future<List<Way2QuranMushaf>> getMushafs() async { final data=await _getJson(Uri.parse('$baseUrl/mushaf')); final raw=data is Map&&data['data'] is List?data['data'] as List:data is Map&&data['mushafs'] is List?data['mushafs'] as List:data is List?data:const []; return raw.whereType<Map>().map((e)=>Way2QuranMushaf.fromJson(Map<String,dynamic>.from(e))).toList(); }
-  Future<void> incrementDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}'));
+  String _apiSort(String sort) {\n    switch (sort) {\n      case 'mostListened':\n        return '-number';\n      case 'views':\n        return '-totalViewers';\n      case '-number':\n      case '-totalViewers':\n      case 'arabicName':\n        return sort;\n      default:\n        return 'arabicName';\n    }\n  }\n\n  Future<void> incrementDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/recitations/increment-download/${Uri.encodeComponent(slug)}'));
   Future<void> incrementMushafDownload(String slug) async=>_request('POST',Uri.parse('$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
   Future<List<int>> downloadBytes(String url) async { if(url.isEmpty) throw Exception('Empty download URL'); final response=await http.get(Uri.parse(url)).timeout(const Duration(minutes:2)); if(response.statusCode<200||response.statusCode>=300) throw Exception('Download failed: ${response.statusCode}'); return response.bodyBytes; }
   Future<dynamic> _getJson(Uri uri) async=>jsonDecode((await _request('GET',uri)).body);
