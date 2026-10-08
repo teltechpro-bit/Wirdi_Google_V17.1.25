@@ -41,7 +41,30 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
             if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()));
             if (snapshot.hasError) return Card(child: ListTile(leading: const Icon(Icons.cloud_off), title: Text(ar ? 'تعذر الاتصال بمصدر Way2Quran' : 'Way2Quran source unavailable'), trailing: IconButton(onPressed: doSearch, icon: const Icon(Icons.refresh))));
             final list = snapshot.data ?? const <Way2QuranReciter>[];
-            return SizedBox(height: 230, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: list.length, separatorBuilder: (_, __) => const SizedBox(width: 12), itemBuilder: (context, i) => SizedBox(width: 175, child: _ReciterCard(reciter: list[i], ar: ar, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: list[i].slug))))));
+            return SizedBox(
+              height: 230,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final reciter = list[i];
+                  return SizedBox(
+                    width: 175,
+                    child: _ReciterCard(
+                      reciter: reciter,
+                      ar: ar,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
           },
         ),
         const SizedBox(height: 24),
