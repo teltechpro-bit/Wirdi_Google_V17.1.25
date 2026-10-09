@@ -36,6 +36,9 @@ service cloud.firestore {
                     && (
                       (
                         isMember(resource.data)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members', 'claims', 'rounds'])
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['rounds'])
+                            || resource.data.ownerUid == request.auth.uid)
                         && (
                           request.resource.data.memberUids == resource.data.memberUids
                           || (
