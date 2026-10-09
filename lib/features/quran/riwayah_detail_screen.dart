@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/data/qiraat_catalog.dart';
 import '../../core/models/riwayah_reader.dart';
 import '../../core/services/qiraat_service.dart';
+import '../../core/services/quran_audio_service.dart';
 import '../../core/theme/app_theme.dart';
 
 class RiwayahDetailScreen extends StatefulWidget {
@@ -117,6 +118,7 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
                     ar: ar,
                     selected: service.selectedReaderFor(widget.riwayahId)?.id == reader.id,
                     onUse: () => _useReader(reader),
+                    onPreview: () => _previewReader(reader),
                   ),
                 ),
               if (pages > 1) ...[
@@ -138,6 +140,38 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _previewReader(RiwayahReader reader) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await service.setRiwayah(widget.riwayahId);
+      await service.setReader(widget.riwayahId, reader.id);
+      final url = await service.surahAudioUrl(1);
+      if (url == null || url.isEmpty) {
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(
+            content: Text(Localizations.localeOf(context).languageCode == 'ar'
+                ? 'تعذر العثور على مصدر صوت صالح لهذا القارئ'
+                : 'No playable audio source was found for this reader'),
+          ));
+        }
+        return;
+      }
+      final language = Localizations.localeOf(context).languageCode;
+      await QuranAudioService.instance.playExternalUrl(
+        url,
+        title: reader.nameFor(language) + (language == 'ar' ? ' — الفاتحة' : ' — Al-Fatiha'),
+      );
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(Localizations.localeOf(context).languageCode == 'ar'
+              ? 'فشل تشغيل التلاوة. تحقق من الإنترنت وحاول مرة أخرى.'
+              : 'Could not play recitation. Check your connection and try again.'),
+        ));
+      }
+    }
   }
 
   Future<void> _useReader(RiwayahReader reader) async {
@@ -187,12 +221,14 @@ class _ReaderCard extends StatelessWidget {
   final bool ar;
   final bool selected;
   final VoidCallback onUse;
+  final VoidCallback onPreview;
 
   const _ReaderCard({
     required this.reader,
     required this.ar,
     required this.selected,
     required this.onUse,
+    required this.onPreview,
   });
 
   @override
@@ -229,6 +265,11 @@ class _ReaderCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            IconButton(
+              tooltip: ar ? 'تجربة التلاوة' : 'Preview recitation',
+              onPressed: onPreview,
+              icon: const Icon(Icons.play_circle_outline_rounded),
+            ),
             if (selected)
               Icon(Icons.check_circle, color: AppColors.goldAccent)
             else
