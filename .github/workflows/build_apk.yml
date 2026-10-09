@@ -17,6 +17,27 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Probe live Way2Quran API (read-only)
+        shell: bash
+        run: |
+          set +e
+          for url in \
+            "https://way2quran.com/api/reciters?pageSize=1&currentPage=1" \
+            "https://way2quran.com/api/recitations" \
+            "https://way2quran.com/api/surah"; do
+            echo "===== $url ====="
+            code=$(curl -L -sS --max-time 25 -A "Wirdi-Connectivity-Check/1.0" -D /tmp/headers -o /tmp/body -w "%{http_code}" "$url")
+            rc=$?
+            echo "curl_exit=$rc http_status=$code"
+            grep -iE '^(content-type|content-length|server|location):' /tmp/headers | tail -n 8 || true
+            if [ -f /tmp/body ]; then
+              echo "body_bytes=$(wc -c < /tmp/body)"
+              head -c 600 /tmp/body | tr '\n' ' '
+              echo
+            fi
+          done
+
+
       - name: Free up runner disk space (remove unused preinstalled toolchains)
         run: |
           echo "Disk space before cleanup:"
