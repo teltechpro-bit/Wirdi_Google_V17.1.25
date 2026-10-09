@@ -10,8 +10,13 @@ class Way2QuranRepository {
   /// Current Way2Quran endpoints wrap successful payloads in {status, data}.
   /// Some older endpoints return the payload directly, so support both shapes.
   static dynamic unwrapApiData(dynamic response) {
-    if (response is Map && response['data'] != null) {
-      return response['data'];
+    if (response is Map) {
+      final status = response['status']?.toString().trim().toLowerCase();
+      if (status == 'error' || status == 'failed' || status == 'failure') {
+        final message = response['message'] ?? response['error'] ?? 'Unknown API error';
+        throw FormatException('Way2Quran API error: $message');
+      }
+      if (response['data'] != null) return response['data'];
     }
     return response;
   }
