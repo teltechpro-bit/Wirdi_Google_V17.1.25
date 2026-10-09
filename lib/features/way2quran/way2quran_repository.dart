@@ -9,7 +9,7 @@ class Way2QuranRepository {
 
   /// Current Way2Quran endpoints wrap successful payloads in {status, data}.
   /// Some older endpoints return the payload directly, so support both shapes.
-  static dynamic _unwrap(dynamic response) {
+  static dynamic unwrapApiData(dynamic response) {
     if (response is Map && response['data'] != null) {
       return response['data'];
     }
@@ -40,7 +40,7 @@ class Way2QuranRepository {
       'pageSize': '$pageSize',
     });
     final response = await _getJson(uri);
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final raw = _listPayload(payload, 'reciters', fallback: response);
     return raw.whereType<Map>().map((e) =>
         Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList();
@@ -156,7 +156,7 @@ class Way2QuranRepository {
   }
 
   Future<dynamic> getSurahs() async =>
-      _unwrap(await _getJson(Uri.parse('$baseUrl/surah')));
+      unwrapApiData(await _getJson(Uri.parse('$baseUrl/surah')));
 
   Future<List<Way2QuranMushaf>> getMushafs() async {
     final response = await _getJson(Uri.parse('$baseUrl/mushaf'));
