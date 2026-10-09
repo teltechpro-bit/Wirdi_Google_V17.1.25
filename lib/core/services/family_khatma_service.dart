@@ -274,11 +274,17 @@ class FamilyKhatmaService {
         // release only unfinished assignments before removing membership.
         final mine = claims[user.uid];
         if (mine is Map && mine['juzs'] is Map) {
-          (mine['juzs'] as Map).forEach((juzKey, doneValue) {
-            if (doneValue != true) {
-              updates['claims.${user.uid}.juzs.$juzKey'] = FieldValue.delete();
-            }
-          });
+          final juzs = mine['juzs'] as Map;
+          final completed = juzs.entries.where((entry) => entry.value == true).toList();
+          if (completed.isEmpty) {
+            updates['claims.${user.uid}'] = FieldValue.delete();
+          } else {
+            juzs.forEach((juzKey, doneValue) {
+              if (doneValue != true) {
+                updates['claims.${user.uid}.juzs.$juzKey'] = FieldValue.delete();
+              }
+            });
+          }
         } else {
           // Backward compatibility for documents created with the legacy
           // flat {juz: {uid, done}} schema.
