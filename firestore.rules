@@ -56,6 +56,9 @@ service cloud.firestore {
                         && request.auth.uid in request.resource.data.memberUids
                         && request.resource.data.memberUids.hasAll(resource.data.memberUids)
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members'])
+                        && request.resource.data.members is map
+                        && request.resource.data.members[request.auth.uid] is string
+                        && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
                       )
                     );
 
