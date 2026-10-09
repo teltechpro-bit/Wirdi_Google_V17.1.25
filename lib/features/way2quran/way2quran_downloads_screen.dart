@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/services/quran_audio_service.dart';
+import 'way2quran_playlists_screen.dart';
 
 /// Manages only audio files downloaded by Wirdi's Way2Quran integration.
 class Way2QuranDownloadsScreen extends StatefulWidget {
@@ -228,10 +229,12 @@ class _Way2QuranDownloadsScreenState extends State<Way2QuranDownloadsScreen> {
                                       tooltip: _ar ? 'خيارات الملف' : 'File options',
                                       onSelected: (value) {
                                         if (value == 'play') _play(file);
+                                        if (value == 'playlist') Way2QuranPlaylistStore.addFileToPlaylist(context, file.path);
                                         if (value == 'delete') _delete(file);
                                       },
                                       itemBuilder: (_) => [
                                         PopupMenuItem(value: 'play', child: Text(_ar ? 'تشغيل' : 'Play')),
+                                        PopupMenuItem(value: 'playlist', child: Text(_ar ? 'إضافة إلى قائمة تشغيل' : 'Add to playlist')),
                                         PopupMenuItem(value: 'delete', child: Text(_ar ? 'حذف' : 'Delete')),
                                       ],
                                     ),
