@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'way2quran_web_screen.dart';
 import 'way2quran_favorites.dart';
+import 'way2quran_downloads_screen.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 
@@ -151,6 +152,8 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         ),
         const SizedBox(height: 16),
         _ExploreCard(icon: Icons.favorite_rounded, title: ar ? 'القراء المفضلون' : 'Favorite Reciters', subtitle: ar ? 'احتفظ بقرائك المفضلين على هذا الجهاز' : 'Save your favorite reciters on this device', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranFavoritesScreen()))),
+        const SizedBox(height: 12),
+        _ExploreCard(icon: Icons.download_for_offline_rounded, title: ar ? 'التنزيلات' : 'Downloads', subtitle: ar ? 'إدارة التلاوات المحفوظة والاستماع إليها دون إنترنت' : 'Manage downloaded recitations and play them offline', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranDownloadsScreen()))),
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.auto_stories_rounded, title: ar ? 'القراءات العشر المتواترة' : 'The Ten Mutawatir Qira’at', subtitle: ar ? 'الوصول السريع إلى دليل القراءات والروايات' : 'Quick access to the Qira’at and Riwayat directory', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TenQiraatScreen()))),
         const SizedBox(height: 12),
