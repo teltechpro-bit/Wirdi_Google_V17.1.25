@@ -276,7 +276,7 @@ class FamilyKhatmaService {
         if (mine is Map && mine['juzs'] is Map) {
           (mine['juzs'] as Map).forEach((juzKey, doneValue) {
             if (doneValue != true) {
-              updates['claims.$user.uid.juzs.$juzKey'] = FieldValue.delete();
+              updates['claims.${user.uid}.juzs.$juzKey'] = FieldValue.delete();
             }
           });
         } else {
