@@ -29,7 +29,7 @@ class _Way2QuranDownloadsScreenState extends State<Way2QuranDownloadsScreen> {
 
   Future<Directory> _downloadDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return Directory('${appDir.path}/way2quran/audio');
+    return Directory('${appDir.path}/way2quran/recitations');
   }
 
   Future<void> _loadFiles() async {
