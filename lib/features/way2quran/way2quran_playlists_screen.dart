@@ -54,7 +54,7 @@ class Way2QuranPlaylistStore {
     final file = File(path);
     if (normalized.isEmpty || !path.toLowerCase().endsWith('.mp3') || !await file.exists()) return false;
     final appDir = await getApplicationDocumentsDirectory();
-    final expectedParent = Directory('${appDir.path}/way2quran/audio').absolute.path;
+    final expectedParent = Directory('${appDir.path}/way2quran/recitations').absolute.path;
     if (file.parent.absolute.path != expectedParent) return false;
     final playlists = await all();
     final tracks = playlists[normalized];
