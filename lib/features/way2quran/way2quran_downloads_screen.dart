@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/services/quran_audio_service.dart';
 import 'way2quran_playlists_screen.dart';
+import 'way2quran_storage.dart';
 
 /// Manages only audio files downloaded by Wirdi's Way2Quran integration.
 class Way2QuranDownloadsScreen extends StatefulWidget {
@@ -29,7 +30,7 @@ class _Way2QuranDownloadsScreenState extends State<Way2QuranDownloadsScreen> {
 
   Future<Directory> _downloadDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return Directory('${appDir.path}/way2quran/recitations');
+    return Directory('${appDir.path}/${Way2QuranStorage.recitationsRelativePath}');
   }
 
   Future<void> _loadFiles() async {
