@@ -170,6 +170,7 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     final value = await Way2QuranPlaylistStore.all();
     if (mounted) setState(() { _playlists = value; _loading = false; });
@@ -202,7 +203,7 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
           ? (_ar ? 'تم إنشاء قائمة التشغيل.' : 'Playlist created.')
           : (_ar ? 'يوجد بالفعل قائمة بهذا الاسم.' : 'A playlist with that name already exists.'))));
     }
-    await _load();
+    if (mounted) await _load();
   }
 
   Future<void> _play(String path) async {
@@ -239,7 +240,7 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
     );
     if (confirmed != true) return;
     await Way2QuranPlaylistStore.delete(name);
-    await _load();
+    if (mounted) await _load();
   }
 
   @override
