@@ -210,11 +210,17 @@ class QiraatService {
               'rewaya': apiId.toString(),
             },
           );
-          await _fetchReadersFromUri(
-            uri,
-            result,
-            onlyRiwayat: {entry.key},
-          );
+          // A single unavailable API projection must not discard sources
+          // already discovered from QUD or earlier MP3Quran requests.
+          try {
+            await _fetchReadersFromUri(
+              uri,
+              result,
+              onlyRiwayat: {entry.key},
+            );
+          } catch (_) {
+            // Keep previously discovered readers and continue probing.
+          }
         }
       }
       // Fetch the Arabic API projection as well so the same reader ID can
@@ -229,7 +235,11 @@ class QiraatService {
                 'rewaya': apiId.toString(),
               },
             );
-            await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+            try {
+              await _fetchReadersFromUri(uri, arabic, onlyRiwayat: {entry.key});
+            } catch (_) {
+              // Arabic display names are optional; audio sources remain valid.
+            }
           } catch (_) {
             // Localization is optional; never discard the verified source.
           }
