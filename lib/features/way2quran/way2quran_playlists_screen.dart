@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/services/quran_audio_service.dart';
+import 'way2quran_storage.dart';
 
 class Way2QuranPlaylistStore {
   static const _key = 'way2quran.playlists.v1';
@@ -54,7 +55,7 @@ class Way2QuranPlaylistStore {
     final file = File(path);
     if (normalized.isEmpty || !path.toLowerCase().endsWith('.mp3') || !await file.exists()) return false;
     final appDir = await getApplicationDocumentsDirectory();
-    final expectedParent = Directory('${appDir.path}/way2quran/recitations').absolute.path;
+    final expectedParent = Directory('${appDir.path}/${Way2QuranStorage.recitationsRelativePath}').absolute.path;
     if (file.parent.absolute.path != expectedParent) return false;
     final playlists = await all();
     final tracks = playlists[normalized];
