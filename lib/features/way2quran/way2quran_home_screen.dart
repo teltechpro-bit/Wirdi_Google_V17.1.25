@@ -214,12 +214,72 @@ class _ExploreCard extends StatelessWidget {
 }
 
 class _ReciterCard extends StatelessWidget {
-  final Way2QuranReciter reciter; final bool ar; final VoidCallback onTap;
-  const _ReciterCard({required this.reciter, required this.ar, required this.onTap});
-  @override Widget build(BuildContext context) => Card(clipBehavior: Clip.antiAlias, child: InkWell(onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-    Expanded(child: reciter.photo.isEmpty ? const Icon(Icons.person, size: 56) : Image.network(reciter.photo, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 56))),
-    Padding(padding: const EdgeInsets.all(8), child: Text(reciter.name(ar), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
-  ])));
+  final Way2QuranReciter reciter;
+  final bool ar;
+  final VoidCallback onTap;
+  final VoidCallback? onFavoriteToggle;
+
+  const _ReciterCard({
+    required this.reciter,
+    required this.ar,
+    required this.onTap,
+    this.onFavoriteToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: Stack(
+      children: [
+        Positioned.fill(
+          child: InkWell(
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: reciter.photo.isEmpty
+                      ? const Icon(Icons.person, size: 56)
+                      : Image.network(
+                          reciter.photo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.person, size: 56),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    reciter.name(ar),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (onFavoriteToggle != null)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Material(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: ar ? 'إزالة من المفضلة' : 'Remove from favorites',
+                onPressed: onFavoriteToggle,
+                icon: Icon(
+                  Icons.favorite_rounded,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class Way2QuranSearchScreen extends StatefulWidget {
@@ -562,6 +622,10 @@ class _Way2QuranFavoritesScreenState extends State<Way2QuranFavoritesScreen> {
                       builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
                     ),
                   );
+                  if (mounted) setState(() => future = _load());
+                },
+                onFavoriteToggle: () async {
+                  await Way2QuranFavorites.toggle(reciter.slug);
                   if (mounted) setState(() => future = _load());
                 },
               );
