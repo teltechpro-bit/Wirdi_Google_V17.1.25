@@ -305,6 +305,28 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     }
   }
 
+  Future<void> _playDownloadedRecitation(Way2QuranRecitationAudio rec, bool ar) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/way2quran/recitations/${rec.slug}.mp3');
+      if (!await file.exists() || await file.length() == 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(ar ? 'نزّل التلاوة أولًا للاستماع دون إنترنت' : 'Download this recitation first for offline playback')),
+          );
+        }
+        return;
+      }
+      await quranAudio.playExternalFile(file.path, title: rec.name(ar));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ar ? 'تعذر تشغيل التلاوة المحفوظة' : 'Could not play the downloaded recitation')),
+        );
+      }
+    }
+  }
+
   late Future<Way2QuranReciter> future; int selected = 0;
   String? _playingUrl; bool _loadingAudio = false;
   @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); }
@@ -340,7 +362,11 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
           final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
           return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.surahName.isEmpty ? 'سورة ' + a.surahNumber.toString() : a.surahName), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
         }),
-        if (rec.downloadUrl.isNotEmpty) FilledButton.icon(onPressed: _downloading ? null : () => _downloadRecitation(rec, ar), icon: _downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download), label: Text(ar ? 'تنزيل التلاوة' : 'Download Recitation')),
+        if (rec.downloadUrl.isNotEmpty) Row(children: [
+          Expanded(child: FilledButton.icon(onPressed: _downloading ? null : () => _downloadRecitation(rec, ar), icon: _downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download), label: Text(ar ? 'تنزيل التلاوة' : 'Download Recitation'))),
+          const SizedBox(width: 8),
+          Expanded(child: OutlinedButton.icon(onPressed: () => _playDownloadedRecitation(rec, ar), icon: const Icon(Icons.offline_pin_rounded), label: Text(ar ? 'تشغيل دون إنترنت' : 'Play offline'))),
+        ]),
         const SizedBox(height: 10),
         OutlinedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranMushafScreen())), icon: const Icon(Icons.menu_book_rounded), label: Text(ar ? 'المصاحف' : 'Mushaf Library')),
       ]);
