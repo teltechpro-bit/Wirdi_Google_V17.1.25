@@ -54,6 +54,38 @@ void main() {
       }
     });
 
+    test('normalizes API status casing and whitespace', () {
+      expect(
+        () => Way2QuranRepository.unwrapApiData({
+          'status': '  ERROR ',
+          'message': 'Temporary outage',
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Temporary outage'),
+          ),
+        ),
+      );
+    });
+
+    test('uses the API error field when message is absent', () {
+      expect(
+        () => Way2QuranRepository.unwrapApiData({
+          'status': 'error',
+          'error': 'Invalid recitation',
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Invalid recitation'),
+          ),
+        ),
+      );
+    });
+
     test('preserves legacy unwrapped responses', () {
       final legacy = {'reciters': [{'slug': 'legacy-reader'}]};
       expect(Way2QuranRepository.unwrapApiData(legacy), same(legacy));
