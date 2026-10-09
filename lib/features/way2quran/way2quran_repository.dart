@@ -63,7 +63,7 @@ class Way2QuranRepository {
       'pageSize': '$pageSize',
     });
     final response = await _getJson(uri);
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final raw = _listPayload(payload, 'reciters', fallback: response);
     final pagination = response is Map && response['pagination'] is Map
         ? response['pagination']
@@ -88,7 +88,7 @@ class Way2QuranRepository {
     }
     final response =
         await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     List<dynamic> list(String key) =>
         _listPayload(payload, key, fallback: response);
     return Way2QuranSearchResults(
@@ -113,7 +113,7 @@ class Way2QuranRepository {
             '$baseUrl/reciters/reciter-profile/${Uri.encodeComponent(slug)}')
         .replace(queryParameters: {'increaseViews': '$increaseViews'});
     final response = await _getJson(uri);
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final value = payload is Map && payload['reciter'] is Map
         ? payload['reciter']
         : payload;
@@ -123,7 +123,7 @@ class Way2QuranRepository {
   Future<Way2QuranReciter> getReciterInfo(String slug) async {
     final response = await _getJson(
         Uri.parse('$baseUrl/reciters/${Uri.encodeComponent(slug)}'));
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final value = payload is Map && payload['reciter'] is Map
         ? payload['reciter']
         : payload;
@@ -132,7 +132,7 @@ class Way2QuranRepository {
 
   Future<List<Way2QuranRecitation>> getRecitations() async {
     final response = await _getJson(Uri.parse('$baseUrl/recitations'));
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final raw = _listPayload(payload, 'recitations', fallback: response);
     return raw.whereType<Map>().map((e) =>
         Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e))).toList();
@@ -141,7 +141,7 @@ class Way2QuranRepository {
   Future<Way2QuranRecitation> getRecitation(String slug) async {
     final response = await _getJson(
         Uri.parse('$baseUrl/recitations/${Uri.encodeComponent(slug)}'));
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final value = payload is Map && payload['recitation'] is Map
         ? payload['recitation']
         : payload;
@@ -152,7 +152,7 @@ class Way2QuranRepository {
     final response = await _getJson(
         Uri.parse('$baseUrl/surah/${Uri.encodeComponent(slug)}')
             .replace(queryParameters: {'selectField': select}));
-    return _unwrap(response);
+    return unwrapApiData(response);
   }
 
   Future<dynamic> getSurahs() async =>
@@ -160,7 +160,7 @@ class Way2QuranRepository {
 
   Future<List<Way2QuranMushaf>> getMushafs() async {
     final response = await _getJson(Uri.parse('$baseUrl/mushaf'));
-    final payload = _unwrap(response);
+    final payload = unwrapApiData(response);
     final raw = _listPayload(payload, 'mushafs', fallback: response);
     return raw.whereType<Map>().map((e) =>
         Way2QuranMushaf.fromJson(Map<String, dynamic>.from(e))).toList();
