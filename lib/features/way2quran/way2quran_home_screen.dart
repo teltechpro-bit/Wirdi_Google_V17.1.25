@@ -10,6 +10,7 @@ import 'way2quran_web_screen.dart';
 import 'way2quran_favorites.dart';
 import 'way2quran_downloads_screen.dart';
 import 'way2quran_playlists_screen.dart';
+import 'way2quran_storage.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 
@@ -360,9 +361,9 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     try {
       final bytes = await Way2QuranRepository().downloadBytes(rec.downloadUrl);
       final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory(dir.path + '/way2quran/recitations');
+      final folder = Directory('${dir.path}/${Way2QuranStorage.recitationsRelativePath}');
       await folder.create(recursive: true);
-      final file = File(folder.path + '/' + rec.slug + '.mp3');
+      final file = File(Way2QuranStorage.recitationFilePath(dir.path, rec.slug));
       await file.writeAsBytes(bytes, flush: true);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
     } catch (_) {
@@ -375,7 +376,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   Future<void> _playDownloadedRecitation(Way2QuranRecitationAudio rec, bool ar) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/way2quran/recitations/${rec.slug}.mp3');
+      final file = File(Way2QuranStorage.recitationFilePath(dir.path, rec.slug));
       if (!await file.exists() || await file.length() == 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
