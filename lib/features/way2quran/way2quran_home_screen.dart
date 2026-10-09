@@ -486,10 +486,24 @@ class _Way2QuranFavoritesScreenState extends State<Way2QuranFavoritesScreen> {
   Future<List<Way2QuranReciter>> _load() async {
     final slugs = await Way2QuranFavorites.all();
     if (slugs.isEmpty) return <Way2QuranReciter>[];
+
+    // A single stale reciter or failed endpoint should not hide every other
+    // favorite. Keep successful profiles visible and report an error only if
+    // all requests fail.
     final results = await Future.wait(
-      slugs.map((slug) => repo.getReciter(slug, increaseViews: false)),
+      slugs.map((slug) async {
+        try {
+          return await repo.getReciter(slug, increaseViews: false);
+        } catch (_) {
+          return null;
+        }
+      }),
     );
-    return results;
+    final reciters = results.whereType<Way2QuranReciter>().toList();
+    if (reciters.isEmpty) {
+      throw Exception('Could not load any favorite reciter profiles');
+    }
+    return reciters;
   }
 
   @override
