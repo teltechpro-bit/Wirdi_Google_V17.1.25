@@ -32,5 +32,32 @@ void main() {
 
       expect(await Way2QuranFavorites.all(), ['reader-b']);
     });
+
+    test('trims slugs and ignores empty slugs', () async {
+      expect(await Way2QuranFavorites.toggle('  reader-a  '), isTrue);
+      expect(await Way2QuranFavorites.contains(' reader-a '), isTrue);
+      expect(await Way2QuranFavorites.toggle('   '), isFalse);
+      expect(await Way2QuranFavorites.contains(''), isFalse);
+      expect(await Way2QuranFavorites.all(), ['reader-a']);
+    });
+
+    test('repairs duplicate and blank legacy storage entries', () async {
+      SharedPreferences.setMockInitialValues({
+        'way2quran.favorite_reciter_slugs': [
+          'reader-a',
+          'reader-a',
+          ' ',
+          'reader-b',
+          ' reader-b ',
+        ],
+      });
+
+      expect(await Way2QuranFavorites.all(), ['reader-a', 'reader-b']);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getStringList('way2quran.favorite_reciter_slugs'),
+        ['reader-a', 'reader-b'],
+      );
+    });
   });
 }
