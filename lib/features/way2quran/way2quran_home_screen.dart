@@ -6,26 +6,23 @@ import 'way2quran_read_listen_screen.dart';
 import 'way2quran_mushaf_screen.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'way2quran_web_screen.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 
-Future<void> _openWay2QuranWebsite(BuildContext context, String url, bool ar) async {
-  final uri = Uri.parse(url);
-  try {
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ar ? 'تعذر فتح موقع Way2Quran' : 'Could not open the Way2Quran website')),
-      );
-    }
-  } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ar ? 'تعذر فتح موقع Way2Quran' : 'Could not open the Way2Quran website')),
-      );
-    }
-  }
+void _openWay2QuranWebsite(BuildContext context, String url, bool ar) {
+  final radio = url.contains('/radio');
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => Way2QuranWebScreen(
+        title: radio
+            ? (ar ? 'إذاعة القرآن الكريم' : 'Quran Radio')
+            : (ar ? 'مكتبة Way2Quran' : 'Way2Quran Library'),
+        url: url,
+      ),
+    ),
+  );
 }
 
 class Way2QuranHomeScreen extends StatefulWidget {
