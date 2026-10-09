@@ -265,7 +265,12 @@ class FamilyKhatmaService {
     final ref = _col.doc(code);
     try {
       final snap = await ref.get();
+      if (!snap.exists) throw const FamilyKhatmaException('notFound');
       final data = snap.data() ?? <String, dynamic>{};
+      final memberUidsRaw = data['memberUids'];
+      if (memberUidsRaw is! List || !memberUidsRaw.contains(user.uid)) {
+        throw const FamilyKhatmaException('notFound');
+      }
       final claims = data['claims'];
       final updates = <String, dynamic>{};
       if (claims is Map) {
