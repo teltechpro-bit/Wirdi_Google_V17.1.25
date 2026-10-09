@@ -334,11 +334,12 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
   final search = TextEditingController();
   late Future<Way2QuranRecitersPage> future;
   String recitationSlug = '';
+  bool topOnly = false;
   String sort = 'arabicName';
   int page = 1;
   late Future<List<Way2QuranRecitation>> recitationsFuture;
   @override void initState() { super.initState(); future = _fetch(); recitationsFuture = repo.getRecitations(); }
-  Future<Way2QuranRecitersPage> _fetch() => repo.getRecitersPage(recitationSlug: recitationSlug, search: search.text.trim(), sort: sort, page: page, pageSize: 50);
+  Future<Way2QuranRecitersPage> _fetch() => repo.getRecitersPage(recitationSlug: recitationSlug, isTopReciter: topOnly ? 'true' : '', search: search.text.trim(), sort: sort, page: page, pageSize: 50);
   void _load({int? nextPage}) => setState(() { if (nextPage != null) page = nextPage; future = _fetch(); });
   @override void dispose() { search.dispose(); super.dispose(); }
   @override Widget build(BuildContext context) {
@@ -346,7 +347,9 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
     return Scaffold(appBar: AppBar(title: Text(ar ? 'كل القراء' : 'All Reciters')), body: Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(16,16,16,8), child: TextField(controller: search, onSubmitted: (_) => _load(nextPage: 1), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ...' : 'Search by name...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: () => _load(nextPage: 1), icon: const Icon(Icons.search)), border: const OutlineInputBorder()))),
       SizedBox(height: 48, child: ListView(padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal, children: [
-        ChoiceChip(label: Text(ar ? 'كل الروايات' : 'All Riwayat'), selected: recitationSlug.isEmpty, onSelected: (_) { recitationSlug = ''; _load(nextPage: 1); }),
+        ChoiceChip(label: Text(ar ? 'كل القراء' : 'All reciters'), selected: recitationSlug.isEmpty && !topOnly, onSelected: (_) { recitationSlug = ''; topOnly = false; _load(nextPage: 1); }),
+        Padding(padding: const EdgeInsetsDirectional.only(start: 8), child: ChoiceChip(label: Text(ar ? 'القراء المميزون' : 'Top reciters'), selected: topOnly, onSelected: (_) { topOnly = !topOnly; _load(nextPage: 1); })),
+        Padding(padding: const EdgeInsetsDirectional.only(start: 8), child: ChoiceChip(label: Text(ar ? 'كل الروايات' : 'All Riwayat'), selected: recitationSlug.isEmpty, onSelected: (_) { recitationSlug = ''; _load(nextPage: 1); })),
         FutureBuilder<List<Way2QuranRecitation>>(future: recitationsFuture, builder: (context, snapshot) => Row(children: (snapshot.data ?? const <Way2QuranRecitation>[]).map((r) => Padding(padding: const EdgeInsetsDirectional.only(start: 8), child: ChoiceChip(label: Text(r.name(ar)), selected: recitationSlug == r.slug, onSelected: (_) { recitationSlug = r.slug; _load(nextPage: 1); }))).toList())),
       ])),
       Padding(padding: const EdgeInsets.fromLTRB(16,4,16,8), child: Row(children: [
