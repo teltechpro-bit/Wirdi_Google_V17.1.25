@@ -351,7 +351,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
       if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
         await quranAudio.pause();
       } else {
-        await quranAudio.playExternalUrl(url, title: audio.surahName.isEmpty ? 'Surah ' + audio.surahNumber.toString() : audio.surahName);
+        await quranAudio.playExternalUrl(url, title: audio.name(ar));
       }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تشغيل الملف الصوتي' : 'Could not play this audio file')));
@@ -372,7 +372,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         ...rec.audioFiles.map((a) {
           final url = a.url.isNotEmpty ? a.url : a.downloadUrl;
           final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
-          return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.surahName.isEmpty ? 'سورة ' + a.surahNumber.toString() : a.surahName), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
+          return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.name(ar)), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
         }),
         if (rec.downloadUrl.isNotEmpty) Row(children: [
           Expanded(child: FilledButton.icon(onPressed: _downloading ? null : () => _downloadRecitation(rec, ar), icon: _downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download), label: Text(ar ? 'تنزيل التلاوة' : 'Download Recitation'))),
