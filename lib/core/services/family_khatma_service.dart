@@ -269,11 +269,25 @@ class FamilyKhatmaService {
       final claims = data['claims'];
       final updates = <String, dynamic>{};
       if (claims is Map) {
-        claims.forEach((k, v) {
-          if (v is Map && v['uid'] == user.uid && v['done'] != true) {
-            updates['claims.$k'] = FieldValue.delete();
-          }
-        });
+        // Current schema stores claims by member UID, with each member's
+        // assigned juz' under claims[uid]['juzs']. Keep completed juz' and
+        // release only unfinished assignments before removing membership.
+        final mine = claims[user.uid];
+        if (mine is Map && mine['juzs'] is Map) {
+          (mine['juzs'] as Map).forEach((juzKey, doneValue) {
+            if (doneValue != true) {
+              updates['claims.$user.uid.juzs.$juzKey'] = FieldValue.delete();
+            }
+          });
+        } else {
+          // Backward compatibility for documents created with the legacy
+          // flat {juz: {uid, done}} schema.
+          claims.forEach((k, v) {
+            if (v is Map && v['uid'] == user.uid && v['done'] != true) {
+              updates['claims.$k'] = FieldValue.delete();
+            }
+          });
+        }
       }
       final memberUids = (data['memberUids'] is List) ? List<String>.from(data['memberUids'] as List) : <String>[];
       final remaining = memberUids.where((m) => m != user.uid).toList();
