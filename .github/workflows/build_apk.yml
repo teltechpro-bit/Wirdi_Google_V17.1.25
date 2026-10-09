@@ -20,6 +20,7 @@ jobs:
       - name: Probe live Way2Quran API (read-only)
         shell: bash
         run: |
+          exec > >(tee -a /tmp/way2quran-probe.txt) 2>&1
           set +e
           for url in \
             "https://way2quran.com/api/reciters?pageSize=1&currentPage=1" \
@@ -37,6 +38,13 @@ jobs:
             fi
           done
 
+      - name: Upload API probe results immediately
+        uses: actions/upload-artifact@v4
+        with:
+          name: way2quran-api-probe
+          path: /tmp/way2quran-probe.txt
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Free up runner disk space (remove unused preinstalled toolchains)
         run: |
