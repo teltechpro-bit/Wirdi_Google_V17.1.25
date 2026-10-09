@@ -25,6 +25,35 @@ void main() {
       expect((result as Map)['recitations'], hasLength(1));
     });
 
+    test('throws a useful error for explicit API error envelopes', () {
+      expect(
+        () => Way2QuranRepository.unwrapApiData({
+          'status': 'error',
+          'message': 'Reciter not found',
+          'data': null,
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Reciter not found'),
+          ),
+        ),
+      );
+    });
+
+    test('handles failed status spelling variants', () {
+      for (final status in ['failed', 'failure']) {
+        expect(
+          () => Way2QuranRepository.unwrapApiData({
+            'status': status,
+            'message': 'Request rejected',
+          }),
+          throwsFormatException,
+        );
+      }
+    });
+
     test('preserves legacy unwrapped responses', () {
       final legacy = {'reciters': [{'slug': 'legacy-reader'}]};
       expect(Way2QuranRepository.unwrapApiData(legacy), same(legacy));
