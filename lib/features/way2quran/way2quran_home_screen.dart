@@ -6,8 +6,27 @@ import 'way2quran_read_listen_screen.dart';
 import 'way2quran_mushaf_screen.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
+
+Future<void> _openWay2QuranWebsite(BuildContext context, String url, bool ar) async {
+  final uri = Uri.parse(url);
+  try {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ar ? 'تعذر فتح موقع Way2Quran' : 'Could not open the Way2Quran website')),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ar ? 'تعذر فتح موقع Way2Quran' : 'Could not open the Way2Quran website')),
+      );
+    }
+  }
+}
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
@@ -138,6 +157,10 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         _ExploreCard(icon: Icons.menu_book_rounded, title: ar ? 'دليل الروايات' : 'Riwayat Directory', subtitle: ar ? 'استكشف طرق الأداء والروايات المتاحة' : 'Explore the available riwayat and transmission paths', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RiwayatDirectoryScreen()))),
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.picture_as_pdf_rounded, title: ar ? 'مكتبة المصاحف' : 'Mushaf Library', subtitle: ar ? 'استكشف المصاحف المتاحة ونزّلها داخل Wirdi' : 'Explore available Mushafs and download them inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranMushafScreen()))),
+        const SizedBox(height: 12),
+        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى محطات القرآن الرسمية من Way2Quran' : 'Listen to official Way2Quran Quran radio stations', onTap: () => _openWay2QuranWebsite(context, ar ? 'https://way2quran.com/ar/radio' : 'https://way2quran.com/en/radio', ar)),
+        const SizedBox(height: 12),
+        _ExploreCard(icon: Icons.explore_rounded, title: ar ? 'اكتشف مكتبة Way2Quran كاملة' : 'Explore the full Way2Quran library', subtitle: ar ? 'قوائم التشغيل والمجموعات والميزات الجديدة من الموقع الرسمي' : 'Curated playlists, collections and new features on the official site', onTap: () => _openWay2QuranWebsite(context, ar ? 'https://way2quran.com/ar' : 'https://way2quran.com/en', ar)),
       ]),
     );
   }
