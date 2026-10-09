@@ -23,9 +23,11 @@ service cloud.firestore {
                     && request.resource.data.memberUids.size() == 1
                     && request.resource.data.memberUids[0] == request.auth.uid
                     && request.resource.data.members is map
-                    && request.resource.data.members.keys().hasAll([request.auth.uid])
+                    && request.resource.data.members.keys().hasOnly([request.auth.uid])
+                    && request.resource.data.members[request.auth.uid] is string
                     && request.resource.data.rounds == 1
-                    && request.resource.data.claims is map;
+                    && request.resource.data.claims is map
+                    && request.resource.data.claims.size() == 0;
 
       allow update: if signedIn()
                     && request.resource.data.ownerUid == resource.data.ownerUid
@@ -51,6 +53,11 @@ service cloud.firestore {
                         && (
                           request.resource.data.members == resource.data.members
                           || request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+                        )
+                        && (
+                          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['claims'])
+                          || resource.data.ownerUid == request.auth.uid
+                          || request.resource.data.claims.diff(resource.data.claims).affectedKeys().hasOnly([request.auth.uid])
                         )
                       )
                       ||
