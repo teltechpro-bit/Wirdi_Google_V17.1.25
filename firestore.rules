@@ -44,6 +44,7 @@ service cloud.firestore {
                           || (
                             request.resource.data.memberUids is list
                             && request.resource.data.memberUids.size() == resource.data.memberUids.size() - 1
+                            && resource.data.memberUids.hasAll(request.resource.data.memberUids)
                             && !(request.auth.uid in request.resource.data.memberUids)
                           )
                         )
