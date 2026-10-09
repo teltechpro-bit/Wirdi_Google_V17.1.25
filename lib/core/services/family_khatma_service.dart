@@ -36,31 +36,28 @@ class FamilyKhatma {
     final data = doc.data() ?? <String, dynamic>{};
     final members = <String, String>{};
     final rawMembers = data['members'];
-    if (rawMembers is Map) {
-      rawMembers.forEach((k, v) => members[k.toString()] = v.toString());
-    }
+    if (rawMembers is Map) rawMembers.forEach((k, v) => members[k.toString()] = v.toString());
     final claims = <int, JuzClaim>{};
     final rawClaims = data['claims'];
     if (rawClaims is Map) {
-      rawClaims.forEach((k, v) {
-        final juz = int.tryParse(k.toString());
-        if (juz == null || v is! Map) return;
-        claims[juz] = JuzClaim(
-          juz: juz,
-          uid: (v['uid'] ?? '').toString(),
-          name: (v['name'] ?? '').toString(),
-          done: v['done'] == true,
-        );
+      rawClaims.forEach((key, value) {
+        if (value is Map && value['juzs'] is Map) {
+          final uid = key.toString();
+          final name = (value['name'] ?? members[uid] ?? 'Member').toString();
+          (value['juzs'] as Map).forEach((juzKey, doneValue) {
+            final juz = int.tryParse(juzKey.toString());
+            if (juz == null || juz < 1 || juz > 30) return;
+            claims[juz] = JuzClaim(juz: juz, uid: uid, name: name, done: doneValue == true);
+          });
+          return;
+        }
+        final juz = int.tryParse(key.toString());
+        if (juz == null || value is! Map || juz < 1 || juz > 30) return;
+        claims[juz] = JuzClaim(juz: juz, uid: (value['uid'] ?? '').toString(), name: (value['name'] ?? '').toString(), done: value['done'] == true);
       });
     }
-    return FamilyKhatma(
-      code: doc.id,
-      name: (data['name'] ?? '').toString(),
-      ownerUid: (data['ownerUid'] ?? '').toString(),
-      rounds: (data['rounds'] is int) ? data['rounds'] as int : 1,
-      members: members,
-      claims: claims,
-    );
+    return FamilyKhatma(code: doc.id, name: (data['name'] ?? '').toString(), ownerUid: (data['ownerUid'] ?? '').toString(),
+      rounds: (data['rounds'] is int) ? data['rounds'] as int : 1, members: members, claims: claims);
   }
 }
 
@@ -180,63 +177,67 @@ class FamilyKhatmaService {
 
   Future<void> claim(String code, int juz) async {
     final user = _requireUser();
+    if (juz < 1 || juz > 30) throw const FamilyKhatmaException('failed');
     final ref = _col.doc(code);
     try {
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snap = await tx.get(ref);
-        final data = snap.data() ?? <String, dynamic>{};
-        final claims = data['claims'];
-        if (claims is Map) {
-          final existing = claims['$juz'];
-          if (existing is Map && existing['uid'] != user.uid) {
-            throw const FamilyKhatmaException('taken');
+        if (!snap.exists) throw const FamilyKhatmaException('notFound');
+        final rawClaims = (snap.data() ?? <String, dynamic>{})['claims'];
+        if (rawClaims is Map) {
+          for (final entry in rawClaims.entries) {
+            final claimUid = entry.key.toString(), value = entry.value;
+            if (value is Map && value['juzs'] is Map) {
+              if ((value['juzs'] as Map).containsKey('$juz') && claimUid != user.uid) throw const FamilyKhatmaException('taken');
+            } else if (claimUid == '$juz' && value is Map && value['uid']?.toString() != user.uid) {
+              throw const FamilyKhatmaException('taken');
+            }
           }
         }
+        final existingMine = rawClaims is Map ? rawClaims[user.uid] : null;
+        final mergedJuzs = <String, dynamic>{};
+        if (existingMine is Map && existingMine['juzs'] is Map) {
+          (existingMine['juzs'] as Map).forEach((key, value) {
+            mergedJuzs[key.toString()] = value == true;
+          });
+        }
+        mergedJuzs[juz.toString()] = false;
         tx.update(ref, <String, dynamic>{
-          'claims.$juz': <String, dynamic>{'uid': user.uid, 'name': _displayName, 'done': false},
+          'claims.' + user.uid: <String, dynamic>{
+            'name': _displayName,
+            'juzs': mergedJuzs,
+          },
         });
       });
-    } catch (e) {
-      _rethrow(e);
-    }
+    } catch (e) { _rethrow(e); }
   }
 
   Future<void> release(String code, int juz) async {
-    final user = _requireUser();
-    final ref = _col.doc(code);
+    final user = _requireUser(); final ref = _col.doc(code);
     try {
       await FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(ref);
+        final snap = await tx.get(ref); if (!snap.exists) throw const FamilyKhatmaException('notFound');
         final claims = (snap.data() ?? <String, dynamic>{})['claims'];
-        if (claims is Map) {
-          final existing = claims['$juz'];
-          if (existing is Map && existing['uid'] == user.uid) {
-            tx.update(ref, <String, dynamic>{'claims.$juz': FieldValue.delete()});
-          }
+        final mine = claims is Map ? claims[user.uid] : null;
+        if (mine is Map && mine['juzs'] is Map && (mine['juzs'] as Map).containsKey('$juz')) {
+          tx.update(ref, <String, dynamic>{'claims.' + user.uid + '.juzs.' + juz.toString(): FieldValue.delete()});
         }
       });
-    } catch (e) {
-      _rethrow(e);
-    }
+    } catch (e) { _rethrow(e); }
   }
 
   Future<void> setDone(String code, int juz, bool done) async {
-    final user = _requireUser();
-    final ref = _col.doc(code);
+    final user = _requireUser(); final ref = _col.doc(code);
     try {
       await FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(ref);
+        final snap = await tx.get(ref); if (!snap.exists) throw const FamilyKhatmaException('notFound');
         final claims = (snap.data() ?? <String, dynamic>{})['claims'];
-        if (claims is Map) {
-          final existing = claims['$juz'];
-          if (existing is Map && existing['uid'] == user.uid) {
-            tx.update(ref, <String, dynamic>{'claims.$juz.done': done});
-          }
+        final mine = claims is Map ? claims[user.uid] : null;
+        if (mine is Map && mine['juzs'] is Map && (mine['juzs'] as Map).containsKey('$juz')) {
+          tx.update(ref, <String, dynamic>{'claims.' + user.uid + '.juzs.' + juz.toString(): done});
         }
       });
-    } catch (e) {
-      _rethrow(e);
-    }
+    } catch (e) { _rethrow(e); }
   }
 
   /// Owner only: clears all claims and starts the next round.
@@ -276,9 +277,14 @@ class FamilyKhatmaService {
       }
       final memberUids = (data['memberUids'] is List) ? List<String>.from(data['memberUids'] as List) : <String>[];
       final remaining = memberUids.where((m) => m != user.uid).toList();
-      if (remaining.isEmpty && data['ownerUid'] == user.uid) {
-        await ref.delete();
-        return;
+      if (data['ownerUid'] == user.uid) {
+        if (remaining.isEmpty) {
+          await ref.delete();
+          return;
+        }
+        // Do not leave a live group without an owner. Ownership transfer is
+        // intentionally explicit rather than silently choosing another member.
+        throw const FamilyKhatmaException('notOwner');
       }
       if (updates.isNotEmpty) {
         // Claims first (rule: members may edit only claims/rounds in one write).
