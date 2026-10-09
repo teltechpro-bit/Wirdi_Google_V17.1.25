@@ -7,6 +7,7 @@ import 'way2quran_mushaf_screen.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'way2quran_web_screen.dart';
+import 'way2quran_favorites.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 
@@ -149,6 +150,8 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           },
         ),
         const SizedBox(height: 16),
+        _ExploreCard(icon: Icons.favorite_rounded, title: ar ? 'القراء المفضلون' : 'Favorite Reciters', subtitle: ar ? 'احتفظ بقرائك المفضلين على هذا الجهاز' : 'Save your favorite reciters on this device', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranFavoritesScreen()))),
+        const SizedBox(height: 12),
         _ExploreCard(icon: Icons.auto_stories_rounded, title: ar ? 'القراءات العشر المتواترة' : 'The Ten Mutawatir Qira’at', subtitle: ar ? 'الوصول السريع إلى دليل القراءات والروايات' : 'Quick access to the Qira’at and Riwayat directory', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TenQiraatScreen()))),
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.menu_book_rounded, title: ar ? 'دليل الروايات' : 'Riwayat Directory', subtitle: ar ? 'استكشف طرق الأداء والروايات المتاحة' : 'Explore the available riwayat and transmission paths', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RiwayatDirectoryScreen()))),
@@ -283,6 +286,7 @@ class Way2QuranReciterScreen extends StatefulWidget {
   @override State<Way2QuranReciterScreen> createState() => _Way2QuranReciterScreenState();
 }
 class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
+  bool _isFavorite = false;
   bool _downloading = false;
   Future<void> _downloadRecitation(Way2QuranRecitationAudio rec, bool ar) async {
     if (rec.downloadUrl.isEmpty) return;
@@ -326,7 +330,18 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
 
   late Future<Way2QuranReciter> future; int selected = 0;
   String? _playingUrl; bool _loadingAudio = false;
-  @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); }
+  @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); _loadFavorite(); }
+  Future<void> _loadFavorite() async {
+    final value = await Way2QuranFavorites.contains(widget.reciterSlug);
+    if (mounted) setState(() => _isFavorite = value);
+  }
+  Future<void> _toggleFavorite(bool ar) async {
+    final value = await Way2QuranFavorites.toggle(widget.reciterSlug);
+    if (mounted) {
+      setState(() => _isFavorite = value);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value ? (ar ? 'أُضيف القارئ إلى المفضلة' : 'Added to favorites') : (ar ? 'أُزيل القارئ من المفضلة' : 'Removed from favorites'))));
+    }
+  }
   Future<void> _play(Way2QuranAudioFile audio, bool ar) async {
     final url = audio.url.isNotEmpty ? audio.url : audio.downloadUrl;
     if (url.isEmpty) return;
@@ -344,7 +359,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   }
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
-    return Scaffold(appBar: AppBar(title: Text(ar ? 'القارئ' : 'Reciter')), body: FutureBuilder<Way2QuranReciter>(future: future, builder: (context, snapshot) {
+    return Scaffold(appBar: AppBar(title: Text(ar ? 'القارئ' : 'Reciter'), actions: [IconButton(tooltip: ar ? 'المفضلة' : 'Favorites', onPressed: () => _toggleFavorite(ar), icon: Icon(_isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded))]), body: FutureBuilder<Way2QuranReciter>(future: future, builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
       if (snapshot.hasError) return Center(child: Text(ar ? 'تعذر تحميل بيانات القارئ' : 'Could not load reciter'));
       final r = snapshot.data!; if (r.recitations.isEmpty) return Center(child: Text(ar ? 'لا توجد روايات' : 'No recitations'));
@@ -447,5 +462,99 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         ]);
       })),
     ]));
+  }
+}
+
+
+class Way2QuranFavoritesScreen extends StatefulWidget {
+  const Way2QuranFavoritesScreen({super.key});
+
+  @override
+  State<Way2QuranFavoritesScreen> createState() => _Way2QuranFavoritesScreenState();
+}
+
+class _Way2QuranFavoritesScreenState extends State<Way2QuranFavoritesScreen> {
+  final repo = Way2QuranRepository();
+  late Future<List<Way2QuranReciter>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = _load();
+  }
+
+  Future<List<Way2QuranReciter>> _load() async {
+    final slugs = await Way2QuranFavorites.all();
+    if (slugs.isEmpty) return <Way2QuranReciter>[];
+    final results = await Future.wait(
+      slugs.map((slug) => repo.getReciter(slug, increaseViews: false)),
+    );
+    return results;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ar = Localizations.localeOf(context).languageCode == 'ar';
+    final width = MediaQuery.sizeOf(context).width;
+    return Scaffold(
+      appBar: AppBar(title: Text(ar ? 'القراء المفضلون' : 'Favorite Reciters')),
+      body: FutureBuilder<List<Way2QuranReciter>>(
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: FilledButton.icon(
+                onPressed: () => setState(() => future = _load()),
+                icon: const Icon(Icons.refresh),
+                label: Text(ar ? 'إعادة المحاولة' : 'Retry'),
+              ),
+            );
+          }
+          final reciters = snapshot.data ?? const <Way2QuranReciter>[];
+          if (reciters.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  ar
+                      ? 'لم تضف أي قارئ للمفضلة بعد. افتح صفحة أي قارئ واضغط على رمز القلب.'
+                      : 'No favorite reciters yet. Open a reciter profile and tap the heart icon.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: width >= 1100 ? 5 : width >= 900 ? 4 : width >= 600 ? 3 : 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: .82,
+            ),
+            itemCount: reciters.length,
+            itemBuilder: (context, index) {
+              final reciter = reciters[index];
+              return _ReciterCard(
+                reciter: reciter,
+                ar: ar,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
+                    ),
+                  );
+                  if (mounted) setState(() => future = _load());
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 }
