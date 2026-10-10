@@ -56,6 +56,19 @@ void main() {
       );
     });
 
+    test('atomically replaces an existing cached file', () async {
+      final directory = await Directory.systemTemp.createTemp('wirdi-replace-test');
+      addTearDown(() => directory.delete(recursive: true));
+      final target = File('${directory.path}/translation.json');
+      await target.writeAsString('old');
+      await Way2QuranStorage.writeBytesAtomically(target, 'new'.codeUnits);
+      expect(await target.readAsString(), 'new');
+      expect(
+        directory.listSync().where((entity) => entity.path.endsWith('.part')),
+        isEmpty,
+      );
+    });
+
     test('refuses to persist empty download data', () async {
       final directory = await Directory.systemTemp.createTemp('wirdi-empty-download-test');
       addTearDown(() => directory.delete(recursive: true));
