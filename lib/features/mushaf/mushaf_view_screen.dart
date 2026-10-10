@@ -876,10 +876,20 @@ class _MushafPageViewState extends State<_MushafPageView> {
                   minHeight: minCardHeight > 0 ? minCardHeight : 0,
                   maxHeight: minCardHeight > 0 ? minCardHeight : double.infinity,
                 ),
+          // Visual-only Mushaf paper treatment: keep the existing ayah widgets,
+          // text, tajweed colors, audio highlighting, and page navigation intact.
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFFFFDF4),
+                const Color(0xFFF7F0D9),
+                const Color(0xFFFFFCF0),
+              ],
+            ),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AppColors.goldAccent.withValues(alpha: 0.5), width: 2),
+            border: Border.all(color: const Color(0xFFB99A52).withValues(alpha: 0.8), width: 2),
             boxShadow: [
               BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 10, offset: const Offset(0, 3)),
             ],
