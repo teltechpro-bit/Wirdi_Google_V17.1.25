@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Shared paths for Way2Quran audio stored in Wirdi's private app documents.
 class Way2QuranStorage {
   Way2QuranStorage._();
@@ -12,4 +14,26 @@ class Way2QuranStorage {
 
   static String recitationFilePath(String appDocumentsPath, String slug) =>
       '$appDocumentsPath/$recitationsRelativePath/${safeFileStem(slug)}.mp3';
+
+  /// Writes a completed download through a temporary file so interrupted
+  /// network or disk writes never appear as a finished library item.
+  static Future<File> writeBytesAtomically(File target, List<int> bytes) async {
+    if (bytes.isEmpty) {
+      throw const FormatException('Cannot save an empty download');
+    }
+    await target.parent.create(recursive: true);
+    final partial = File('${target.path}.${DateTime.now().microsecondsSinceEpoch}.part');
+    try {
+      await partial.writeAsBytes(bytes, flush: true);
+      if (await target.exists()) await target.delete();
+      return await partial.rename(target.path);
+    } catch (_) {
+      try {
+        if (await partial.exists()) await partial.delete();
+      } catch (_) {
+        // Keep the original write error.
+      }
+      rethrow;
+    }
+  }
 }
