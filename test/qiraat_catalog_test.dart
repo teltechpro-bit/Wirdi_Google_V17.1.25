@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:wirdi/core/data/qiraat_catalog.dart';
+import 'package:wirdi/core/models/riwayah_reader.dart';
 
 void main() {
   test('Qiraat catalog contains exactly ten readings and twenty riwayat', () {
@@ -32,3 +33,43 @@ void main() {
     expect(verifiedAyahIds.length, 2);
   });
 }
+
+  test('reader names fall back safely when Arabic localization is missing', () {
+    const reader = RiwayahReader(
+      id: 'reader-1',
+      name: 'Warsh Reader',
+      riwayahId: 'warsh',
+      source: 'test',
+      server: '',
+      surahs: <int>{1, 2, 114},
+    );
+
+    expect(reader.nameFor('ar'), 'Warsh Reader');
+    expect(reader.nameFor('en'), 'Warsh Reader');
+    expect(reader.supportsSurah(114), isTrue);
+    expect(reader.supportsSurah(3), isFalse);
+  });
+
+  test('reader uses Arabic display name only when it is non-empty', () {
+    const localized = RiwayahReader(
+      id: 'reader-2',
+      name: 'Warsh Reader',
+      nameAr: 'قارئ ورش',
+      riwayahId: 'warsh',
+      source: 'test',
+      server: '',
+      surahs: <int>{1},
+    );
+    const blankLocalized = RiwayahReader(
+      id: 'reader-3',
+      name: 'Warsh Reader',
+      nameAr: '  ',
+      riwayahId: 'warsh',
+      source: 'test',
+      server: '',
+      surahs: <int>{1},
+    );
+
+    expect(localized.nameFor('ar'), 'قارئ ورش');
+    expect(blankLocalized.nameFor('ar'), 'Warsh Reader');
+  });
