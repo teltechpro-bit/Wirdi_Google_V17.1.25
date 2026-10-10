@@ -100,6 +100,17 @@ class Way2QuranRepository {
     var parsed = raw.whereType<Map>().map((e) =>
         Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList();
 
+    if (search.trim().isNotEmpty) {
+      final needle = search.trim().toLowerCase();
+      parsed = parsed.where((reciter) {
+        final fields = <String>[
+          reciter.slug, reciter.nameAr, reciter.nameEn,
+          ...reciter.recitations.expand((r) => [r.slug, r.nameAr, r.nameEn]),
+        ];
+        return fields.any((field) => field.toLowerCase().contains(needle));
+      }).toList();
+    }
+
     // Some API deployments ignore the search query parameter. If that
     // happens, fetch the first broad page and filter names locally instead
     // of showing an empty result set for a valid search term.
