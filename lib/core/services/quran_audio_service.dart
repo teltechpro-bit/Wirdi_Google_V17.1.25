@@ -794,6 +794,38 @@ class QuranAudioService extends ChangeNotifier {
     required List<SurahModel> allSurahs,
   }) async {
     if (url.isEmpty) return;
+    await _playExternalSurahSource(
+      ja.AudioSource.uri(Uri.parse(url)),
+      url: url,
+      title: title,
+      surah: surah,
+      allSurahs: allSurahs,
+    );
+  }
+
+  Future<void> playExternalSurahFile(
+    String path, {
+    required String title,
+    required SurahModel surah,
+    required List<SurahModel> allSurahs,
+  }) async {
+    if (path.isEmpty) return;
+    await _playExternalSurahSource(
+      ja.AudioSource.file(path),
+      url: path,
+      title: title,
+      surah: surah,
+      allSurahs: allSurahs,
+    );
+  }
+
+  Future<void> _playExternalSurahSource(
+    ja.AudioSource source, {
+    required String url,
+    required String title,
+    required SurahModel surah,
+    required List<SurahModel> allSurahs,
+  }) async {
     await PlaybackCoordinator.stopRadioForQuran();
     _playToken++;
     _stopping = false;
@@ -820,7 +852,7 @@ class QuranAudioService extends ChangeNotifier {
     try {
       await _player.stop();
       await _player.setLoopMode(ja.LoopMode.off);
-      await _player.setAudioSource(ja.AudioSource.uri(Uri.parse(url)));
+      await _player.setAudioSource(source);
       await _player.setSpeed(playbackRate);
       unawaited(_player.play());
       isBuffering = false;
