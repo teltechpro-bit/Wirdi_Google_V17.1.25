@@ -193,7 +193,7 @@ class Way2QuranRepository {
       _request('GET', Uri.parse(
           '$baseUrl/mushaf/increment/${Uri.encodeComponent(slug)}'));
 
-  Future<List<int>> downloadBytes(String url) async {
+  /// Checks that a response is actually a PDF, not an HTML error page.\n  static bool isPdfPayload(List<int> bytes) =>\n      bytes.length >= 5 && String.fromCharCodes(bytes.take(5)) == '%PDF-';\n\n  Future<List<int>> downloadBytes(String url) async {
     if (url.isEmpty) throw Exception('Empty download URL');
     final uri = Uri.tryParse(url);
     if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
@@ -205,7 +205,7 @@ class Way2QuranRepository {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Download failed: ${response.statusCode}');
     }
-    return response.bodyBytes;
+    if (response.bodyBytes.isEmpty) {\n      throw const FormatException('Download returned an empty response');\n    }\n    return response.bodyBytes;
   }
 
   Future<dynamic> _getJson(Uri uri) async =>
