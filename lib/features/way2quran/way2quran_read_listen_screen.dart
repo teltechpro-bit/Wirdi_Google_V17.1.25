@@ -143,10 +143,13 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final audio = _audioFor(surah);
     final url = audio?.downloadUrl.isNotEmpty == true ? audio!.downloadUrl : audio?.url ?? '';
     if (url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة قابلة للتنزيل')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe() ? 'لا توجد تلاوة قابلة للتنزيل' : 'No downloadable audio is available for this selection.'),
+      ));
       return;
     }
     setState(() => downloading = true);
+    File? partial;
     try {
       final bytes = await repo.downloadBytes(url);
       final dir = await getApplicationDocumentsDirectory();
@@ -157,10 +160,25 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       final recitationSlug = selectedRecitation ?? 'recitation';
       final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
       final file = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
-      await file.writeAsBytes(bytes, flush: true);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
+      partial = File('${file.path}.part');
+      await partial!.writeAsBytes(bytes, flush: true);
+      if (await file.exists()) await file.delete();
+      await partial!.rename(file.path);
+      partial = null;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi'),
+        ));
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تنزيل التلاوة')));
+      try {
+        if (partial != null && await partial!.exists()) await partial!.delete();
+      } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(arSafe() ? 'تعذر تنزيل التلاوة' : 'Could not download the recitation.'),
+        ));
+      }
     } finally {
       if (mounted) setState(() => downloading = false);
     }
