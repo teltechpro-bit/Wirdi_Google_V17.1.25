@@ -36,7 +36,14 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
       appBar: AppBar(title: Text(ar ? 'وِرْدِي' : 'Wirdi'), centerTitle: false, actions: [
-        IconButton(onPressed: doSearch, icon: const Icon(Icons.search_rounded)),
+        IconButton(
+          tooltip: Localizations.localeOf(context).languageCode == 'ar' ? 'بحث شامل' : 'Global search',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim())),
+          ),
+          icon: const Icon(Icons.search_rounded),
+        ),
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Container(
