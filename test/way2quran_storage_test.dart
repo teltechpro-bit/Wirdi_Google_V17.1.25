@@ -16,5 +16,19 @@ void main() {
         '/app/documents/way2quran/recitations/reader-surah-001.mp3',
       );
     });
+
+    test('keeps API-derived filename inside the recitations folder', () {
+      expect(
+        Way2QuranStorage.recitationFilePath('/app/documents', '../../outside/evil'),
+        '/app/documents/way2quran/recitations/________outside_evil.mp3',
+      );
+    });
+
+    test('uses a safe fallback for an empty filename stem', () {
+      expect(
+        Way2QuranStorage.recitationFilePath('/app/documents', '   '),
+        '/app/documents/way2quran/recitations/recitation.mp3',
+      );
+    });
   });
 }
