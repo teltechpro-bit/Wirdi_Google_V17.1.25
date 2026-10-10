@@ -106,13 +106,17 @@ void main() {
           expect(request.url.queryParameters['currentPage'], '2');
           expect(request.url.queryParameters['pageSize'], '10');
           expect(request.url.queryParameters['sort'], '-totalViewers');
-          return http.Response(jsonEncode({
-            'status': 'success',
-            'data': {'reciters': [
-              {'slug': 'reader-one', 'arabicName': 'قارئ', 'englishName': 'Reader'}
-            ]},
-            'pagination': {'totalCount': 21, 'page': 2, 'pages': 3},
-          }), 200);
+          return http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'status': 'success',
+              'data': {'reciters': [
+                {'slug': 'reader-one', 'arabicName': 'قارئ', 'englishName': 'Reader'}
+              ]},
+              'pagination': {'totalCount': 21, 'page': 2, 'pages': 3},
+            })),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
         }),
       );
 

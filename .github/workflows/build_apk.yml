@@ -313,10 +313,8 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      # Non-blocking on purpose until the first green run: remove the
-      # continue-on-error line afterwards to make unit tests a hard gate.
+      # Unit tests are a required quality gate: failures must stop the build.
       - name: Unit tests
-        continue-on-error: true
         run: flutter test
 
       - name: Build debug APK
