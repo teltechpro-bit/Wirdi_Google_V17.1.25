@@ -517,7 +517,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     final same = _playingUrl == url;
     setState(() { _playingUrl = url; _loadingAudio = true; });
     try {
-      if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
+      if (same && !quranAudio.isPaused) {
         await quranAudio.pause();
       } else if (audio.surahNumber >= 1 && audio.surahNumber <= 114) {
         // This row is a full-surah recording. Give the shared player its
@@ -583,7 +583,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         const SizedBox(height: 12),
         ...rec.audioFiles.map((a) {
           final url = a.url.isNotEmpty ? a.url : a.downloadUrl;
-          final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
+          final playing = _playingUrl == url && !quranAudio.isPaused;
           return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.name(ar)), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
         }),
         if (rec.downloadUrl.isNotEmpty) Row(children: [
