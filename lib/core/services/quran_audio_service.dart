@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../data/app_sources.dart';
 import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
@@ -485,7 +486,11 @@ class QuranAudioService extends ChangeNotifier {
 
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
-    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
+    // Keep the original Wirdi reciter picker as the playback source for Hafs.
+    // This preserves its per-ayah CDN mapping and exact playlist-index highlighting;
+    // the Way2Quran/Qiraat reader catalog remains responsible for non-Hafs riwayat.
+    final useLegacyHafsReciter = qiraat.selectedRiwayahId == 'hafs';
+    final hasAyahAudio = useLegacyHafsReciter || qiraat.selectedReaderHasAyahAudio();
     final fullSurahOnly = !hasAyahAudio;
 
 
@@ -531,12 +536,14 @@ class QuranAudioService extends ChangeNotifier {
       for (var i = 0; i < ayahs.length; i++) {
         final globalNumber = _surahAyahOffset + ayahs[i];
         final localPath = localPaths[i];
-        final url = qiraat.ayahAudioUrl(
-          _surahNumber ?? 1,
-          ayahs[i],
-          globalNumber,
-          hafsEdition: appSettings.reciterId,
-        );
+        final url = useLegacyHafsReciter
+            ? AppSources.ayahAudioUrl(globalNumber, reciter: appSettings.reciterId)
+            : qiraat.ayahAudioUrl(
+                _surahNumber ?? 1,
+                ayahs[i],
+                globalNumber,
+                hafsEdition: appSettings.reciterId,
+              );
 
         if (localPath != null) {
           sources.add(ja.AudioSource.file(localPath));
