@@ -150,24 +150,64 @@ class Way2QuranRepository {
       return const Way2QuranSearchResults(
           reciters: [], recitations: [], surahs: []);
     }
-    final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q, 'query': q, 'search': q}));
-    final payload = unwrapApiData(response);
-    List<dynamic> list(String key) =>
-        _listPayload(payload, key, fallback: response);
+
+    try {
+      final response = await _getJson(
+        Uri.parse('$baseUrl/search').replace(
+          queryParameters: {'q': q, 'query': q, 'search': q},
+        ),
+      );
+      final payload = unwrapApiData(response);
+      List<dynamic> list(String key) =>
+          _listPayload(payload, key, fallback: response);
+      final results = Way2QuranSearchResults(
+        reciters: list('reciters')
+            .whereType<Map>()
+            .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        recitations: list('recitations')
+            .whereType<Map>()
+            .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        surahs: list('surahs')
+            .whereType<Map>()
+            .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+      if (results.reciters.isNotEmpty ||
+          results.recitations.isNotEmpty ||
+          results.surahs.isNotEmpty) {
+        return results;
+      }
+    } catch (_) {
+      // Continue to the native fallback below when the global endpoint is
+      // unavailable or returns an unrecognized response shape.
+    }
+
+    // The global search endpoint is not consistently enabled on every API
+    // deployment. Fall back to the reciter listing endpoint and the public
+    // recitation catalog so searches still produce useful native results.
+    List<Way2QuranReciter> reciters = const [];
+    try {
+      reciters = (await getRecitersPage(search: q, pageSize: 100)).reciters;
+    } catch (_) {
+      // Keep any recitation matches even if reciter search is unavailable.
+    }
+    List<Way2QuranRecitation> recitations = const [];
+    try {
+      final needle = q.toLowerCase();
+      recitations = (await getRecitations()).where((item) =>
+        item.slug.toLowerCase().contains(needle) ||
+        item.nameAr.toLowerCase().contains(needle) ||
+        item.nameEn.toLowerCase().contains(needle)
+      ).toList();
+    } catch (_) {
+      // The API may be offline; return whichever result group succeeded.
+    }
     return Way2QuranSearchResults(
-      reciters: list('reciters')
-          .whereType<Map>()
-          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      recitations: list('recitations')
-          .whereType<Map>()
-          .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      surahs: list('surahs')
-          .whereType<Map>()
-          .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      reciters: reciters,
+      recitations: recitations,
+      surahs: const [],
     );
   }
 
