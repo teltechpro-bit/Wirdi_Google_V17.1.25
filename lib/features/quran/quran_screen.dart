@@ -1204,7 +1204,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               if (MediaQuery.of(context).orientation == Orientation.landscape && surah.number < 114) PopupMenuItem(value: 'next', child: Text(languageCode == 'ar' ? 'السورة التالية' : 'Next surah')),
               if (MediaQuery.of(context).orientation == Orientation.landscape) PopupMenuItem(value: 'mushaf', child: Text(l10n.quranViewAsMushafPageTooltip)),
               PopupMenuItem(value: 'reciter', child: Text(l10n.quranChooseReciterTooltip(Reciters.byId(appSettings.reciterId).displayNameFor(languageCode)))),
-              PopupMenuItem(value: 'qiraat', child: Text(languageCode == 'ar' ? 'الطريق إلى القرآن' : 'Way to Quran')),
+              PopupMenuItem(value: 'qiraat', child: Text(languageCode == 'ar' ? 'مكتبة التلاوات' : 'Recitation Library')),
               PopupMenuItem(value: 'qiraatCatalog', child: Text(languageCode == 'ar' ? 'القراءات والروايات' : 'Qira’at & Riwayat')),
               PopupMenuItem(value: 'fontDec', child: Text(l10n.quranDecreaseFontTooltip)),
               PopupMenuItem(value: 'fontInc', child: Text(l10n.quranIncreaseFontTooltip)),
