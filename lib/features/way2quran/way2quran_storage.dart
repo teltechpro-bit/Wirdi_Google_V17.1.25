@@ -4,6 +4,12 @@ class Way2QuranStorage {
 
   static const String recitationsRelativePath = 'way2quran/recitations';
 
+  /// Sanitizes API-derived filename stems before they are used in local paths.
+  static String safeFileStem(String slug) {
+    final safeStem = slug.trim().replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    return safeStem.isEmpty ? 'recitation' : safeStem;
+  }
+
   static String recitationFilePath(String appDocumentsPath, String slug) =>
-      '$appDocumentsPath/$recitationsRelativePath/$slug.mp3';
+      '$appDocumentsPath/$recitationsRelativePath/${safeFileStem(slug)}.mp3';
 }
