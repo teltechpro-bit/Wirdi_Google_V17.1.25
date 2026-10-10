@@ -412,6 +412,12 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
             saved++;
           }
         } catch (_) {
+          // Never leave a partial download that could be mistaken for a valid offline file.
+          try {
+            if (await file.exists()) await file.delete();
+          } catch (_) {
+            // Preserve the original download failure in the final summary.
+          }
           failed++;
         } finally {
           if (mounted) setState(() => _collectionProgress++);
