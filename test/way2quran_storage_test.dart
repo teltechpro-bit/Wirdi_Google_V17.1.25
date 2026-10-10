@@ -25,6 +25,17 @@ void main() {
       );
     });
 
+    test('keeps cached translations in a dedicated edition and surah path', () {
+      expect(
+        Way2QuranStorage.translationFilePath(
+          '/app/documents',
+          2,
+          'en.sahih',
+        ),
+        '/app/documents/way2quran/translations/2_en_sahih.json',
+      );
+    });
+
     test('uses a safe fallback for an empty filename stem', () {
       expect(
         Way2QuranStorage.recitationFilePath('/app/documents', '   '),
