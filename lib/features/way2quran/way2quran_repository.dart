@@ -25,10 +25,24 @@ class Way2QuranRepository {
   }
 
   List<dynamic> _listPayload(dynamic payload, String key, {dynamic fallback}) {
-    if (payload is List) return payload;
-    if (payload is Map && payload[key] is List) return payload[key] as List;
-    if (fallback is Map && fallback[key] is List) return fallback[key] as List;
-    return const <dynamic>[];
+    List<dynamic>? find(dynamic value, int depth) {
+      if (value is List) return value;
+      if (depth >= 5 || value is! Map) return null;
+      final direct = value[key];
+      if (direct is List) return direct;
+      for (final nestedKey in const ['data', 'result', 'results', 'payload', 'items']) {
+        final nested = value[nestedKey];
+        if (nested is Map || nested is List) {
+          final found = find(nested, depth + 1);
+          if (found != null) return found;
+        }
+      }
+      return null;
+    }
+
+    return find(payload, 0) ??
+        (identical(payload, fallback) ? null : find(fallback, 0)) ??
+        const <dynamic>[];
   }
 
   Future<List<Way2QuranReciter>> getReciters({
@@ -43,6 +57,8 @@ class Way2QuranRepository {
       'recitationSlug': recitationSlug,
       'isTopReciter': isTopReciter,
       'search': search,
+      'q': search,
+      'query': search,
       'currentPage': '$page',
       'sort': _apiSort(sort),
       'pageSize': '$pageSize',
@@ -95,7 +111,7 @@ class Way2QuranRepository {
           reciters: [], recitations: [], surahs: []);
     }
     final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
+        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q, 'query': q, 'search': q}));
     final payload = unwrapApiData(response);
     List<dynamic> list(String key) =>
         _listPayload(payload, key, fallback: response);
