@@ -53,6 +53,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   int _currentPageIndex = 0;
   ScrollController? _continuousScrollController;
   double _fontScale = 1.0;
+  String _mushafBackground = 'madinah';
 
   /// Cached once [_loadAll] resolves, so [_onAudioChanged] (which fires
   /// on every ayah transition, independent of the FutureBuilder) can
@@ -292,6 +293,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
                 setState(() => _fontScale = (_fontScale + 0.1).clamp(0.7, 1.6));
+              } else if (value.startsWith('bg:')) {
+                setState(() => _mushafBackground = value.substring(3));
               } else if (value == 'reciter') {
                 final languageCode = Localizations.localeOf(context).languageCode;
                 final chosen = await showModalBottomSheet<String>(
@@ -339,6 +342,12 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               PopupMenuItem(value: 'reciter', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'القارئ' : 'Reciter')),
               PopupMenuItem(value: 'fontDec', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تصغير الخط' : 'Decrease font')),
               PopupMenuItem(value: 'fontInc', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تكبير الخط' : 'Increase font')),
+              const PopupMenuDivider(),
+              PopupMenuItem(value: 'bg:madinah', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية مصحف المدينة' : 'Madinah ivory')),
+              PopupMenuItem(value: 'bg:plain', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أبيض كلاسيكي' : 'Classic white')),
+              PopupMenuItem(value: 'bg:parchment', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'ورق معتّق' : 'Warm parchment')),
+              PopupMenuItem(value: 'bg:green', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أخضر فاتح' : 'Soft green')),
+              PopupMenuItem(value: 'bg:blue', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أزرق هادئ' : 'Soft blue')),
             ],
           ),
           ListenableBuilder(
@@ -463,6 +472,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
                     fontScale: _fontScale,
+                    backgroundStyle: _mushafBackground,
                   );
                 },
               ),
@@ -526,7 +536,8 @@ class _MushafPageView extends StatefulWidget {
   // of relying on LayoutBuilder's constraints.maxHeight in that mode.
   final double? targetHeight;
   final double fontScale;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0});
+  final String backgroundStyle;
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, this.backgroundStyle = 'madinah'});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -882,14 +893,25 @@ class _MushafPageViewState extends State<_MushafPageView> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFFFFDF4),
-                const Color(0xFFF7F0D9),
-                const Color(0xFFFFFCF0),
-              ],
+              colors: switch (widget.backgroundStyle) {
+                'plain' => const [Color(0xFFFFFFFF), Color(0xFFFAFAFA), Color(0xFFFFFFFF)],
+                'parchment' => const [Color(0xFFF4E4C1), Color(0xFFEAD5A5), Color(0xFFF8EBD0)],
+                'green' => const [Color(0xFFF0F7E9), Color(0xFFE2EED8), Color(0xFFF7FBF2)],
+                'blue' => const [Color(0xFFEEF5FA), Color(0xFFDDEAF4), Color(0xFFF7FBFE)],
+                _ => const [Color(0xFFFFFDF4), Color(0xFFF7F0D9), Color(0xFFFFFCF0)],
+              },
             ),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFFB99A52).withValues(alpha: 0.8), width: 2),
+            border: Border.all(
+              color: switch (widget.backgroundStyle) {
+                'plain' => const Color(0xFFD8D8D8),
+                'parchment' => const Color(0xFF9E793D),
+                'green' => const Color(0xFF6C9461),
+                'blue' => const Color(0xFF739BB8),
+                _ => const Color(0xFFB99A52).withValues(alpha: 0.8),
+              },
+              width: 2,
+            ),
             boxShadow: [
               BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 10, offset: const Offset(0, 3)),
             ],
