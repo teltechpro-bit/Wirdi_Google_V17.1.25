@@ -162,8 +162,10 @@ class _QiraatScreenState extends State<QiraatScreen> {
                       ),
                       subtitle: Text(_service.audioStatusFor(r, ar ? 'ar' : 'en')),
                       leading: Icon(
-                        r.hasVerifiedAyahAudio ? Icons.graphic_eq : Icons.library_music,
-                        color: r.hasVerifiedAyahAudio
+                        _service.hasVerifiedRuntimeAyahAudio(r.id)
+                            ? Icons.graphic_eq
+                            : Icons.library_music,
+                        color: _service.hasVerifiedRuntimeAyahAudio(r.id)
                             ? AppColors.primaryEmerald
                             : AppColors.goldAccent,
                       ),
