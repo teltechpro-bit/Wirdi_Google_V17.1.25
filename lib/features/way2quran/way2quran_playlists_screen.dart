@@ -207,6 +207,51 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
     if (mounted) await _load();
   }
 
+  Future<void> _playPlaylist(String name, List<String> paths) async {
+    final available = <File>[];
+    for (final path in paths) {
+      final file = File(path);
+      try {
+        if (await file.exists() && await file.length() > 0) {
+          available.add(file);
+        }
+      } catch (_) {
+        // A removed or unreadable track is excluded from this playback queue.
+      }
+    }
+    if (available.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'لا توجد ملفات صالحة للتشغيل في هذه القائمة.'
+              : 'There are no playable files in this playlist.'),
+        ));
+      }
+      return;
+    }
+    try {
+      await quranAudio.playExternalFiles(
+        available.map((file) => file.path).toList(),
+        titles: available.map(_label).toList(),
+      );
+      if (mounted && available.length != paths.length) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'بدأ التشغيل مع تخطي الملفات المفقودة أو الفارغة.'
+              : 'Playback started; missing or empty files were skipped.'),
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'تعذر تشغيل قائمة التشغيل.'
+              : 'Could not play this playlist.'),
+        ));
+      }
+    }
+  }
+
   Future<void> _play(String path) async {
     final file = File(path);
     if (!await file.exists()) {
@@ -284,26 +329,43 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
                         onSelected: (value) { if (value == 'delete') _deletePlaylist(entry.key); },
                         itemBuilder: (_) => [PopupMenuItem(value: 'delete', child: Text(_ar ? 'حذف القائمة' : 'Delete playlist'))],
                       ),
-                      children: entry.value.isEmpty
-                          ? [Padding(padding: const EdgeInsets.all(16), child: Text(_ar ? 'القائمة فارغة. أضف تلاوة من صفحة التنزيلات.' : 'This playlist is empty. Add a recitation from Downloads.'))]
-                          : entry.value.map((path) {
-                              final file = File(path);
-                              final exists = file.existsSync();
-                              return ListTile(
-                                leading: Icon(exists ? Icons.audio_file_rounded : Icons.file_present_outlined),
-                                title: Text(_label(file), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                subtitle: exists ? null : Text(_ar ? 'الملف غير موجود' : 'File missing'),
-                                onTap: exists ? () => _play(path) : null,
-                                trailing: IconButton(
-                                  tooltip: _ar ? 'إزالة من القائمة' : 'Remove from playlist',
-                                  onPressed: () async {
-                                    await Way2QuranPlaylistStore.removeTrack(entry.key, path);
-                                    await _load();
-                                  },
-                                  icon: const Icon(Icons.remove_circle_outline_rounded),
-                                ),
-                              );
-                            }).toList(),
+                      children: [
+                        if (entry.value.isNotEmpty)
+                          ListTile(
+                            leading: const Icon(Icons.play_circle_fill_rounded),
+                            title: Text(_ar ? 'تشغيل القائمة بالكامل' : 'Play entire playlist'),
+                            subtitle: Text(_ar
+                                ? 'تشغيل الملفات المتاحة بالترتيب'
+                                : 'Play available files in order'),
+                            onTap: () => _playPlaylist(entry.key, entry.value),
+                          ),
+                        if (entry.value.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(_ar
+                                ? 'القائمة فارغة. أضف تلاوة من صفحة التنزيلات.'
+                                : 'This playlist is empty. Add a recitation from Downloads.'),
+                          )
+                        else
+                          ...entry.value.map((path) {
+                            final file = File(path);
+                            final exists = file.existsSync();
+                            return ListTile(
+                              leading: Icon(exists ? Icons.audio_file_rounded : Icons.file_present_outlined),
+                              title: Text(_label(file), maxLines: 2, overflow: TextOverflow.ellipsis),
+                              subtitle: exists ? null : Text(_ar ? 'الملف غير موجود' : 'File missing'),
+                              onTap: exists ? () => _play(path) : null,
+                              trailing: IconButton(
+                                tooltip: _ar ? 'إزالة من القائمة' : 'Remove from playlist',
+                                onPressed: () async {
+                                  await Way2QuranPlaylistStore.removeTrack(entry.key, path);
+                                  await _load();
+                                },
+                                icon: const Icon(Icons.remove_circle_outline_rounded),
+                              ),
+                            );
+                          }),
+                      ],
                     ),
                   )).toList(),
                 ),
