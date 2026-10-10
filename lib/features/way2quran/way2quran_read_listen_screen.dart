@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/quran_models.dart';
 import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
@@ -52,9 +51,15 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     String edition,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_translationCacheKey(surahNumber, edition));
-      if (raw == null || raw.isEmpty) return null;
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File(Way2QuranStorage.translationFilePath(
+        directory.path,
+        surahNumber,
+        edition,
+      ));
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
       final result = <int, String>{};
@@ -111,13 +116,16 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
 
       // A cache write must never turn a successful network response into an error.
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-          _translationCacheKey(surahNumber, edition),
-          jsonEncode({
-            for (final entry in result.entries) entry.key.toString(): entry.value,
-          }),
-        );
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File(Way2QuranStorage.translationFilePath(
+          directory.path,
+          surahNumber,
+          edition,
+        ));
+        final encoded = jsonEncode({
+          for (final entry in result.entries) entry.key.toString(): entry.value,
+        });
+        await Way2QuranStorage.writeBytesAtomically(file, utf8.encode(encoded));
       } catch (_) {
         // Keep the fetched translation usable even if local storage is unavailable.
       }
