@@ -6,28 +6,12 @@ import 'way2quran_read_listen_screen.dart';
 import 'way2quran_mushaf_screen.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'way2quran_web_screen.dart';
 import 'way2quran_favorites.dart';
 import 'way2quran_downloads_screen.dart';
 import 'way2quran_playlists_screen.dart';
 import 'way2quran_storage.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
-
-void _openWay2QuranWebsite(BuildContext context, String url, bool ar) {
-  final radio = url.contains('/radio');
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => Way2QuranWebScreen(
-        title: radio
-            ? (ar ? 'إذاعة القرآن الكريم' : 'Quran Radio')
-            : (ar ? 'مكتبة Way2Quran' : 'Way2Quran Library'),
-        url: url,
-      ),
-    ),
-  );
-}
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
@@ -50,7 +34,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
   @override Widget build(BuildContext context) {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
-      appBar: AppBar(title: const Text('Way2Quran'), centerTitle: false, actions: [
+      appBar: AppBar(title: Text(ar ? 'وِرْدِي' : 'Wirdi'), centerTitle: false, actions: [
         IconButton(onPressed: doSearch, icon: const Icon(Icons.search_rounded)),
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
@@ -65,9 +49,9 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(Icons.menu_book_rounded, size: 44, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 14),
-            Text(ar ? 'طريقك إلى القرآن' : 'Your way to the Quran', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+            Text(ar ? 'وِرْدِي، وِرْدُك اليومي' : 'Your daily Quran companion', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            Text(ar ? 'استكشف القراءات والروايات واستمع إلى تلاوات القراء.' : 'Explore Quranic readings and listen to recitations.'),
+            Text(ar ? 'اقرأ القرآن، واستمع إلى تلاوات متنوعة، وتابع وِرْدَك كل يوم.' : 'Read the Quran, explore recitations, and keep your daily wird.'),
           ])),
         const SizedBox(height: 20),
         TextField(controller: search, onSubmitted: (_) => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
@@ -100,7 +84,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           future: future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()));
-            if (snapshot.hasError) return Card(child: ListTile(leading: const Icon(Icons.cloud_off), title: Text(ar ? 'تعذر الاتصال بمصدر Way2Quran' : 'Way2Quran source unavailable'), trailing: IconButton(onPressed: doSearch, icon: const Icon(Icons.refresh))));
+            if (snapshot.hasError) return Card(child: ListTile(leading: const Icon(Icons.cloud_off), title: Text(ar ? 'تعذر تحميل القراء الآن' : 'Could not load reciters right now'), trailing: IconButton(onPressed: doSearch, icon: const Icon(Icons.refresh))));
             final list = snapshot.data ?? const <Way2QuranReciter>[];
             return SizedBox(
               height: 230,
@@ -142,7 +126,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           },
         ),
         const SizedBox(height: 28),
-        _SectionHeader(title: ar ? 'مكتبة الصوت' : 'Sound Library', subtitle: ar ? 'استكشف القراء والقراءات من مصدر Way2Quran' : 'Explore reciters and Quranic readings from Way2Quran'),
+        _SectionHeader(title: ar ? 'مكتبة التلاوات' : 'Recitation Library', subtitle: ar ? 'استكشف القراء والقراءات المتاحة داخل وِرْدِي' : 'Explore available reciters and readings in Wirdi'),
         const SizedBox(height: 12),
         FutureBuilder<List<Way2QuranReciter>>(
           future: future,
@@ -165,10 +149,8 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.picture_as_pdf_rounded, title: ar ? 'مكتبة المصاحف' : 'Mushaf Library', subtitle: ar ? 'استكشف المصاحف المتاحة ونزّلها داخل Wirdi' : 'Explore available Mushafs and download them inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranMushafScreen()))),
         const SizedBox(height: 12),
-        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى محطات القرآن الرسمية من Way2Quran' : 'Listen to official Way2Quran Quran radio stations', onTap: () => _openWay2QuranWebsite(context, ar ? 'https://way2quran.com/ar/radio' : 'https://way2quran.com/en/radio', ar)),
         const SizedBox(height: 12),
-        _ExploreCard(icon: Icons.explore_rounded, title: ar ? 'اكتشف مكتبة Way2Quran كاملة' : 'Explore the full Way2Quran library', subtitle: ar ? 'قوائم التشغيل والمجموعات والميزات الجديدة من الموقع الرسمي' : 'Curated playlists, collections and new features on the official site', onTap: () => _openWay2QuranWebsite(context, ar ? 'https://way2quran.com/ar' : 'https://way2quran.com/en', ar)),
-      ]),
+              ]),
     );
   }
 }
@@ -303,7 +285,7 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
   void submit(){final q=query.text.trim();setState(()=>future=q.isEmpty?null:repo.globalSearch(q));}
   @override Widget build(BuildContext context){
     final ar=Localizations.localeOf(context).languageCode=='ar';
-    return Scaffold(appBar:AppBar(title:Text(ar?'البحث في الطريق إلى القرآن':'Search Way2Quran')),
+    return Scaffold(appBar:AppBar(title:Text(ar?'البحث في وِرْدِي':'Search Wirdi')),
       body:Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,16,16,12),child:TextField(controller:query,autofocus:widget.initialQuery.isEmpty,textInputAction:TextInputAction.search,onSubmitted:(_)=>submit(),decoration:InputDecoration(hintText:ar?'ابحث عن قارئ أو سورة أو رواية...':'Search for a reciter, surah or recitation...',prefixIcon:const Icon(Icons.search_rounded),suffixIcon:IconButton(onPressed:submit,icon:const Icon(Icons.search)),border:const OutlineInputBorder()))),
         Expanded(child:future==null?Center(child:Text(ar?'اكتب كلمة البحث ثم اضغط بحث':'Enter a search term and search')):FutureBuilder<Way2QuranSearchResults>(future:future,builder:(context,snapshot){
