@@ -44,8 +44,7 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
             }
           },
         ),
-      )
-      ;
+      );
     _loadUrl();
   }
 
