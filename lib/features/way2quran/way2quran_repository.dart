@@ -82,6 +82,8 @@ class Way2QuranRepository {
       'recitationSlug': recitationSlug,
       'isTopReciter': isTopReciter,
       'search': search,
+      'q': search,
+      'query': search,
       'currentPage': '$page',
       'sort': _apiSort(sort),
       'pageSize': '$pageSize',
