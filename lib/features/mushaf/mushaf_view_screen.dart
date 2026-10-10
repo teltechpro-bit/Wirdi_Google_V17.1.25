@@ -348,7 +348,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
             itemBuilder: (_) {
               final isArabic = Localizations.localeOf(context).languageCode == 'ar';
               final selectedFont = appSettings.quranFontFamily;
-              Widget fontOption(String value, String ar, String en, String family) {
+              Widget fontOption(String ar, String en, String family) {
                 return Row(
                   children: [
                     Expanded(child: Text(isArabic ? ar : en)),
@@ -363,15 +363,15 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 'mushafMadani',
-                  child: fontOption('mushafMadani', 'مصحف المدينة (الخط الحالي)', 'Madani Mushaf (current font)', 'default'),
+                  child: fontOption('مصحف المدينة (الخط الحالي)', 'Madani Mushaf (current font)', 'default'),
                 ),
                 PopupMenuItem(
                   value: 'mushafQpcHafs',
-                  child: fontOption('mushafQpcHafs', 'خط مصحف حفص QPC', 'QPC Hafs script', 'QuranQPCHafs'),
+                  child: fontOption('خط مصحف حفص QPC', 'QPC Hafs script', 'QuranQPCHafs'),
                 ),
                 PopupMenuItem(
                   value: 'mushafUthmanic',
-                  child: fontOption('mushafUthmanic', 'الخط العثماني', 'Uthmanic script', 'QuranKFGQPCUthmanic'),
+                  child: fontOption('الخط العثماني', 'Uthmanic script', 'QuranKFGQPCUthmanic'),
                 ),
                 const PopupMenuDivider(),
                 PopupMenuItem(value: 'fontDec', child: Text(isArabic ? 'تصغير الخط' : 'Decrease font')),
