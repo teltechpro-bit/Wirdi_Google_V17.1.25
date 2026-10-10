@@ -11,11 +11,11 @@ Scope: compare the currently visible Wirdi implementation with the feature group
 | Recitations and surah lookup | Repository exposes recitations, global search, reciter and surah endpoints | Implemented in code | Verify endpoint payload variants and all navigation paths |
 | Read/listen experience | Home screen links to native read/listen and mushaf screens | Implemented in code | Test reader/audio handoff, background playback and resume |
 | Favorites | Favorites feature/storage files are imported by the Wirdi home experience | Partial/needs behavior audit | Verify persistence, remove/add, and whether favorite audio can start |
-| Downloads/offline | Downloads screen and local storage/path-provider dependencies exist | Partial/needs device verification | Test download completion, cancellation, storage permissions, offline playback and cleanup |
+| Downloads/offline | Read & Listen downloads, Downloads screen, and playlists now share `Way2QuranStorage.recitationsRelativePath`; older `way2quran/audio` files remain playable | Storage-path integration fixed in code; end-to-end device verification still required | Run Android tests; verify new downloads appear in Downloads and can be added to playlists; test offline playback and cleanup |
 | Playlists | Playlist screen is present | Partial/needs behavior audit | Verify create/rename/delete, add/remove tracks, ordering and persistence |
 | Ten Qira’at / twenty Riwayat | Native directory screens and `QiraatScreen` exist; source discovery is explicit | Implemented in code; source coverage varies | Verify every displayed source, and ensure no silent fallback to Hafs |
 | Mushaf | Native mushaf screen and existing Quran reader are present | Implemented in code; feature parity not yet established | Compare navigation, page/ayah selection, audio sync and bookmarks |
-| Website-only features | `way2quran_web_screen.dart` explicitly embeds website pages in a WebView | Known gap: not fully Wirdi-native | Find every call site and replace feature-by-feature with native screens/API-backed services |
+| Website-only features | `way2quran_web_screen.dart` defines a WebView wrapper; no references to `Way2QuranWebScreen` were found in the inspected Dart feature/home/navigation files on `main` | WebView class appears unused by the inspected navigation paths; repository-wide confirmation is still advisable | Keep new feature flows native; verify any future WebView entry point is intentional and replace it with a Wirdi screen/API where feasible |
 | Radio / continuous listening | Wirdi already has a native `RadioScreen` backed by `RadioService`; the Way2Quran home now links directly to it | Native integration entry point added; station/stream behavior still needs device testing | Verify live station loading, stream playback, background playback and failure recovery |
 | Khatma / reading progress | Wirdi has Quran progress and separate group-khatma work in the repository | Partial; not yet proven equivalent to the target experience | Keep individual progress separate from group assignment/claims; test leave/rejoin and completed history |
 | Localization and Wirdi identity | Wirdi Arabic/English labels are visible in native home screen | Partial | Remove exposed third-party page branding from native UI; retain appropriate source/license notices where legally required |
@@ -35,7 +35,7 @@ Scope: compare the currently visible Wirdi implementation with the feature group
 ## Execution batches
 
 1. **Inventory (this commit):** establish a feature-by-feature baseline and explicit acceptance criteria.
-2. **Navigation and WebView audit:** locate every WebView entry point and map each one to a native screen/API contract.
+2. **Navigation and WebView audit:** locate every WebView entry point and map each one to a native screen/API contract. The `Way2QuranWebScreen` file is present; a full reference audit is still required.
 3. **Native parity batch:** prioritize missing high-value flows (radio if supported, complete favorites/downloads/playlists, reader/audio continuity).
 4. **Reliability batch:** fix API parsing, offline/error handling, state persistence, and qiraat-source accuracy.
 5. **Verification batch:** targeted tests, full Flutter tests, Android build, and a final manual smoke-test checklist.

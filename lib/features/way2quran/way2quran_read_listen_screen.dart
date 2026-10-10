@@ -9,6 +9,7 @@ import '../../core/services/quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_recitations_directory_screen.dart';
+import 'way2quran_storage.dart';
 
 class Way2QuranReadListenScreen extends StatefulWidget {
   final int? initialSurah;
@@ -120,8 +121,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final dir = await getApplicationDocumentsDirectory();
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
     final recitationSlug = selectedRecitation ?? 'recitation';
-    final localFile = File(dir.path + '/way2quran/audio/' + reciterSlug + '_' + recitationSlug + '_' + surah.number.toString() + '.mp3');
+    final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
+    final fileName = '$fileStem.mp3';
+    final localFile = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
+    // Keep playback working for files downloaded by older app versions.
+    final legacyFile = File('${dir.path}/way2quran/audio/$fileName');
     final localExists = await localFile.exists();
+    final legacyExists = !localExists && await legacyFile.exists();
+    final playableFile = localExists ? localFile : legacyFile;
     final url = audio?.url.isNotEmpty == true ? audio!.url : audio?.downloadUrl ?? '';
     if (!localExists && url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة لهذه السورة عند هذا القارئ')));
@@ -129,7 +136,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     }
     await quranAudio.setSpeed(speed);
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
-    if (localExists) { await quranAudio.playExternalFile(localFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
+    if (localExists || legacyExists) { await quranAudio.playExternalFile(playableFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
   }
 
   Future<void> _download(SurahModel surah) async {
@@ -143,11 +150,13 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     try {
       final bytes = await repo.downloadBytes(url);
       final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory('${dir.path}/way2quran/audio');
+      // Use the shared directory read by Wirdi's Downloads and playlists.
+      final folder = Directory('${dir.path}/${Way2QuranStorage.recitationsRelativePath}');
       await folder.create(recursive: true);
       final reciterSlug = selectedReciter?.slug ?? 'reciter';
       final recitationSlug = selectedRecitation ?? 'recitation';
-      final file = File('${folder.path}/${reciterSlug}_${recitationSlug}_${surah.number}.mp3');
+      final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
+      final file = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
       await file.writeAsBytes(bytes, flush: true);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
     } catch (_) {
