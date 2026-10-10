@@ -45,7 +45,20 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ;
+    _loadUrl();
+  }
+
+  Future<void> _loadUrl() async {
+    try {
+      final uri = Uri.parse(widget.url);
+      if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+        throw const FormatException('Invalid embedded page URL');
+      }
+      await _controller.loadRequest(uri);
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   Future<void> _reload() async {
