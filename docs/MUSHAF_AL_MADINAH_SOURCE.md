@@ -8,6 +8,12 @@
 - Official usage-rights page: https://dm.qurancomplex.gov.sa/rights/
 - Source license notice: files remain the intellectual property of KFGQPC; the published rights permit digital/software use and redistribution, provided the Quran text is not modified.
 
+## Source inventory verified
+
+- The source repository contains exactly 604 page files, numbered 001 through 604.
+- The original AI files total approximately 769 MB, so bundling the raw files directly into Wirdi is not an acceptable mobile-app integration strategy.
+- The first implementation milestone should convert and inspect a small representative sample (for example pages 1, 2, and a text-dense page), compare SVG and lossless raster output for fidelity and size, and record the resulting app-size/performance impact before converting all pages.
+
 ## Integration requirements
 
 Do not replace the current reader until the official page assets can be rendered and verified in-app.
