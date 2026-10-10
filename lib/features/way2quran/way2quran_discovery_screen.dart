@@ -3,12 +3,12 @@ import 'package:share_plus/share_plus.dart';
 
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
-import 'way2quran_home_screen.dart' show Way2QuranReciterScreen;
 
 /// Wirdi-native discovery shelves backed by the live reciter catalogue.
 /// Editorial shelves are derived only from records returned by the API.
 class Way2QuranDiscoveryScreen extends StatefulWidget {
-  const Way2QuranDiscoveryScreen({super.key});
+  final ValueChanged<Way2QuranReciter> onOpenReciter;
+  const Way2QuranDiscoveryScreen({super.key, required this.onOpenReciter});
 
   @override
   State<Way2QuranDiscoveryScreen> createState() => _Way2QuranDiscoveryScreenState();
@@ -109,12 +109,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
   }
 
   void _openReciter(Way2QuranReciter reciter) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
-      ),
-    );
+    widget.onOpenReciter(reciter);
   }
 
   @override
