@@ -338,6 +338,8 @@ class QuranAudioService extends ChangeNotifier {
     SurahModel surah,
     List<SurahModel> allSurahs,
   ) {
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
     _surahNumber = surah.number;
     _surahName = surah.name;
     _totalAyahsInSurah = surah.ayahs.length;
@@ -899,6 +901,8 @@ class QuranAudioService extends ChangeNotifier {
     playingWholeSurah = false;
     externalUrl = null;
     externalTitle = null;
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
     _fullSurahOnly = false;
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     isPaused = false;
