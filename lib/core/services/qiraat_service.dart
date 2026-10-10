@@ -178,10 +178,10 @@ class QiraatService {
     'hafs': 1,
     'qalun': 5,
     'warsh': 10,
-    // Qunbul deliberately has no static ID: API ID 11 is mapped to
-    // Al-Bazzi, and assigning it to both readers risks cross-riwayah audio.
+    // Keep only unambiguous, well-established static IDs. Other riwayat
+    // must be discovered by their exact names from the API catalog; guessing
+    // an ID can expose another riwayah's audio under the wrong label.
     'al_bazzi': 11,
-    'al_duri_kisai': 12,
   };
 
   Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
