@@ -82,16 +82,7 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
         throw const FormatException('Mushaf endpoint did not return a PDF file');
       }
       final file = await _localFile(mushaf);
-      await file.parent.create(recursive: true);
-      final partial = File('${file.path}.part');
-      try {
-        await partial.writeAsBytes(bytes, flush: true);
-        if (await file.exists()) await file.delete();
-        await partial.rename(file.path);
-      } catch (_) {
-        if (await partial.exists()) await partial.delete();
-        rethrow;
-      }
+      await Way2QuranStorage.writeBytesAtomically(file, bytes);
       await repo.incrementMushafDownload(mushaf.slug);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
