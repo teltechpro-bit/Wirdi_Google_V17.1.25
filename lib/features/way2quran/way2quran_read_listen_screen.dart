@@ -210,13 +210,22 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
     if (!qiraat.selectedReaderHasAyahAudio()) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(arSafe()
-            ? 'التشغيل من آية إلى آية غير متاح للرواية المختارة حاليًا. لن يتم استبدالها برواية أخرى.'
-            : 'Verse-range playback is unavailable for the selected Wirdi riwayah. No other riwayah will be substituted.'),
-      ));
-      return;
+      // Some readers publish a full-surah stream plus verified timing metadata.
+      // Permit range playback only when both endpoints can be located.
+      final timings = await qiraat.ayahTimings(surah.number);
+      final startTiming = timings[fromAyah];
+      final endTiming = timings[toAyah];
+      if (startTiming == null ||
+          endTiming == null ||
+          endTiming.endMs <= startTiming.startMs) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(arSafe()
+              ? 'لا تتوفر بيانات توقيت موثوقة لنطاق الآيات في الرواية المختارة. لن يتم تشغيل السورة كاملة بدلًا منه.'
+              : 'Verified timings for this ayah range are unavailable for the selected riwayah. The full surah will not be played as a substitute.'),
+        ));
+        return;
+      }
     }
     try {
       final allSurahs = await surahsFuture;
@@ -477,8 +486,8 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       const Divider(),
                       Text(
                         ar
-                            ? 'تنبيه: مصدر الصوت يوفر ملف السورة كاملة؛ تحديد الآيات يحدد النص المعروض، لكنه لا يقص ملف الصوت.'
-                            : 'Note: the source provides full-surah audio. The ayah range filters the displayed text, but does not trim the audio file.',
+                            ? 'زر تشغيل السورة يستخدم قارئ صفحة الاستماع ويشغّل السورة كاملة. زر تشغيل الآيات المحددة يستخدم قارئ وِرْدِي المختار، ولا يعمل إلا عند توفر صوت آية-بآية أو توقيت موثوق.'
+                            : 'Play Surah uses the reciter selected on this page and plays the full surah. Play selected ayahs uses the selected Wirdi reader and requires verse audio or verified timing data.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
