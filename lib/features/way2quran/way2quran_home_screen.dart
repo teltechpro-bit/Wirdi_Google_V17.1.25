@@ -13,6 +13,7 @@ import 'way2quran_storage.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 import '../radio/radio_screen.dart';
+import 'way2quran_discovery_screen.dart';
 
 class Way2QuranHomeScreen extends StatefulWidget {
   const Way2QuranHomeScreen({super.key});
@@ -146,6 +147,8 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
         ),
         const SizedBox(height: 16),
         _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى الإذاعات القرآنية داخل وردي' : 'Listen to Quran radio stations inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RadioScreen()))),
+        const SizedBox(height: 12),
+        _ExploreCard(icon: Icons.auto_awesome_rounded, title: ar ? 'اكتشف تلاوات جديدة' : 'Discover recitations', subtitle: ar ? 'اختيار اليوم، استمع بعمق، وجواهر خفية' : 'Daily spotlight, deep listens, and hidden gems', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranDiscoveryScreen(onOpenReciter: (reciter) => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug)))))),
         const SizedBox(height: 12),
         _ExploreCard(icon: Icons.favorite_rounded, title: ar ? 'القراء المفضلون' : 'Favorite Reciters', subtitle: ar ? 'احتفظ بقرائك المفضلين على هذا الجهاز' : 'Save your favorite reciters on this device', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranFavoritesScreen()))),
         const SizedBox(height: 12),
