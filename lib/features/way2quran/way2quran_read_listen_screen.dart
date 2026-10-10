@@ -121,8 +121,9 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final dir = await getApplicationDocumentsDirectory();
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
     final recitationSlug = selectedRecitation ?? 'recitation';
-    final fileName = '${reciterSlug}_${recitationSlug}_${surah.number}.mp3';
-    final localFile = File(Way2QuranStorage.recitationFilePath(dir.path, fileName.replaceFirst(RegExp(r'\.mp3
+    final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
+    final fileName = '$fileStem.mp3';
+    final localFile = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
     // Keep playback working for files downloaded by older app versions.
     final legacyFile = File('${dir.path}/way2quran/audio/$fileName');
     final localExists = await localFile.exists();
