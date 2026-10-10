@@ -307,8 +307,16 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
       ),
     );
     if (confirmed != true) return;
-    await Way2QuranPlaylistStore.delete(name);
-    if (mounted) await _load();
+    try {
+      await Way2QuranPlaylistStore.delete(name);
+      if (mounted) await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar ? 'تعذر حذف قائمة التشغيل.' : 'Could not delete the playlist.'),
+        ));
+      }
+    }
   }
 
   @override
@@ -380,8 +388,16 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
                               trailing: IconButton(
                                 tooltip: _ar ? 'إزالة من القائمة' : 'Remove from playlist',
                                 onPressed: () async {
-                                  await Way2QuranPlaylistStore.removeTrack(entry.key, path);
-                                  await _load();
+                                  try {
+                                    await Way2QuranPlaylistStore.removeTrack(entry.key, path);
+                                    await _load();
+                                  } catch (_) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                        content: Text(_ar ? 'تعذرت إزالة الملف من القائمة.' : 'Could not remove the track from the playlist.'),
+                                      ));
+                                    }
+                                  }
                                 },
                                 icon: const Icon(Icons.remove_circle_outline_rounded),
                               ),
