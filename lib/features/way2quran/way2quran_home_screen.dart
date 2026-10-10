@@ -49,9 +49,9 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(Icons.menu_book_rounded, size: 44, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 14),
-            Text(ar ? 'طريقك إلى القرآن' : 'Your way to the Quran', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+            Text(ar ? 'وِرْدِي، وِرْدُك اليومي' : 'Your daily Quran companion', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            Text(ar ? 'استكشف القراءات والروايات واستمع إلى تلاوات القراء.' : 'Explore Quranic readings and listen to recitations.'),
+            Text(ar ? 'اقرأ القرآن، واستمع إلى تلاوات متنوعة، وتابع وِرْدَك كل يوم.' : 'Read the Quran, explore recitations, and keep your daily wird.'),
           ])),
         const SizedBox(height: 20),
         TextField(controller: search, onSubmitted: (_) => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), decoration: InputDecoration(hintText: ar ? 'ابحث عن قارئ أو سورة...' : 'Search for a reciter or surah...', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => Way2QuranSearchScreen(initialQuery: search.text.trim()))), icon: const Icon(Icons.search)), border: const OutlineInputBorder())),
