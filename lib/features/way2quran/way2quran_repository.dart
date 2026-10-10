@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'way2quran_models.dart';
 
 class Way2QuranRepository {
+  Way2QuranRepository({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
   static const baseUrl = 'https://way2quran.com/api';
 
   /// Current Way2Quran endpoints wrap successful payloads in {status, data}.
@@ -192,8 +195,12 @@ class Way2QuranRepository {
 
   Future<List<int>> downloadBytes(String url) async {
     if (url.isEmpty) throw Exception('Empty download URL');
-    final response = await http
-        .get(Uri.parse(url))
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      throw FormatException('Invalid audio download URL');
+    }
+    final response = await _client
+        .get(uri)
         .timeout(const Duration(minutes: 2));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Download failed: ${response.statusCode}');
@@ -206,8 +213,8 @@ class Way2QuranRepository {
 
   Future<http.Response> _request(String method, Uri uri) async {
     final response = method == 'POST'
-        ? await http.post(uri).timeout(const Duration(seconds: 30))
-        : await http.get(uri).timeout(const Duration(seconds: 30));
+        ? await _client.post(uri).timeout(const Duration(seconds: 30))
+        : await _client.get(uri).timeout(const Duration(seconds: 30));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Way2Quran API ${response.statusCode}: ${uri.path}');
     }
