@@ -4,6 +4,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
+import 'way2quran_storage.dart';
 
 class Way2QuranMushafScreen extends StatefulWidget {
   const Way2QuranMushafScreen({super.key});
@@ -24,7 +25,7 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
 
   Future<File> _localFile(Way2QuranMushaf mushaf) async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/way2quran/mushaf/${mushaf.slug}.pdf');
+    return File('${dir.path}/way2quran/mushaf/${Way2QuranStorage.safeFileStem(mushaf.slug)}.pdf');
   }
 
   Future<void> _open(Way2QuranMushaf mushaf, bool ar) async {
@@ -34,6 +35,21 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(ar ? 'نزّل المصحف أولًا لفتحه' : 'Download this Mushaf first')),
+          );
+        }
+        return;
+      }
+      final header = await file.openRead(0, 5).fold<List<int>>(
+        <int>[],
+        (collected, chunk) => collected..addAll(chunk),
+      );
+      if (!Way2QuranRepository.isPdfPayload(header)) {
+        await file.delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(ar
+                ? 'الملف المحفوظ غير صالح وتمت إزالته؛ أعد تنزيل المصحف.'
+                : 'The saved file is invalid and was removed. Download the Mushaf again.')),
           );
         }
         return;
@@ -63,9 +79,11 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
     setState(() => downloading.add(mushaf.slug));
     try {
       final bytes = await repo.downloadBytes(mushaf.downloadUrl);
+      if (!Way2QuranRepository.isPdfPayload(bytes)) {
+        throw const FormatException('Mushaf endpoint did not return a PDF file');
+      }
       final file = await _localFile(mushaf);
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(bytes, flush: true);
+      await Way2QuranStorage.writeBytesAtomically(file, bytes);
       await repo.incrementMushafDownload(mushaf.slug);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

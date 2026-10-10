@@ -224,4 +224,28 @@ void main() {
     });
   });
 
+
+  group('Way2QuranRepository downloads', () {
+    test('recognizes a real PDF signature and rejects non-PDF content', () {
+      expect(
+        Way2QuranRepository.isPdfPayload('%PDF-1.7 sample'.codeUnits),
+        isTrue,
+      );
+      expect(
+        Way2QuranRepository.isPdfPayload('<html>error</html>'.codeUnits),
+        isFalse,
+      );
+      expect(Way2QuranRepository.isPdfPayload(const <int>[]), isFalse);
+    });
+
+    test('rejects empty download bodies', () async {
+      final repository = Way2QuranRepository(
+        client: MockClient((request) async => http.Response.bytes([], 200)),
+      );
+      await expectLater(
+        repository.downloadBytes('https://example.com/audio.mp3'),
+        throwsFormatException,
+      );
+    });
+  });
 }
