@@ -231,6 +231,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
               ...hiddenGems.take(8).map((r) => _DiscoveryReciterTile(
                     reciter: r,
                     ar: _ar,
+                    views: _viewCounts[r.slug] ?? 0,
                     onTap: () => _openReciter(r),
                     badge: null,
                   )),
