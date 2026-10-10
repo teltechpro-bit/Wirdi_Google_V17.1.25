@@ -11,6 +11,10 @@ void main() {
     const fallback = RiwayahReader(id: 'reader-2', name: 'Reader Name', nameAr: '  ', riwayahId: 'hafs', source: 'test', server: '', surahs: <int>{1});
     expect(fallback.nameFor('ar'), 'Reader Name');
   });
+  test('unsupported locale falls back to the canonical reader name', () {
+    expect(reader.nameFor('fr'), 'Warsh Reader');
+    expect(reader.nameFor('en'), 'Warsh Reader');
+  });
   test('reader reports only supported surahs', () {
     expect(reader.supportsSurah(1), isTrue);
     expect(reader.supportsSurah(114), isTrue);
