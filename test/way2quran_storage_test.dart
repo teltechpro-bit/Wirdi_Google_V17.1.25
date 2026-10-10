@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wirdi/features/way2quran/way2quran_storage.dart';
 
@@ -31,4 +32,25 @@ void main() {
       );
     });
   });
+
+    test('writes downloads via a completed temporary file', () async {
+      final directory = await Directory.systemTemp.createTemp('wirdi-download-test');
+      addTearDown(() => directory.delete(recursive: true));
+      final target = File('${directory.path}/audio.mp3');
+      await Way2QuranStorage.writeBytesAtomically(target, [1, 2, 3, 4]);
+      expect(await target.readAsBytes(), [1, 2, 3, 4]);
+      expect(
+        directory.listSync().where((entity) => entity.path.endsWith('.part')),
+        isEmpty,
+      );
+    });
+
+    test('refuses to persist empty download data', () async {
+      final directory = await Directory.systemTemp.createTemp('wirdi-empty-download-test');
+      addTearDown(() => directory.delete(recursive: true));
+      await expectLater(
+        Way2QuranStorage.writeBytesAtomically(File('${directory.path}/empty.mp3'), const []),
+        throwsFormatException,
+      );
+    });
 }
