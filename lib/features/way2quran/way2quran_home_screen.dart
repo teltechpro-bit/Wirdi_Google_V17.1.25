@@ -11,6 +11,7 @@ import 'way2quran_favorites.dart';
 import 'way2quran_downloads_screen.dart';
 import 'way2quran_playlists_screen.dart';
 import 'way2quran_storage.dart';
+import 'way2quran_view_counter.dart';
 import '../quran/ten_qiraat_screen.dart';
 import '../quran/riwayat_directory_screen.dart';
 import '../radio/radio_screen.dart';
@@ -210,7 +211,7 @@ class _LibraryTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       leading: CircleAvatar(radius: 26, backgroundImage: reciter.photo.isEmpty ? null : NetworkImage(reciter.photo), child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null),
       title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(reciter.totalViews.toString() + ' ' + (ar ? 'مشاهدة' : 'views')),
+      subtitle: Text('${reciter.recitations.length} ' + (ar ? 'تلاوة متاحة' : 'recitations')),
       trailing: const Icon(Icons.chevron_right_rounded),
     ),
   );
@@ -478,6 +479,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   }
 
   late Future<Way2QuranReciter> future; int selected = 0;
+  int _wirdiViews = 0;
   String? _playingUrl; bool _loadingAudio = false;
   @override void initState() {
     super.initState();
@@ -486,6 +488,8 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   }
 
   Future<Way2QuranReciter> _loadReciter() async {
+    final views = await Way2QuranViewCounter.recordOpen(widget.reciterSlug);
+    if (mounted) setState(() => _wirdiViews = views);
     try {
       final reciter = await Way2QuranRepository().getReciter(widget.reciterSlug);
       try {
@@ -558,7 +562,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
                     ? const CircleAvatar(child: Icon(Icons.person))
                     : CircleAvatar(backgroundImage: NetworkImage(r.photo)),
                 title: Text(r.name(ar)),
-                subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()),
+                subtitle: Text((ar ? 'مشاهدات داخل وِرْدِي على هذا الجهاز: ' : 'Wirdi views on this device: ') + _wirdiViews.toString()),
               ),
             ),
             const SizedBox(height: 12),
@@ -577,7 +581,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
       final index = selected.clamp(0, r.recitations.length - 1);
       final rec = r.recitations[index];
       return ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: ListTile(leading: r.photo.isEmpty ? const CircleAvatar(child: Icon(Icons.person)) : CircleAvatar(backgroundImage: NetworkImage(r.photo)), title: Text(r.name(ar)), subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()))),
+        Card(child: ListTile(leading: r.photo.isEmpty ? const CircleAvatar(child: Icon(Icons.person)) : CircleAvatar(backgroundImage: NetworkImage(r.photo)), title: Text(r.name(ar)), subtitle: Text((ar ? 'مشاهدات داخل وِرْدِي على هذا الجهاز: ' : 'Wirdi views on this device: ') + _wirdiViews.toString()))),
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(value: index, decoration: InputDecoration(labelText: ar ? 'الرواية' : 'Riwayah', border: const OutlineInputBorder()), items: List.generate(r.recitations.length, (i) => DropdownMenuItem(value: i, child: Text(r.recitations[i].name(ar)))), onChanged: (v) { if (v != null) setState(() => selected = v); }),
         const SizedBox(height: 12),
