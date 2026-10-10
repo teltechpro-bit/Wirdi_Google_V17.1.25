@@ -43,12 +43,53 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     recitersFuture = repo.getRecitersPage(pageSize: 50);
   }
 
+  Future<Map<int, String>?> _readCachedTranslation(
+    int surahNumber,
+    String edition,
+  ) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File(Way2QuranStorage.translationFilePath(
+        directory.path,
+        surahNumber,
+        edition,
+      ));
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final result = <int, String>{};
+      decoded.forEach((key, value) {
+        final number = int.tryParse(key.toString());
+        if (number != null && number > 0 && value is String && value.isNotEmpty) {
+          result[number] = value;
+        }
+      });
+      return result.isEmpty ? null : result;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loadTranslation(int surahNumber, String edition) async {
     final requestId = ++_translationRequestId;
     setState(() {
       loadingTranslation = true;
       translationError = null;
     });
+
+    // Serve a saved edition immediately so Read & Listen remains useful offline.
+    final cached = await _readCachedTranslation(surahNumber, edition);
+    if (!mounted || requestId != _translationRequestId) return;
+    if (cached != null) {
+      setState(() {
+        translatedAyahs = cached;
+        loadingTranslation = false;
+      });
+      return;
+    }
+
     try {
       final response = await http
           .get(Uri.parse('https://api.alquran.cloud/v1/surah/$surahNumber/$edition'))
@@ -64,10 +105,28 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
         final item = ayahs[i];
         if (item is Map) {
           final number = int.tryParse('${item['numberInSurah'] ?? i + 1}') ?? i + 1;
-          result[number] = (item['text'] ?? '').toString();
+          final text = (item['text'] ?? '').toString();
+          if (number > 0 && text.isNotEmpty) result[number] = text;
         }
       }
       if (result.isEmpty) throw Exception('No translation data');
+
+      // A cache write must never turn a successful network response into an error.
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File(Way2QuranStorage.translationFilePath(
+          directory.path,
+          surahNumber,
+          edition,
+        ));
+        final encoded = jsonEncode({
+          for (final entry in result.entries) entry.key.toString(): entry.value,
+        });
+        await Way2QuranStorage.writeBytesAtomically(file, utf8.encode(encoded));
+      } catch (_) {
+        // Keep the fetched translation usable even if local storage is unavailable.
+      }
+
       if (!mounted || requestId != _translationRequestId) return;
       setState(() {
         translatedAyahs = result;
@@ -75,12 +134,19 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       });
     } catch (_) {
       if (!mounted || requestId != _translationRequestId) return;
+      final fallback = await _readCachedTranslation(surahNumber, edition);
+      if (!mounted || requestId != _translationRequestId) return;
       setState(() {
-        translatedAyahs = {};
+        if (fallback != null) {
+          translatedAyahs = fallback;
+          translationError = null;
+        } else {
+          translatedAyahs = {};
+          translationError = arSafe()
+              ? 'تعذر تحميل الترجمة. تحقق من الاتصال وحاول تغيير الترجمة.'
+              : 'Could not load translation. Check your connection or try another edition.';
+        }
         loadingTranslation = false;
-        translationError = arSafe()
-            ? 'تعذر تحميل الترجمة. تحقق من الاتصال وحاول تغيير الترجمة.'
-            : 'Could not load translation. Check your connection or try another edition.';
       });
     }
   }

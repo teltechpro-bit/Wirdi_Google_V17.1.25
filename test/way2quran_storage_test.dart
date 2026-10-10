@@ -25,6 +25,17 @@ void main() {
       );
     });
 
+    test('keeps cached translations in a dedicated edition and surah path', () {
+      expect(
+        Way2QuranStorage.translationFilePath(
+          '/app/documents',
+          2,
+          'en.sahih',
+        ),
+        '/app/documents/way2quran/translations/2_en_sahih.json',
+      );
+    });
+
     test('uses a safe fallback for an empty filename stem', () {
       expect(
         Way2QuranStorage.recitationFilePath('/app/documents', '   '),
@@ -39,6 +50,19 @@ void main() {
       final target = File('${directory.path}/audio.mp3');
       await Way2QuranStorage.writeBytesAtomically(target, [1, 2, 3, 4]);
       expect(await target.readAsBytes(), [1, 2, 3, 4]);
+      expect(
+        directory.listSync().where((entity) => entity.path.endsWith('.part')),
+        isEmpty,
+      );
+    });
+
+    test('atomically replaces an existing cached file', () async {
+      final directory = await Directory.systemTemp.createTemp('wirdi-replace-test');
+      addTearDown(() => directory.delete(recursive: true));
+      final target = File('${directory.path}/translation.json');
+      await target.writeAsString('old');
+      await Way2QuranStorage.writeBytesAtomically(target, 'new'.codeUnits);
+      expect(await target.readAsString(), 'new');
       expect(
         directory.listSync().where((entity) => entity.path.endsWith('.part')),
         isEmpty,
