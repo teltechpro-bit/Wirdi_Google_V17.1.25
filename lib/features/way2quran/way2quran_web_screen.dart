@@ -49,11 +49,16 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
   }
 
   Future<void> _reload() async {
+    if (!mounted) return;
     setState(() {
       _loadFailed = false;
       _progress = 0;
     });
-    await _controller.reload();
+    try {
+      await _controller.reload();
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   @override
