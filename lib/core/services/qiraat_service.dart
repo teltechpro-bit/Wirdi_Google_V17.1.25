@@ -43,6 +43,10 @@ class QiraatService {
     return (_readers?[riwayahId] ?? const []).isNotEmpty;
   }
 
+  bool hasVerifiedRuntimeAyahAudio(String riwayahId) =>
+      (_readers?[riwayahId] ?? const <RiwayahReader>[])
+          .any((reader) => reader.hasAyahAudio);
+
   RiwayahReader? selectedReaderFor(String riwayahId) {
     final list = _readers?[riwayahId] ?? const [];
     final id = _selectedReaderIds?[riwayahId];
