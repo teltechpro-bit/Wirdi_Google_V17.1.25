@@ -25,10 +25,15 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
+    _controller = WebViewController();
+    _initializeWebView();
+  }
+
+  Future<void> _initializeWebView() async {
+    try {
+      await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await _controller.setBackgroundColor(const Color(0x00000000));
+      await _controller.setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
             if (mounted) {
@@ -45,7 +50,10 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
           },
         ),
       );
-    _loadUrl();
+      await _loadUrl();
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   Future<void> _loadUrl() async {
