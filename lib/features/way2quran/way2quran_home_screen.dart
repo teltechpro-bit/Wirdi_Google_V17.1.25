@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/quran_repository.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
@@ -146,7 +147,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى الإذاعات القرآنية داخل وردي' : 'Listen to Quran radio stations inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RadioScreen()))),
+        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى الإذاعات القرآنية داخل وردي' : 'Listen to Quran radio stations inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RadioScreen(quranOnly: true)))),
         const SizedBox(height: 12),
         _ExploreCard(
           icon: Icons.auto_awesome_rounded,
@@ -516,8 +517,24 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     final same = _playingUrl == url;
     setState(() { _playingUrl = url; _loadingAudio = true; });
     try {
-      if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
+      if (same && !quranAudio.isPaused) {
         await quranAudio.pause();
+      } else if (audio.surahNumber >= 1 && audio.surahNumber <= 114) {
+        // This row is a full-surah recording. Give the shared player its
+        // surah context so Wirdi can keep the active-ayah indicator moving;
+        // never change the user's configured Wirdi reciter as a side effect.
+        final allSurahs = await QuranRepository.load();
+        final matches = allSurahs.where((item) => item.number == audio.surahNumber);
+        if (matches.isNotEmpty) {
+          await quranAudio.playExternalSurahUrl(
+            url,
+            title: audio.name(ar),
+            surah: matches.first,
+            allSurahs: allSurahs,
+          );
+        } else {
+          await quranAudio.playExternalUrl(url, title: audio.name(ar));
+        }
       } else {
         await quranAudio.playExternalUrl(url, title: audio.name(ar));
       }
@@ -566,7 +583,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
         const SizedBox(height: 12),
         ...rec.audioFiles.map((a) {
           final url = a.url.isNotEmpty ? a.url : a.downloadUrl;
-          final playing = _playingUrl == url && !quranAudio.isPaused && quranAudio.playingAyah == null;
+          final playing = _playingUrl == url && !quranAudio.isPaused;
           return Card(child: ListTile(onTap: () => _play(a, ar), leading: CircleAvatar(child: _loadingAudio && _playingUrl == url ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded)), title: Text(a.name(ar)), subtitle: Text(ar ? 'اضغط للاستماع' : 'Tap to listen')));
         }),
         if (rec.downloadUrl.isNotEmpty) Row(children: [

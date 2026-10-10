@@ -92,12 +92,35 @@ class Way2QuranMushaf {
   final int totalDownloads;
   const Way2QuranMushaf({required this.slug, required this.arabicName, required this.englishName, required this.downloadUrl, required this.imageUrl, required this.totalDownloads});
   String name(bool ar) => ar ? arabicName : englishName;
-  factory Way2QuranMushaf.fromJson(Map<String, dynamic> j) => Way2QuranMushaf(
-    slug: j['slug']?.toString() ?? '',
-    arabicName: j['arabicName']?.toString() ?? '',
-    englishName: j['englishName']?.toString() ?? '',
-    downloadUrl: (j['downloadURL'] ?? j['downloadUrl'])?.toString() ?? '',
-    imageUrl: (j['imageURL'] ?? j['imageUrl'])?.toString() ?? '',
-    totalDownloads: int.tryParse(j['totalDownloads']?.toString() ?? '0') ?? 0,
-  );
+  factory Way2QuranMushaf.fromJson(Map<String, dynamic> json) {
+    final nested = json['mushaf'] is Map
+        ? Map<String, dynamic>.from(json['mushaf'] as Map)
+        : json;
+    String firstNonEmpty(List<String> keys) {
+      for (final key in keys) {
+        final value = nested[key];
+        if (value != null && value.toString().trim().isNotEmpty) {
+          return value.toString().trim();
+        }
+      }
+      return '';
+    }
+
+    return Way2QuranMushaf(
+      slug: firstNonEmpty(const ['slug', 'id']),
+      arabicName: firstNonEmpty(const ['arabicName', 'nameAr', 'name_ar', 'name']),
+      englishName: firstNonEmpty(const ['englishName', 'nameEn', 'name_en', 'name']),
+      downloadUrl: firstNonEmpty(const [
+        'downloadURL', 'downloadUrl', 'download_url', 'downloadLink',
+        'download_link', 'pdfURL', 'pdfUrl', 'fileURL', 'fileUrl', 'url',
+      ]),
+      imageUrl: firstNonEmpty(const [
+        'imageURL', 'imageUrl', 'image_url', 'coverURL', 'coverUrl', 'thumbnail',
+      ]),
+      totalDownloads: int.tryParse(
+            firstNonEmpty(const ['totalDownloads', 'downloads', 'downloadCount']),
+          ) ??
+          0,
+    );
+  }
 }

@@ -25,10 +25,24 @@ class Way2QuranRepository {
   }
 
   List<dynamic> _listPayload(dynamic payload, String key, {dynamic fallback}) {
-    if (payload is List) return payload;
-    if (payload is Map && payload[key] is List) return payload[key] as List;
-    if (fallback is Map && fallback[key] is List) return fallback[key] as List;
-    return const <dynamic>[];
+    List<dynamic>? find(dynamic value, int depth) {
+      if (value is List) return value;
+      if (depth >= 5 || value is! Map) return null;
+      final direct = value[key];
+      if (direct is List) return direct;
+      for (final nestedKey in const ['data', 'result', 'results', 'payload', 'items']) {
+        final nested = value[nestedKey];
+        if (nested is Map || nested is List) {
+          final found = find(nested, depth + 1);
+          if (found != null) return found;
+        }
+      }
+      return null;
+    }
+
+    return find(payload, 0) ??
+        (identical(payload, fallback) ? null : find(fallback, 0)) ??
+        const <dynamic>[];
   }
 
   Future<List<Way2QuranReciter>> getReciters({
@@ -43,6 +57,8 @@ class Way2QuranRepository {
       'recitationSlug': recitationSlug,
       'isTopReciter': isTopReciter,
       'search': search,
+      'q': search,
+      'query': search,
       'currentPage': '$page',
       'sort': _apiSort(sort),
       'pageSize': '$pageSize',
@@ -66,6 +82,8 @@ class Way2QuranRepository {
       'recitationSlug': recitationSlug,
       'isTopReciter': isTopReciter,
       'search': search,
+      'q': search,
+      'query': search,
       'currentPage': '$page',
       'sort': _apiSort(sort),
       'pageSize': '$pageSize',
@@ -79,10 +97,59 @@ class Way2QuranRepository {
             ? payload['pagination']
             : const <String, dynamic>{};
     final p = Map<String, dynamic>.from(pagination as Map);
+    var parsed = raw.whereType<Map>().map((e) =>
+        Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList();
+
+    if (search.trim().isNotEmpty) {
+      final needle = search.trim().toLowerCase();
+      parsed = parsed.where((reciter) {
+        final fields = <String>[
+          reciter.slug, reciter.nameAr, reciter.nameEn,
+          ...reciter.recitations.expand((r) => [r.slug, r.nameAr, r.nameEn]),
+        ];
+        return fields.any((field) => field.toLowerCase().contains(needle));
+      }).toList();
+    }
+
+    // Some API deployments ignore the search query parameter. If that
+    // happens, fetch the first broad page and filter names locally instead
+    // of showing an empty result set for a valid search term.
+    if (search.trim().isNotEmpty && parsed.isEmpty) {
+      final fallbackUri = Uri.parse('$baseUrl/reciters').replace(
+        queryParameters: {
+          'recitationSlug': recitationSlug,
+          'isTopReciter': isTopReciter,
+          'currentPage': '1',
+          'sort': _apiSort(sort),
+          'pageSize': '100',
+        },
+      );
+      final fallbackResponse = await _getJson(fallbackUri);
+      final fallbackPayload = unwrapApiData(fallbackResponse);
+      final fallbackRaw = _listPayload(fallbackPayload, 'reciters', fallback: fallbackResponse);
+      final needle = search.trim().toLowerCase();
+      parsed = fallbackRaw.whereType<Map>()
+          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+          .where((reciter) {
+            final fields = <String>[
+              reciter.slug, reciter.nameAr, reciter.nameEn,
+              ...reciter.recitations.expand((r) => [r.slug, r.nameAr, r.nameEn]),
+            ];
+            return fields.any((field) => field.toLowerCase().contains(needle));
+          }).toList();
+      if (parsed.isNotEmpty) {
+        return Way2QuranRecitersPage(
+          reciters: parsed,
+          totalCount: parsed.length,
+          page: 1,
+          pages: 1,
+        );
+      }
+    }
+
     return Way2QuranRecitersPage(
-      reciters: raw.whereType<Map>().map((e) =>
-          Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList(),
-      totalCount: int.tryParse('${p['totalCount'] ?? p['total'] ?? 0}') ?? 0,
+      reciters: parsed,
+      totalCount: int.tryParse('${p['totalCount'] ?? p['total'] ?? 0}') ?? parsed.length,
       page: int.tryParse('${p['page'] ?? page}') ?? page,
       pages: int.tryParse('${p['pages'] ?? p['totalPages'] ?? 1}') ?? 1,
     );
@@ -94,24 +161,64 @@ class Way2QuranRepository {
       return const Way2QuranSearchResults(
           reciters: [], recitations: [], surahs: []);
     }
-    final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
-    final payload = unwrapApiData(response);
-    List<dynamic> list(String key) =>
-        _listPayload(payload, key, fallback: response);
+
+    try {
+      final response = await _getJson(
+        Uri.parse('$baseUrl/search').replace(
+          queryParameters: {'q': q, 'query': q, 'search': q},
+        ),
+      );
+      final payload = unwrapApiData(response);
+      List<dynamic> list(String key) =>
+          _listPayload(payload, key, fallback: response);
+      final results = Way2QuranSearchResults(
+        reciters: list('reciters')
+            .whereType<Map>()
+            .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        recitations: list('recitations')
+            .whereType<Map>()
+            .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        surahs: list('surahs')
+            .whereType<Map>()
+            .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+      if (results.reciters.isNotEmpty ||
+          results.recitations.isNotEmpty ||
+          results.surahs.isNotEmpty) {
+        return results;
+      }
+    } catch (_) {
+      // Continue to the native fallback below when the global endpoint is
+      // unavailable or returns an unrecognized response shape.
+    }
+
+    // The global search endpoint is not consistently enabled on every API
+    // deployment. Fall back to the reciter listing endpoint and the public
+    // recitation catalog so searches still produce useful native results.
+    List<Way2QuranReciter> reciters = const [];
+    try {
+      reciters = (await getRecitersPage(search: q, pageSize: 100)).reciters;
+    } catch (_) {
+      // Keep any recitation matches even if reciter search is unavailable.
+    }
+    List<Way2QuranRecitation> recitations = const [];
+    try {
+      final needle = q.toLowerCase();
+      recitations = (await getRecitations()).where((item) =>
+        item.slug.toLowerCase().contains(needle) ||
+        item.nameAr.toLowerCase().contains(needle) ||
+        item.nameEn.toLowerCase().contains(needle)
+      ).toList();
+    } catch (_) {
+      // The API may be offline; return whichever result group succeeded.
+    }
     return Way2QuranSearchResults(
-      reciters: list('reciters')
-          .whereType<Map>()
-          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      recitations: list('recitations')
-          .whereType<Map>()
-          .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      surahs: list('surahs')
-          .whereType<Map>()
-          .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      reciters: reciters,
+      recitations: recitations,
+      surahs: const [],
     );
   }
 

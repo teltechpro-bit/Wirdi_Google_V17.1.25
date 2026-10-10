@@ -156,6 +156,32 @@ void main() {
       expect(results.surahs.single.number, 1);
     });
 
+    test('reciter search falls back to local filtering when API ignores search', () async {
+      final repository = Way2QuranRepository(
+        client: MockClient((request) async {
+          if (request.url.queryParameters['search']?.isNotEmpty == true) {
+            return http.Response(jsonEncode({
+              'status': 'success',
+              'data': {'reciters': <dynamic>[]},
+              'pagination': {'totalCount': 0, 'page': 1, 'pages': 1},
+            }), 200);
+          }
+          return http.Response(jsonEncode({
+            'status': 'success',
+            'data': {'reciters': [
+              {'slug': 'sample-reader', 'englishName': 'Sample Reader'},
+              {'slug': 'other-reader', 'englishName': 'Other Reader'},
+            ]},
+            'pagination': {'totalCount': 2, 'page': 1, 'pages': 1},
+          }), 200);
+        }),
+      );
+
+      final page = await repository.getRecitersPage(search: 'sample', pageSize: 20);
+      expect(page.reciters, hasLength(1));
+      expect(page.reciters.single.slug, 'sample-reader');
+    });
+
     test('empty global search avoids making a network request', () async {
       var requested = false;
       final repository = Way2QuranRepository(

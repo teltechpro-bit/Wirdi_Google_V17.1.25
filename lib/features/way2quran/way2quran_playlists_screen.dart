@@ -12,10 +12,10 @@ class Way2QuranPlaylistStore {
   static const _key = 'way2quran.playlists.v1';
 
   static Future<Map<String, List<String>>> all() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null || raw.trim().isEmpty) return <String, List<String>>{};
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_key);
+      if (raw == null || raw.trim().isEmpty) return <String, List<String>>{};
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return <String, List<String>>{};
       final result = <String, List<String>>{};
@@ -31,6 +31,8 @@ class Way2QuranPlaylistStore {
       }
       return result;
     } catch (_) {
+      // Malformed storage or a platform storage error must not crash the
+      // screen with Flutter's red error page.
       return <String, List<String>>{};
     }
   }
@@ -173,8 +175,16 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
-    final value = await Way2QuranPlaylistStore.all();
-    if (mounted) setState(() { _playlists = value; _loading = false; });
+    try {
+      final value = await Way2QuranPlaylistStore.all();
+      if (mounted) setState(() { _playlists = value; _loading = false; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_ar ? 'تعذر تحميل قوائم التشغيل.' : 'Could not load playlists.'),
+      ));
+    }
   }
 
   Future<void> _create() async {
@@ -198,7 +208,19 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
     );
     controller.dispose();
     if (name == null || name.trim().isEmpty) return;
-    final created = await Way2QuranPlaylistStore.create(name);
+    bool created;
+    try {
+      created = await Way2QuranPlaylistStore.create(name);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'تعذر حفظ قائمة التشغيل. تحقق من مساحة التخزين ثم حاول مرة أخرى.'
+              : 'Could not save the playlist. Check device storage and try again.'),
+        ));
+      }
+      return;
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(created
           ? (_ar ? 'تم إنشاء قائمة التشغيل.' : 'Playlist created.')

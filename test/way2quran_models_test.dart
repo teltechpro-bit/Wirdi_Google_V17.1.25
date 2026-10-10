@@ -68,6 +68,22 @@ void main() {
       expect(mushaf.name(true), 'مصحف تجريبي');
     });
 
+    test('Mushaf model reads nested payload and alternate PDF URL keys', () {
+      final mushaf = Way2QuranMushaf.fromJson({
+        'mushaf': {
+          'slug': 'nested-mushaf',
+          'nameAr': 'مصحف داخل بيانات',
+          'nameEn': 'Nested Mushaf',
+          'pdfUrl': 'https://files.example/nested.pdf',
+          'coverUrl': 'https://files.example/nested-cover.jpg',
+        },
+      });
+
+      expect(mushaf.slug, 'nested-mushaf');
+      expect(mushaf.downloadUrl, 'https://files.example/nested.pdf');
+      expect(mushaf.imageUrl, 'https://files.example/nested-cover.jpg');
+    });
+
     test('reciter pagination only reports a next page when one exists', () {
       const first = Way2QuranRecitersPage(
         reciters: [],
