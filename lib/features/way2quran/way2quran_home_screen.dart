@@ -478,7 +478,15 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
 
   late Future<Way2QuranReciter> future; int selected = 0;
   String? _playingUrl; bool _loadingAudio = false;
-  @override void initState() { super.initState(); future = Way2QuranRepository().getReciter(widget.reciterSlug); _loadFavorite(); }
+  @override void initState() {
+    super.initState();
+    future = Way2QuranRepository().getReciter(widget.reciterSlug);
+    future.then<void>(
+      (reciter) async => Way2QuranFavorites.cacheReciter(reciter),
+      onError: (Object _) {},
+    );
+    _loadFavorite();
+  }
   Future<void> _loadFavorite() async {
     final value = await Way2QuranFavorites.contains(widget.reciterSlug);
     if (mounted) setState(() => _isFavorite = value);
@@ -659,9 +667,12 @@ class _Way2QuranFavoritesScreenState extends State<Way2QuranFavoritesScreen> {
     final results = await Future.wait(
       slugs.map((slug) async {
         try {
-          return await repo.getReciter(slug, increaseViews: false);
+          final reciter = await repo.getReciter(slug, increaseViews: false);
+          await Way2QuranFavorites.cacheReciter(reciter);
+          return reciter;
         } catch (_) {
-          return null;
+          // Keep favorite cards visible offline with their last cached summary.
+          return await Way2QuranFavorites.cachedReciter(slug);
         }
       }),
     );
