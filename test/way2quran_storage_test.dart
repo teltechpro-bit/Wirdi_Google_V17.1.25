@@ -20,7 +20,7 @@ void main() {
     test('keeps API-derived filename inside the recitations folder', () {
       expect(
         Way2QuranStorage.recitationFilePath('/app/documents', '../../outside/evil'),
-        '/app/documents/way2quran/recitations/________outside_evil.mp3',
+        '/app/documents/way2quran/recitations/______outside_evil.mp3',
       );
     });
 
