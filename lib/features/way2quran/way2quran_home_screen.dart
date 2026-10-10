@@ -331,7 +331,7 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
           return ListView(padding:const EdgeInsets.fromLTRB(16,0,16,24),children:[
             if(data.reciters.isNotEmpty)...[
               Text(ar?'القراء':'Reciters',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
-              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(r.totalViews.toString()+' '+(ar?'مشاهدة':'views')),trailing:const Icon(Icons.chevron_right_rounded)))),
+              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text('${r.recitations.length} '+(ar?'تلاوة متاحة':'recitations')),trailing:const Icon(Icons.chevron_right_rounded)))),
               const SizedBox(height:18)],
             if(data.recitations.isNotEmpty)...[
               Text(ar?'القراءات والروايات':'Recitations',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
@@ -642,9 +642,14 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
   bool topOnly = false;
   String sort = 'arabicName';
   int page = 1;
+  Map<String, int> _wirdiViewCounts = <String, int>{};
   late Future<List<Way2QuranRecitation>> recitationsFuture;
-  @override void initState() { super.initState(); future = _fetch(); recitationsFuture = repo.getRecitations(); }
-  Future<Way2QuranRecitersPage> _fetch() => repo.getRecitersPage(recitationSlug: recitationSlug, isTopReciter: topOnly ? 'true' : '', search: search.text.trim(), sort: sort, page: page, pageSize: 50);
+  @override void initState() { super.initState(); future = _fetch(); recitationsFuture = repo.getRecitations(); _loadWirdiViewCounts(); }
+  Future<void> _loadWirdiViewCounts() async {
+    final counts = await Way2QuranViewCounter.all();
+    if (mounted) setState(() => _wirdiViewCounts = counts);
+  }
+  Future<Way2QuranRecitersPage> _fetch() => repo.getRecitersPage(recitationSlug: recitationSlug, isTopReciter: topOnly ? 'true' : '', search: search.text.trim(), sort: sort == 'views' ? 'arabicName' : sort, page: page, pageSize: 50);
   void _load({int? nextPage}) => setState(() { if (nextPage != null) page = nextPage; future = _fetch(); });
   @override void dispose() { search.dispose(); super.dispose(); }
   @override Widget build(BuildContext context) {
@@ -662,7 +667,7 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         DropdownButton<String>(value: sort, underline: const SizedBox.shrink(), items: [
           DropdownMenuItem(value: 'arabicName', child: Text(ar ? 'أبجدي' : 'A–Z')),
           DropdownMenuItem(value: 'mostListened', child: Text(ar ? 'الأكثر استماعًا' : 'Most listened')),
-          DropdownMenuItem(value: 'views', child: Text(ar ? 'الأكثر مشاهدة' : 'Most viewed')),
+          DropdownMenuItem(value: 'views', child: Text(ar ? 'الأكثر مشاهدة داخل وِرْدِي' : 'Most viewed in Wirdi')),
         ], onChanged: (v) { if (v != null) {
           sort = v;
           _load(nextPage: 1);
@@ -672,6 +677,10 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
         if (snapshot.hasError) return Center(child: FilledButton.icon(onPressed: () => _load(), icon: const Icon(Icons.refresh), label: Text(ar ? 'إعادة المحاولة' : 'Retry')));
         final data = snapshot.data!; if (data.reciters.isEmpty) return Center(child: Text(ar ? 'لا توجد نتائج' : 'No reciters found'));
+         final displayedReciters = [...data.reciters];
+         if (sort == 'views') {
+           displayedReciters.sort((a, b) => (_wirdiViewCounts[b.slug] ?? 0).compareTo(_wirdiViewCounts[a.slug] ?? 0));
+         }
         return Column(children: [
           Expanded(
             child: GridView.builder(
@@ -682,9 +691,9 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
                 mainAxisSpacing: 12,
                 childAspectRatio: .82,
               ),
-              itemCount: data.reciters.length,
+              itemCount: displayedReciters.length,
               itemBuilder: (context, i) {
-                final reciter = data.reciters[i];
+                final reciter = displayedReciters[i];
                 return _ReciterCard(
                   reciter: reciter,
                   ar: ar,
