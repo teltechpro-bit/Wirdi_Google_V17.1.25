@@ -1,0 +1,14 @@
+{
+  "name": "wirdi-firestore-rules-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Emulator tests for Wirdi Firestore security rules",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project demo-wirdi-rules \"node --test test/firestore.rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.2",
+    "firebase-tools": "^14.22.0"
+  }
+}
