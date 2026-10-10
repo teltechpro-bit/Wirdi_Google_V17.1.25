@@ -4,6 +4,11 @@ class Way2QuranStorage {
 
   static const String recitationsRelativePath = 'way2quran/recitations';
 
-  static String recitationFilePath(String appDocumentsPath, String slug) =>
-      '$appDocumentsPath/$recitationsRelativePath/$slug.mp3';
+  /// Builds a filename from API/user-derived data without allowing path
+  /// separators or other characters to escape the private recitations folder.
+  static String recitationFilePath(String appDocumentsPath, String slug) {
+    final safeStem = slug.trim().replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final fileStem = safeStem.isEmpty ? 'recitation' : safeStem;
+    return '$appDocumentsPath/$recitationsRelativePath/$fileStem.mp3';
+  }
 }
