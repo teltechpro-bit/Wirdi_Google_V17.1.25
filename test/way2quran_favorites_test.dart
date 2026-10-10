@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wirdi/features/way2quran/way2quran_favorites.dart';
+import 'package:wirdi/features/way2quran/way2quran_models.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -8,6 +9,33 @@ void main() {
   group('Way2QuranFavorites', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+    });
+
+    test('caches a lightweight reciter summary for offline favorites', () async {
+      const reciter = Way2QuranReciter(
+        slug: 'reader-a',
+        nameAr: 'قارئ تجريبي',
+        nameEn: 'Test Reciter',
+        photo: 'https://example.com/reader.jpg',
+        totalViews: 42,
+        recitations: <Way2QuranRecitationAudio>[],
+      );
+
+      await Way2QuranFavorites.cacheReciter(reciter);
+      final cached = await Way2QuranFavorites.cachedReciter(' reader-a ');
+
+      expect(cached?.slug, 'reader-a');
+      expect(cached?.nameAr, 'قارئ تجريبي');
+      expect(cached?.nameEn, 'Test Reciter');
+      expect(cached?.photo, 'https://example.com/reader.jpg');
+      expect(cached?.totalViews, 42);
+      expect(cached?.recitations, isEmpty);
+    });
+
+    test('ignores malformed cached favorite summaries', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('way2quran.favorite_reciter_summary.v1.reader-a', '{');
+      expect(await Way2QuranFavorites.cachedReciter('reader-a'), isNull);
     });
 
     test('starts empty', () async {

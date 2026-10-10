@@ -1,7 +1,47 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'way2quran_models.dart';
 
 class Way2QuranFavorites {
   static const _key = 'way2quran.favorite_reciter_slugs';
+
+  static const _cachePrefix = 'way2quran.favorite_reciter_summary.v1.';
+
+  static String _cacheKey(String slug) => '$_cachePrefix${Uri.encodeComponent(slug)}';
+
+  /// Cache only the profile summary needed by the favorites grid. Audio
+  /// catalogues can be large and are fetched again when a profile is opened.
+  static Future<void> cacheReciter(Way2QuranReciter reciter) async {
+    final slug = reciter.slug.trim();
+    if (slug.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cacheKey(slug), jsonEncode({
+      'slug': slug,
+      'arabicName': reciter.nameAr,
+      'englishName': reciter.nameEn,
+      'photo': reciter.photo,
+      'totalViews': reciter.totalViews,
+      'recitations': const <dynamic>[],
+    }));
+  }
+
+  static Future<Way2QuranReciter?> cachedReciter(String slug) async {
+    final normalized = _normalizeSlug(slug);
+    if (normalized.isEmpty) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cacheKey(normalized));
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final reciter = Way2QuranReciter.fromJson(Map<String, dynamic>.from(decoded));
+      return reciter.slug.isEmpty ? null : reciter;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static String _normalizeSlug(String slug) => slug.trim();
 
