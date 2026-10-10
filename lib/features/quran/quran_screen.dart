@@ -26,6 +26,7 @@ import '../mushaf/mushaf_view_screen.dart';
 import '../../core/services/bookmark_service.dart';
 import 'ayah_share_screen.dart';
 import '../way2quran/way2quran_home_screen.dart';
+import 'qiraat_screen.dart';
 import 'ten_qiraat_screen.dart';
 import 'riwayat_directory_screen.dart';
 import 'widgets/quran_playback_bar.dart';
@@ -1184,6 +1185,8 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                 _pickReciter();
               } else if (value == 'qiraat') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const Way2QuranHomeScreen())).then((_) => setState(() {}));
+              } else if (value == 'qiraatCatalog') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const QiraatScreen())).then((_) => setState(() {}));
               } else if (value == 'fontDec') {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
@@ -1201,7 +1204,8 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               if (MediaQuery.of(context).orientation == Orientation.landscape && surah.number < 114) PopupMenuItem(value: 'next', child: Text(languageCode == 'ar' ? 'السورة التالية' : 'Next surah')),
               if (MediaQuery.of(context).orientation == Orientation.landscape) PopupMenuItem(value: 'mushaf', child: Text(l10n.quranViewAsMushafPageTooltip)),
               PopupMenuItem(value: 'reciter', child: Text(l10n.quranChooseReciterTooltip(Reciters.byId(appSettings.reciterId).displayNameFor(languageCode)))),
-              PopupMenuItem(value: 'qiraat', child: Text(languageCode == 'ar' ? 'القراءات والروايات' : 'Qira’at & Riwayat')),
+              PopupMenuItem(value: 'qiraat', child: Text(languageCode == 'ar' ? 'مكتبة التلاوات' : 'Recitation Library')),
+              PopupMenuItem(value: 'qiraatCatalog', child: Text(languageCode == 'ar' ? 'القراءات والروايات' : 'Qira’at & Riwayat')),
               PopupMenuItem(value: 'fontDec', child: Text(l10n.quranDecreaseFontTooltip)),
               PopupMenuItem(value: 'fontInc', child: Text(l10n.quranIncreaseFontTooltip)),
               PopupMenuItem(
