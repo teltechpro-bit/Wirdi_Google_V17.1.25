@@ -178,8 +178,9 @@ class QiraatService {
     'hafs': 1,
     'qalun': 5,
     'warsh': 10,
+    // Qunbul deliberately has no static ID: API ID 11 is mapped to
+    // Al-Bazzi, and assigning it to both readers risks cross-riwayah audio.
     'al_bazzi': 11,
-    'qunbul': 11,
     'al_duri_kisai': 12,
   };
 
@@ -517,8 +518,8 @@ class QiraatService {
     if (hasRuntimeSource) {
       final count = _readers![r.id]!.length;
       return languageCode == 'ar'
-          ? 'مصدر موثّق متاح • ' + count.toString() + ' قارئ'
-          : 'Verified source available • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
+          ? 'تم اكتشاف مصدر • ' + count.toString() + ' قارئ'
+          : 'Source discovered • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
     }
     if (r.hasSurahAudio) {
       return languageCode == 'ar'
