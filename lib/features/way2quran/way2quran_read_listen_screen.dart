@@ -424,8 +424,8 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: Text(ar ? 'التلاوة الأصلية من Way2Quran' : 'Original Way2Quran recitation'),
-                  subtitle: Text(ar ? 'اختيار السورة والقارئ والرواية والسرعة مرتبط بمصدر Way2Quran الحقيقي.' : 'Surah, reciter, riwayah and speed are connected to the real Way2Quran source.'),
+                  title: Text(ar ? 'التلاوة المختارة' : 'Selected recitation'),
+                  subtitle: Text(ar ? 'اختر السورة والقارئ والرواية واضبط سرعة التلاوة.' : 'Choose a surah, reciter and riwayah, then adjust playback speed.'),
                 ),
               ),
               if (selectedReciter != null && _audioFor(surah) == null)
