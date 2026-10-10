@@ -19,11 +19,19 @@ void main() {
     test('new reciters use the same per-ayah CDN URL pattern', () {
       expect(
         AppSources.ayahAudioUrl(262, reciter: 'ar.muhammadayyoub'),
-        endsWith('/ar.muhammadayyoub/262.mp3'),
+        equals('https://cdn.islamic.network/quran/audio/128/ar.muhammadayyoub/262.mp3'),
       );
       expect(
         AppSources.ayahAudioUrl(262, reciter: 'ar.abdullahbasfar'),
-        endsWith('/ar.abdullahbasfar/262.mp3'),
+        equals('https://cdn.islamic.network/quran/audio/64/ar.abdullahbasfar/262.mp3'),
+      );
+      expect(
+        AppSources.ayahAudioUrl(262, reciter: 'ar.ibrahimakhbar'),
+        equals('https://cdn.islamic.network/quran/audio/32/ar.ibrahimakhbar/262.mp3'),
+      );
+      expect(
+        AppSources.ayahAudioUrl(262, reciter: 'ar.parhizgar'),
+        equals('https://cdn.islamic.network/quran/audio/48/ar.parhizgar/262.mp3'),
       );
     });
   });
