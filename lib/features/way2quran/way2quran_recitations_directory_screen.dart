@@ -60,8 +60,8 @@ class _Way2QuranRecitationsDirectoryScreenState extends State<Way2QuranRecitatio
               const SizedBox(height: 32),
               Text(
                 ar
-                    ? 'هذه القائمة مبنية على قائمة القراءات الفعلية من Way2Quran، والضغط على أي قراءة يعرض القراء المرتبطين بها.'
-                    : 'This directory uses the actual Way2Quran recitation list. Selecting a recitation opens its real reciter collection.',
+                    ? 'استعرض القراءات المتاحة، واختر أي قراءة لعرض القراء المرتبطين بها.'
+                    : 'Browse available recitations and select one to explore its associated reciters.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
