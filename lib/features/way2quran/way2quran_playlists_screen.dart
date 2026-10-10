@@ -275,14 +275,14 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   }
 
   Future<void> _play(String path) async {
-    final file = File(path);
-    if (!await file.exists()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_ar ? 'الملف لم يعد موجودًا؛ احذف المسار من القائمة.' : 'The file is missing. Remove it from the playlist.')));
-      }
-      return;
-    }
     try {
+      final file = File(path);
+      if (!await file.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_ar ? 'الملف لم يعد موجودًا؛ احذف المسار من القائمة.' : 'The file is missing. Remove it from the playlist.')));
+        }
+        return;
+      }
       await quranAudio.playExternalFile(file.path, title: _label(file));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_ar ? 'تعذر تشغيل التلاوة.' : 'Could not play this recitation.')));
