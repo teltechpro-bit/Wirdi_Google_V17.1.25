@@ -10,9 +10,11 @@ class Way2QuranReciter {
  String name(bool ar)=>ar?nameAr:nameEn;
  factory Way2QuranReciter.fromJson(Map<String,dynamic> j){
   String s(dynamic v)=>v==null?'':v.toString();
-  final recs=(j['recitations'] as List? ?? const []).whereType<Map>().map((e){
+  final rawRecitations = j['recitations'];
+  final recitations = rawRecitations is List ? rawRecitations : const <dynamic>[];
+  final recs=recitations.whereType<Map>().map((e){
    final m=Map<String,dynamic>.from(e); final info=m['recitationInfo'] is Map?Map<String,dynamic>.from(m['recitationInfo']):<String,dynamic>{};
-   return Way2QuranRecitationAudio(slug:s(info['slug']??m['slug']),nameAr:s(info['arabicName']??info['nameAr']??info['name']),nameEn:s(info['englishName']??info['nameEn']??info['name']),downloadUrl:s(m['downloadURL']??m['downloadUrl']),audioFiles:(m['audioFiles'] as List? ?? const []).whereType<Map>().map(Way2QuranAudioFile.fromJson).toList());
+   return Way2QuranRecitationAudio(slug:s(info['slug']??m['slug']),nameAr:s(info['arabicName']??info['nameAr']??info['name']),nameEn:s(info['englishName']??info['nameEn']??info['name']),downloadUrl:s(m['downloadURL']??m['downloadUrl']),audioFiles:(m['audioFiles'] is List ? m['audioFiles'] as List : const <dynamic>[]).whereType<Map>().map(Way2QuranAudioFile.fromJson).toList());
   }).toList();
   return Way2QuranReciter(slug:s(j['slug']),nameAr:s(j['arabicName']??j['nameAr']??j['name']),nameEn:s(j['englishName']??j['nameEn']??j['name']),photo:s(j['photo']??j['image']),totalViews:int.tryParse(s(j['totalViewers']??j['totalViews']))??0,recitations:recs);
  }
