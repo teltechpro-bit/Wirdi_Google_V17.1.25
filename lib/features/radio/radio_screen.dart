@@ -155,7 +155,7 @@ class _RadioScreenState extends State<RadioScreen>
             onPressed: () => _showFavs(context, l),
           ),
         ],
-        bottom: _searching
+        bottom: (_searching || widget.quranOnly)
             ? null
             : TabBar(
                 controller: _tabs,
