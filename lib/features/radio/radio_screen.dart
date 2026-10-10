@@ -12,7 +12,8 @@ import 'widgets/sleep_timer_sheet.dart';
 import 'radio_now_playing_screen.dart';
 
 class RadioScreen extends StatefulWidget {
-  const RadioScreen({super.key});
+  final bool quranOnly;
+  const RadioScreen({super.key, this.quranOnly = false});
   @override State<RadioScreen> createState() => _RadioScreenState();
 }
 
@@ -96,7 +97,9 @@ class _RadioScreenState extends State<RadioScreen>
                     const TextStyle(fontSize: 18),
                 onChanged: (v) => setState(() => _query = v),
               )
-            : Text(l.radioTitle),
+            : Text(widget.quranOnly
+                ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إذاعة القرآن الكريم' : 'Quran Radio')
+                : l.radioTitle),
         actions: [
           if (_searching)
             IconButton(
@@ -165,7 +168,19 @@ class _RadioScreenState extends State<RadioScreen>
         listenable: RadioService.instance,
         builder: (_, __) {
           final svc = RadioService.instance;
-          final stations = svc.allStations;
+          final stations = widget.quranOnly
+              ? svc.allStations.where((station) {
+                  final searchable = '${station.nameAr} ${station.nameEn} ${station.category}'.toLowerCase();
+                  return station.category == 'quran' ||
+                      searchable.contains('quran') ||
+                      searchable.contains("qur'an") ||
+                      searchable.contains('coran') ||
+                      searchable.contains('tilawah') ||
+                      searchable.contains('tilawat') ||
+                      searchable.contains('القرآن') ||
+                      searchable.contains('قرآن');
+                }).toList()
+              : svc.allStations;
 
           return Column(children: [
             // Error banner
@@ -190,7 +205,7 @@ class _RadioScreenState extends State<RadioScreen>
               ),
 
             // Source badge
-            _SourceBadge(svc: svc),
+            if (!widget.quranOnly) _SourceBadge(svc: svc),
 
             // Now playing banner
             if (svc.currentStation != null) _NowPlayingBanner(svc: svc, l: l),
@@ -203,7 +218,18 @@ class _RadioScreenState extends State<RadioScreen>
                   ? const Center(child: CircularProgressIndicator())
                   : _searching
                       ? _buildSearchResults(stations, l)
-                      : TabBarView(
+                      : widget.quranOnly
+                          ? stations.isEmpty
+                              ? Center(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'لا توجد إذاعات قرآنية متاحة حاليًا' : 'No Quran radio stations are available right now'))
+                              : RefreshIndicator(
+                                  onRefresh: () => svc.refreshStations(),
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.only(bottom: 100),
+                                    itemCount: stations.length,
+                                    itemBuilder: (_, i) => RadioStationTile(station: stations[i]),
+                                  ),
+                                )
+                          : TabBarView(
                           controller: _tabs,
                           children: _cats.map((cat) {
                             final list = _stationsFor(cat, stations);
