@@ -422,7 +422,7 @@ class QiraatService {
     }
   }
   Future<Map<int, ({int startMs, int endMs})>> ayahTimings(int surahNumber) async {
-    final reader = selectedReaderFor(_selectedRiwayahId) ?? defaultReaderFor(_selectedRiwayahId);
+    final reader = selectedReaderFor(_selectedRiwayahId);
     final readId = reader?.timingReadId;
     if (reader == null || readId == null || reader.source != 'MP3Quran') {
       return const <int, ({int startMs, int endMs})>{};
