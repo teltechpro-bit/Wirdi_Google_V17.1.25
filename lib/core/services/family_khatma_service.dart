@@ -280,19 +280,43 @@ class FamilyKhatmaService {
           await ref.delete();
           return;
         }
-        // Do not orphan a live group; ownership transfer must be explicit.
+        // Ownership transfer must be explicit; never orphan an active group.
         throw const FamilyKhatmaException('notOwner');
       }
 
+      // Release only unfinished work. Completed juz remain as history.
       final claims = data['claims'];
-      final hasOwnClaims = claims is Map && claims.containsKey(user.uid);
-      if (hasOwnClaims) {
-        // Rules allow members to change only their own claims entry.
-        await ref.update(<String, dynamic>{
-          'claims.${user.uid}': FieldValue.delete(),
-        });
+      final claimUpdates = <String, dynamic>{};
+      if (claims is Map) {
+        final mine = claims[user.uid];
+        if (mine is Map && mine['juzs'] is Map) {
+          final juzs = mine['juzs'] as Map;
+          final completedKeys = juzs.entries
+              .where((entry) => entry.value == true)
+              .map((entry) => entry.key.toString())
+              .toList();
+          if (completedKeys.isEmpty) {
+            claimUpdates['claims.${user.uid}'] = FieldValue.delete();
+          } else {
+            for (final entry in juzs.entries) {
+              if (entry.value != true) {
+                claimUpdates['claims.${user.uid}.juzs.${entry.key}'] = FieldValue.delete();
+              }
+            }
+          }
+        } else {
+          // Backward compatibility for legacy {juz: {uid, done}} documents.
+          claims.forEach((key, value) {
+            if (value is Map && value['uid'] == user.uid && value['done'] != true) {
+              claimUpdates['claims.$key'] = FieldValue.delete();
+            }
+          });
+        }
       }
-      // Membership changes are a separate write under the Firestore rules.
+      if (claimUpdates.isNotEmpty) {
+        await ref.update(claimUpdates);
+      }
+      // Membership fields are changed separately to respect Firestore rules.
       await ref.update(<String, dynamic>{
         'memberUids': FieldValue.arrayRemove(<String>[user.uid]),
         'members.${user.uid}': FieldValue.delete(),
