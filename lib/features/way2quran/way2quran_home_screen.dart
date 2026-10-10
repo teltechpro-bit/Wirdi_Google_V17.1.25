@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/quran_repository.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_models.dart';
 import 'way2quran_read_listen_screen.dart';
@@ -518,6 +519,22 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     try {
       if (same && !quranAudio.isPaused && quranAudio.playingAyah == null) {
         await quranAudio.pause();
+      } else if (audio.surahNumber >= 1 && audio.surahNumber <= 114) {
+        // This row is a full-surah recording. Give the shared player its
+        // surah context so Wirdi can keep the active-ayah indicator moving;
+        // never change the user's configured Wirdi reciter as a side effect.
+        final allSurahs = await QuranRepository.load();
+        final matches = allSurahs.where((item) => item.number == audio.surahNumber);
+        if (matches.isNotEmpty) {
+          await quranAudio.playExternalSurahUrl(
+            url,
+            title: audio.name(ar),
+            surah: matches.first,
+            allSurahs: allSurahs,
+          );
+        } else {
+          await quranAudio.playExternalUrl(url, title: audio.name(ar));
+        }
       } else {
         await quranAudio.playExternalUrl(url, title: audio.name(ar));
       }
