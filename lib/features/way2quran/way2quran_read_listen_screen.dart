@@ -184,6 +184,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _play(SurahModel surah) async {
+    try {
     final audio = _audioFor(surah);
     final dir = await getApplicationDocumentsDirectory();
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
@@ -218,6 +219,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
         surah: surah,
         allSurahs: allSurahs,
       );
+    }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر تشغيل التلاوة. تحقق من اتصالك أو أعد تنزيل الملف.'
+            : 'Could not play this recitation. Check your connection or download it again.'),
+      ));
     }
   }
 
