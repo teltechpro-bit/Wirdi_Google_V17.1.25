@@ -43,46 +43,12 @@ keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androidd
 
 ## Step 3 — Set Firestore Security Rules
 
-1. Go to **Firestore Database → Rules**
-2. Replace the default rules with:
+1. Open **Firestore Database → Rules** in the Firebase console for project `wirdi-cb813`.
+2. Publish the contents of the repository's **`firestore.rules`** file exactly. Do not use the older simplified example: it permits broader group updates than the app expects.
+3. Before publishing, run the Firestore Emulator tests for group creation, joining, claiming/releasing a juz, marking it done, starting a new round, and leaving as owner and non-owner.
+4. Publish only after those checks pass.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Users can only read/write their own data
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-    }
-
-    // Group (family / friends) khatma -- added in v17.
-    // Anyone signed in may read a group (needed to join with its code) and may
-    // add THEMSELVES to it. Only members may change claims / rounds, and only
-    // the owner may rename or delete the group.
-    match /family_khatmas/{code} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-                    && request.resource.data.ownerUid == request.auth.uid
-                    && request.auth.uid in request.resource.data.memberUids;
-      allow update: if request.auth != null
-                    && (request.auth.uid in resource.data.memberUids
-                        || request.auth.uid in request.resource.data.memberUids);
-      allow delete: if request.auth != null
-                    && resource.data.ownerUid == request.auth.uid;
-    }
-  }
-}
-```
-
-> The `family_khatmas` block is required by the **Group Khatma** tool. Without it
-> the screen shows a "rules not published" message. These rules are intentionally
-> simple; tighten them (e.g. restrict which fields a non-owner may change) if you
-> expect abuse.
-
-3. Click **Publish**
-
----
+**Important:** committing `firestore.rules` does not deploy them to the live Firebase project. Production rules remain whatever is currently published in the Firebase Console until they are explicitly deployed or published there.
 
 ## Step 4 — Verify Firestore is in Production Mode
 
