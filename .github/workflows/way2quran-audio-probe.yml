@@ -1,0 +1,74 @@
+name: Way2Quran Audio URL Probe
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  probe-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check API payload and one real audio URL
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import requests
+
+          base = "https://way2quran.com/api"
+          session = requests.Session()
+          session.headers["User-Agent"] = "Wirdi-Audio-Connectivity-Probe/1.0"
+
+          def get_json(url):
+              r = session.get(url, timeout=20)
+              print(f"GET {url} -> HTTP {r.status_code}; content-type={r.headers.get('content-type')}; bytes={len(r.content)}")
+              r.raise_for_status()
+              payload = r.json()
+              return payload.get("data", payload) if isinstance(payload, dict) else payload
+
+          reciters = get_json(base + "/reciters?pageSize=1&currentPage=1")
+          if isinstance(reciters, dict):
+              reciters = reciters.get("reciters", [])
+          if not reciters:
+              raise SystemExit("API responded, but no reciter record was found in the expected payload.")
+          slug = reciters[0].get("slug")
+          if not slug:
+              raise SystemExit("First reciter record has no slug; cannot resolve its profile.")
+          profile = get_json(base + "/reciters/reciter-profile/" + slug + "?increaseViews=false")
+          if isinstance(profile, dict) and isinstance(profile.get("reciter"), dict):
+              profile = profile["reciter"]
+
+          urls = []
+          def walk(value):
+              if isinstance(value, dict):
+                  for k, v in value.items():
+                      if isinstance(v, str) and v.startswith("http") and (".mp3" in v.lower() or "audio" in k.lower() or "download" in k.lower()):
+                          urls.append(v)
+                      else:
+                          walk(v)
+              elif isinstance(value, list):
+                  for item in value:
+                      walk(item)
+          walk(profile)
+          urls = list(dict.fromkeys(urls))
+          if not urls:
+              print("Profile keys:", list(profile.keys()) if isinstance(profile, dict) else type(profile).__name__)
+              raise SystemExit("Profile responded but no candidate audio/download URL was exposed in its payload.")
+          print("Candidate audio URLs:", len(urls))
+          last_error = None
+          for url in urls[:5]:
+              try:
+                  r = session.get(url, headers={"Range": "bytes=0-1"}, stream=True, timeout=20, allow_redirects=True)
+                  print(f"AUDIO GET Range {url} -> HTTP {r.status_code}; content-type={r.headers.get('content-type')}; content-length={r.headers.get('content-length')}; final-url={r.url}")
+                  r.close()
+                  if r.status_code in (200, 206) and ("audio" in r.headers.get("content-type", "").lower() or ".mp3" in r.url.lower() or "octet-stream" in r.headers.get("content-type", "").lower()):
+                      print("AUDIO_URL_CHECK=PASS")
+                      break
+              except Exception as e:
+                  last_error = e
+                  print(f"AUDIO_URL_ERROR {type(e).__name__}: {e}")
+          else:
+              raise SystemExit(f"No candidate audio URL passed the HTTP range/content-type check. Last error: {last_error}")
+          PY

@@ -85,5 +85,49 @@ void main() {
       expect(first.hasNext, isTrue);
       expect(last.hasNext, isFalse);
     });
+
+    test('audio files preserve Arabic and English surah names independently', () {
+      final audio = Way2QuranAudioFile.fromJson({
+        'url': 'https://audio.example/001.mp3',
+        'surahInfo': {
+          'number': 1,
+          'arabicName': 'الفاتحة',
+          'englishName': 'Al-Fatihah',
+        },
+      });
+
+      expect(audio.name(true), 'الفاتحة');
+      expect(audio.name(false), 'Al-Fatihah');
+      expect(audio.surahName, 'الفاتحة');
+    });
+
+    test('audio file uses localized number fallback when names are absent', () {
+      final audio = Way2QuranAudioFile.fromJson({
+        'url': 'https://audio.example/002.mp3',
+        'surahNumber': '2',
+      });
+
+      expect(audio.name(true), 'سورة 2');
+      expect(audio.name(false), 'Surah 2');
+    });
+
+    test('malformed optional recitation collections do not crash model parsing', () {
+      final reciter = Way2QuranReciter.fromJson({
+        'slug': 'partial-reader',
+        'recitations': {'unexpected': 'object'},
+      });
+      expect(reciter.slug, 'partial-reader');
+      expect(reciter.recitations, isEmpty);
+
+      final reciterWithMalformedAudio = Way2QuranReciter.fromJson({
+        'slug': 'partial-reader',
+        'recitations': [
+          {'recitationInfo': {'slug': 'warsh'}, 'audioFiles': 'not-a-list'},
+        ],
+      });
+      expect(reciterWithMalformedAudio.recitations.single.slug, 'warsh');
+      expect(reciterWithMalformedAudio.recitations.single.audioFiles, isEmpty);
+    });
+
   });
 }
