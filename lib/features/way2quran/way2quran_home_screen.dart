@@ -480,12 +480,20 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   String? _playingUrl; bool _loadingAudio = false;
   @override void initState() {
     super.initState();
-    future = Way2QuranRepository().getReciter(widget.reciterSlug);
-    future.then<void>(
-      (reciter) async => Way2QuranFavorites.cacheReciter(reciter),
-      onError: (Object _) {},
-    );
+    future = _loadReciter();
     _loadFavorite();
+  }
+
+  Future<Way2QuranReciter> _loadReciter() async {
+    try {
+      final reciter = await Way2QuranRepository().getReciter(widget.reciterSlug);
+      await Way2QuranFavorites.cacheReciter(reciter);
+      return reciter;
+    } catch (_) {
+      final cached = await Way2QuranFavorites.cachedReciter(widget.reciterSlug);
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
   Future<void> _loadFavorite() async {
     final value = await Way2QuranFavorites.contains(widget.reciterSlug);
@@ -518,8 +526,35 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     return Scaffold(appBar: AppBar(title: Text(ar ? 'القارئ' : 'Reciter'), actions: [IconButton(tooltip: ar ? 'المفضلة' : 'Favorites', onPressed: () => _toggleFavorite(ar), icon: Icon(_isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded))]), body: FutureBuilder<Way2QuranReciter>(future: future, builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
       if (snapshot.hasError) return Center(child: Text(ar ? 'تعذر تحميل بيانات القارئ' : 'Could not load reciter'));
-      final r = snapshot.data!; if (r.recitations.isEmpty) return Center(child: Text(ar ? 'لا توجد روايات' : 'No recitations'));
-      final index = selected.clamp(0, r.recitations.length - 1); final rec = r.recitations[index];
+      final r = snapshot.data!;
+      if (r.recitations.isEmpty) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: ListTile(
+                leading: r.photo.isEmpty
+                    ? const CircleAvatar(child: Icon(Icons.person))
+                    : CircleAvatar(backgroundImage: NetworkImage(r.photo)),
+                title: Text(r.name(ar)),
+                subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.cloud_off_rounded),
+                title: Text(ar ? 'بيانات القارئ المحفوظة' : 'Cached reciter profile'),
+                subtitle: Text(ar
+                    ? 'أنت غير متصل بالإنترنت. بيانات التعريف محفوظة، لكن تفاصيل الروايات تحتاج إلى الاتصال.'
+                    : 'You are offline. The profile summary is saved, but recitation details require an internet connection.'),
+              ),
+            ),
+          ],
+        );
+      }
+      final index = selected.clamp(0, r.recitations.length - 1);
+      final rec = r.recitations[index];
       return ListView(padding: const EdgeInsets.all(16), children: [
         Card(child: ListTile(leading: r.photo.isEmpty ? const CircleAvatar(child: Icon(Icons.person)) : CircleAvatar(backgroundImage: NetworkImage(r.photo)), title: Text(r.name(ar)), subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()))),
         const SizedBox(height: 12),
