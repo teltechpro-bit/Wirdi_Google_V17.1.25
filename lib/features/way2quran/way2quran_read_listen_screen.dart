@@ -43,9 +43,6 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     recitersFuture = repo.getRecitersPage(pageSize: 50);
   }
 
-  String _translationCacheKey(int surahNumber, String edition) =>
-      'way2quran.translation.v1.$surahNumber.$edition';
-
   Future<Map<int, String>?> _readCachedTranslation(
     int surahNumber,
     String edition,
