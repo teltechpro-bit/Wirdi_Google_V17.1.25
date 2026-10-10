@@ -231,6 +231,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _playSelectedAyahRange(SurahModel surah) async {
+    try {
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
     if (!qiraat.selectedReaderHasAyahAudio()) {
@@ -261,6 +262,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
         content: Text(arSafe()
             ? 'تعذر تشغيل نطاق الآيات المحدد.'
             : 'Could not play the selected ayah range.'),
+      ));
+    }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر التحقق من توقيت الآيات أو تشغيل النطاق المحدد.'
+            : 'Could not verify ayah timings or play the selected range.'),
       ));
     }
   }
