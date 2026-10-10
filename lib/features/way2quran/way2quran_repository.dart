@@ -97,10 +97,48 @@ class Way2QuranRepository {
             ? payload['pagination']
             : const <String, dynamic>{};
     final p = Map<String, dynamic>.from(pagination as Map);
+    var parsed = raw.whereType<Map>().map((e) =>
+        Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList();
+
+    // Some API deployments ignore the search query parameter. If that
+    // happens, fetch the first broad page and filter names locally instead
+    // of showing an empty result set for a valid search term.
+    if (search.trim().isNotEmpty && parsed.isEmpty) {
+      final fallbackUri = Uri.parse('$baseUrl/reciters').replace(
+        queryParameters: {
+          'recitationSlug': recitationSlug,
+          'isTopReciter': isTopReciter,
+          'currentPage': '1',
+          'sort': _apiSort(sort),
+          'pageSize': '100',
+        },
+      );
+      final fallbackResponse = await _getJson(fallbackUri);
+      final fallbackPayload = unwrapApiData(fallbackResponse);
+      final fallbackRaw = _listPayload(fallbackPayload, 'reciters', fallback: fallbackResponse);
+      final needle = search.trim().toLowerCase();
+      parsed = fallbackRaw.whereType<Map>()
+          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+          .where((reciter) {
+            final fields = <String>[
+              reciter.slug, reciter.nameAr, reciter.nameEn,
+              ...reciter.recitations.expand((r) => [r.slug, r.nameAr, r.nameEn]),
+            ];
+            return fields.any((field) => field.toLowerCase().contains(needle));
+          }).toList();
+      if (parsed.isNotEmpty) {
+        return Way2QuranRecitersPage(
+          reciters: parsed,
+          totalCount: parsed.length,
+          page: 1,
+          pages: 1,
+        );
+      }
+    }
+
     return Way2QuranRecitersPage(
-      reciters: raw.whereType<Map>().map((e) =>
-          Way2QuranReciter.fromJson(Map<String, dynamic>.from(e))).toList(),
-      totalCount: int.tryParse('${p['totalCount'] ?? p['total'] ?? 0}') ?? 0,
+      reciters: parsed,
+      totalCount: int.tryParse('${p['totalCount'] ?? p['total'] ?? 0}') ?? parsed.length,
       page: int.tryParse('${p['page'] ?? page}') ?? page,
       pages: int.tryParse('${p['pages'] ?? p['totalPages'] ?? 1}') ?? 1,
     );
