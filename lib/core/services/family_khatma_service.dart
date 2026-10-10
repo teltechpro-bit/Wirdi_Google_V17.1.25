@@ -258,38 +258,41 @@ class FamilyKhatmaService {
     }
   }
 
-  /// Leaves the group (un-finished claims of this member are released first).
-  /// If the owner leaves and nobody else is left, the group is deleted.
+  /// Leaves the group and releases all of the departing member's claims.
+  /// The owner may leave only when no other members remain.
   Future<void> leave(String code) async {
     final user = _requireUser();
     final ref = _col.doc(code);
     try {
       final snap = await ref.get();
+      if (!snap.exists) throw const FamilyKhatmaException('notFound');
       final data = snap.data() ?? <String, dynamic>{};
-      final claims = data['claims'];
-      final updates = <String, dynamic>{};
-      if (claims is Map) {
-        claims.forEach((k, v) {
-          if (v is Map && v['uid'] == user.uid && v['done'] != true) {
-            updates['claims.$k'] = FieldValue.delete();
-          }
-        });
+      final memberUids = data['memberUids'] is List
+          ? List<String>.from(data['memberUids'] as List)
+          : <String>[];
+      if (!memberUids.contains(user.uid)) {
+        throw const FamilyKhatmaException('notFound');
       }
-      final memberUids = (data['memberUids'] is List) ? List<String>.from(data['memberUids'] as List) : <String>[];
-      final remaining = memberUids.where((m) => m != user.uid).toList();
+
+      final remaining = memberUids.where((uid) => uid != user.uid).toList();
       if (data['ownerUid'] == user.uid) {
         if (remaining.isEmpty) {
           await ref.delete();
           return;
         }
-        // Do not leave a live group without an owner. Ownership transfer is
-        // intentionally explicit rather than silently choosing another member.
+        // Do not orphan a live group; ownership transfer must be explicit.
         throw const FamilyKhatmaException('notOwner');
       }
-      if (updates.isNotEmpty) {
-        // Claims first (rule: members may edit only claims/rounds in one write).
-        await ref.update(updates);
+
+      final claims = data['claims'];
+      final hasOwnClaims = claims is Map && claims.containsKey(user.uid);
+      if (hasOwnClaims) {
+        // Rules allow members to change only their own claims entry.
+        await ref.update(<String, dynamic>{
+          'claims.${user.uid}': FieldValue.delete(),
+        });
       }
+      // Membership changes are a separate write under the Firestore rules.
       await ref.update(<String, dynamic>{
         'memberUids': FieldValue.arrayRemove(<String>[user.uid]),
         'members.${user.uid}': FieldValue.delete(),
