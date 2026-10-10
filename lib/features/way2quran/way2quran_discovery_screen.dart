@@ -298,7 +298,7 @@ class _DiscoveryReciterTile extends StatelessWidget {
             child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null,
           ),
           title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${views} ${ar ? 'مشاهدة داخل وِرْدِي' : 'Wirdi views on this device'}'),
+          subtitle: Text('$views ${ar ? 'مشاهدة داخل وِرْدِي' : 'Wirdi views on this device'}'),
           trailing: badge == null
               ? const Icon(Icons.play_circle_outline_rounded)
               : Chip(label: Text(badge!)),
