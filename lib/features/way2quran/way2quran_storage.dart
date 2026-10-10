@@ -25,7 +25,6 @@ class Way2QuranStorage {
     final partial = File('${target.path}.${DateTime.now().microsecondsSinceEpoch}.part');
     try {
       await partial.writeAsBytes(bytes, flush: true);
-      if (await target.exists()) await target.delete();
       return await partial.rename(target.path);
     } catch (_) {
       try {
