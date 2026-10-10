@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/models/quran_models.dart';
 import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
+import '../../core/services/qiraat_service.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_recitations_directory_screen.dart';
@@ -203,6 +204,32 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     await quranAudio.setSpeed(speed);
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
     if (localExists || legacyExists) { await quranAudio.playExternalFile(playableFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
+  }
+
+  Future<void> _playSelectedAyahRange(SurahModel surah) async {
+    final qiraat = QiraatService.instance;
+    await qiraat.loadReaders();
+    if (!qiraat.selectedReaderHasAyahAudio()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'التشغيل من آية إلى آية غير متاح للرواية المختارة حاليًا. لن يتم استبدالها برواية أخرى.'
+            : 'Verse-range playback is unavailable for the selected Wirdi riwayah. No other riwayah will be substituted.'),
+      ));
+      return;
+    }
+    try {
+      final allSurahs = await surahsFuture;
+      await quranAudio.setSpeed(speed);
+      await quranAudio.playRange(surah, allSurahs, fromAyah, toAyah);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر تشغيل نطاق الآيات المحدد.'
+            : 'Could not play the selected ayah range.'),
+      ));
+    }
   }
 
   Future<void> _download(SurahModel surah) async {
@@ -405,6 +432,20 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       ),
                       const SizedBox(height: 16),
                       Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل السورة' : 'Play Surah'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _playSelectedAyahRange(surah),
+                        icon: const Icon(Icons.queue_music_rounded),
+                        label: Text(ar
+                            ? 'تشغيل الآيات المحددة بقارئ وِرْدِي'
+                            : 'Play selected ayahs with Wirdi reader'),
+                      ),
+                      Text(
+                        ar
+                            ? 'يستخدم هذا الزر رواية قارئ وِرْدِي المختارة أعلاه في دليل القراءات، وليس قارئ صفحة الاستماع.'
+                            : 'Uses the selected Wirdi Qira’at reader, not the reciter selected on this page.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
