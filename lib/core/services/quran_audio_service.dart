@@ -76,6 +76,7 @@ class QuranAudioService extends ChangeNotifier {
   bool _externalPlaylistMode = false;
   List<String> _externalPlaylistTitles = const <String>[];
   Map<int, ({int startMs, int endMs})> _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
+  bool _rangeStopTriggered = false;
 
   int? playingAyah;
   bool playingWholeSurah = false;
@@ -260,6 +261,29 @@ class QuranAudioService extends ChangeNotifier {
       final ayah = playingAyah;
       if (_fullSurahOnly) {
         playingAyah = _ayahForFullSurahPosition(p);
+        final rangeEnd = _rangeEndAyah;
+        final endTiming = rangeEnd == null ? null : _fullSurahTimings[rangeEnd];
+        if (!_rangeStopTriggered &&
+            rangeEnd != null &&
+            endTiming != null &&
+            p.inMilliseconds >= endTiming.endMs) {
+          _rangeStopTriggered = true;
+          final endPosition = Duration(milliseconds: endTiming.endMs > 0 ? endTiming.endMs - 1 : 0);
+          position = endPosition;
+          playingAyah = rangeEnd;
+          isPaused = true;
+          unawaited(() async {
+            try {
+              await _player.pause();
+              await _player.seek(endPosition, index: 0);
+            } catch (_) {
+              // Preserve the selected range's completed state if the stream
+              // rejects a final seek during a network transition.
+            }
+          }());
+          notifyListeners();
+          return;
+        }
       } else if (ayah != null && duration > Duration.zero) {
         _progress.setKnownDuration(ayah, duration);
       }
@@ -434,6 +458,7 @@ class QuranAudioService extends ChangeNotifier {
     await PlaybackCoordinator.stopRadioForQuran();
     _rangeStartAyah = startAyah;
     _rangeEndAyah = endAyah;
+    _rangeStopTriggered = false;
     _loadSurahContext(surah, allSurahs);
 
     playingWholeSurah = true;

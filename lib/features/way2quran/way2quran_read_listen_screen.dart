@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/models/quran_models.dart';
 import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
+import '../../core/services/qiraat_service.dart';
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
 import 'way2quran_recitations_directory_screen.dart';
@@ -203,6 +204,41 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     await quranAudio.setSpeed(speed);
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
     if (localExists || legacyExists) { await quranAudio.playExternalFile(playableFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
+  }
+
+  Future<void> _playSelectedAyahRange(SurahModel surah) async {
+    final qiraat = QiraatService.instance;
+    await qiraat.loadReaders();
+    if (!qiraat.selectedReaderHasAyahAudio()) {
+      // Some readers publish a full-surah stream plus verified timing metadata.
+      // Permit range playback only when both endpoints can be located.
+      final timings = await qiraat.ayahTimings(surah.number);
+      final startTiming = timings[fromAyah];
+      final endTiming = timings[toAyah];
+      if (startTiming == null ||
+          endTiming == null ||
+          endTiming.endMs <= startTiming.startMs) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(arSafe()
+              ? 'لا تتوفر بيانات توقيت موثوقة لنطاق الآيات في الرواية المختارة. لن يتم تشغيل السورة كاملة بدلًا منه.'
+              : 'Verified timings for this ayah range are unavailable for the selected riwayah. The full surah will not be played as a substitute.'),
+        ));
+        return;
+      }
+    }
+    try {
+      final allSurahs = await surahsFuture;
+      await quranAudio.setSpeed(speed);
+      await quranAudio.playRange(surah, allSurahs, fromAyah, toAyah);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر تشغيل نطاق الآيات المحدد.'
+            : 'Could not play the selected ayah range.'),
+      ));
+    }
   }
 
   Future<void> _download(SurahModel surah) async {
@@ -405,6 +441,20 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       ),
                       const SizedBox(height: 16),
                       Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل السورة' : 'Play Surah'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _playSelectedAyahRange(surah),
+                        icon: const Icon(Icons.queue_music_rounded),
+                        label: Text(ar
+                            ? 'تشغيل الآيات المحددة بقارئ وِرْدِي'
+                            : 'Play selected ayahs with Wirdi reader'),
+                      ),
+                      Text(
+                        ar
+                            ? 'يستخدم هذا الزر رواية قارئ وِرْدِي المختارة أعلاه في دليل القراءات، وليس قارئ صفحة الاستماع.'
+                            : 'Uses the selected Wirdi Qira’at reader, not the reciter selected on this page.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
@@ -436,8 +486,8 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       const Divider(),
                       Text(
                         ar
-                            ? 'تنبيه: مصدر الصوت يوفر ملف السورة كاملة؛ تحديد الآيات يحدد النص المعروض، لكنه لا يقص ملف الصوت.'
-                            : 'Note: the source provides full-surah audio. The ayah range filters the displayed text, but does not trim the audio file.',
+                            ? 'زر تشغيل السورة يستخدم قارئ صفحة الاستماع ويشغّل السورة كاملة. زر تشغيل الآيات المحددة يستخدم قارئ وِرْدِي المختار، ولا يعمل إلا عند توفر صوت آية-بآية أو توقيت موثوق.'
+                            : 'Play Surah uses the reciter selected on this page and plays the full surah. Play selected ayahs uses the selected Wirdi reader and requires verse audio or verified timing data.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

@@ -43,6 +43,10 @@ class QiraatService {
     return (_readers?[riwayahId] ?? const []).isNotEmpty;
   }
 
+  bool hasVerifiedRuntimeAyahAudio(String riwayahId) =>
+      (_readers?[riwayahId] ?? const <RiwayahReader>[])
+          .any((reader) => reader.hasAyahAudio);
+
   RiwayahReader? selectedReaderFor(String riwayahId) {
     final list = _readers?[riwayahId] ?? const [];
     final id = _selectedReaderIds?[riwayahId];
@@ -178,9 +182,10 @@ class QiraatService {
     'hafs': 1,
     'qalun': 5,
     'warsh': 10,
+    // Keep only unambiguous, well-established static IDs. Other riwayat
+    // must be discovered by their exact names from the API catalog; guessing
+    // an ID can expose another riwayah's audio under the wrong label.
     'al_bazzi': 11,
-    'qunbul': 11,
-    'al_duri_kisai': 12,
   };
 
   Future<Map<String, List<RiwayahReader>>> _fetchReaders() async {
@@ -508,22 +513,22 @@ class QiraatService {
   }
 
   String audioStatusFor(RiwayahOption r, String languageCode) {
-    final hasRuntimeSource = hasRuntimeReaderSource(r.id);
-    if (r.hasVerifiedAyahAudio && (r.id == 'hafs' || r.id == 'warsh')) {
+    final runtimeReaders = _readers?[r.id] ?? const <RiwayahReader>[];
+    if (runtimeReaders.any((reader) => reader.hasAyahAudio)) {
       return languageCode == 'ar'
           ? 'صوت آية-بآية متحقق'
           : 'Verified verse-by-verse audio';
     }
-    if (hasRuntimeSource) {
-      final count = _readers![r.id]!.length;
+    if (runtimeReaders.isNotEmpty) {
+      final count = runtimeReaders.length;
       return languageCode == 'ar'
-          ? 'مصدر موثّق متاح • ' + count.toString() + ' قارئ'
-          : 'Verified source available • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
+          ? 'تم اكتشاف مصدر • ' + count.toString() + ' قارئ'
+          : 'Source discovered • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
     }
     if (r.hasSurahAudio) {
       return languageCode == 'ar'
-          ? 'مصدر الرواية مفعّل وسيظهر بعد التحقق'
-          : 'Riwayah source configured; waiting for runtime verification';
+          ? 'مصدر الرواية مُعدّ، لكن لم يُكتشف قارئ متاح بعد'
+          : 'Riwayah source configured; no runtime reader discovered yet';
     }
     return languageCode == 'ar'
         ? 'مصدر صوتي موثّق غير متوفر حاليًا'
