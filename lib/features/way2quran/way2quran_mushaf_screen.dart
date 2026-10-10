@@ -84,7 +84,13 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
       }
       final file = await _localFile(mushaf);
       await Way2QuranStorage.writeBytesAtomically(file, bytes);
-      await repo.incrementMushafDownload(mushaf.slug);
+      // The file is already safely stored. A statistics endpoint failure
+      // must not make a successful PDF download look like a failed download.
+      try {
+        await repo.incrementMushafDownload(mushaf.slug);
+      } catch (_) {
+        // Download counting is best-effort and does not affect the local file.
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
