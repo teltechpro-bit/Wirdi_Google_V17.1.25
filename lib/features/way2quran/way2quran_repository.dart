@@ -223,7 +223,7 @@ class Way2QuranRepository {
   }
 
   Future<Way2QuranReciter> getReciter(String slug,
-      {bool increaseViews = true}) async {
+      {bool increaseViews = false}) async {
     final uri = Uri.parse(
             '$baseUrl/reciters/reciter-profile/${Uri.encodeComponent(slug)}')
         .replace(queryParameters: {'increaseViews': '$increaseViews'});
