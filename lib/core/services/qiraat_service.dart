@@ -509,22 +509,22 @@ class QiraatService {
   }
 
   String audioStatusFor(RiwayahOption r, String languageCode) {
-    final hasRuntimeSource = hasRuntimeReaderSource(r.id);
-    if (r.hasVerifiedAyahAudio && (r.id == 'hafs' || r.id == 'warsh')) {
+    final runtimeReaders = _readers?[r.id] ?? const <RiwayahReader>[];
+    if (runtimeReaders.any((reader) => reader.hasAyahAudio)) {
       return languageCode == 'ar'
           ? 'صوت آية-بآية متحقق'
           : 'Verified verse-by-verse audio';
     }
-    if (hasRuntimeSource) {
-      final count = _readers![r.id]!.length;
+    if (runtimeReaders.isNotEmpty) {
+      final count = runtimeReaders.length;
       return languageCode == 'ar'
           ? 'تم اكتشاف مصدر • ' + count.toString() + ' قارئ'
           : 'Source discovered • ' + count.toString() + ' reader' + (count == 1 ? '' : 's');
     }
     if (r.hasSurahAudio) {
       return languageCode == 'ar'
-          ? 'مصدر الرواية مفعّل وسيظهر بعد التحقق'
-          : 'Riwayah source configured; waiting for runtime verification';
+          ? 'مصدر الرواية مُعدّ، لكن لم يُكتشف قارئ متاح بعد'
+          : 'Riwayah source configured; no runtime reader discovered yet';
     }
     return languageCode == 'ar'
         ? 'مصدر صوتي موثّق غير متوفر حاليًا'
