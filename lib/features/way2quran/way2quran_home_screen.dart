@@ -505,14 +505,24 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     }
   }
   Future<void> _loadFavorite() async {
-    final value = await Way2QuranFavorites.contains(widget.reciterSlug);
-    if (mounted) setState(() => _isFavorite = value);
+    try {
+      final value = await Way2QuranFavorites.contains(widget.reciterSlug);
+      if (mounted) setState(() => _isFavorite = value);
+    } catch (_) {
+      // Favorites are optional; a storage issue must not break the profile.
+    }
   }
   Future<void> _toggleFavorite(bool ar) async {
-    final value = await Way2QuranFavorites.toggle(widget.reciterSlug);
-    if (mounted) {
-      setState(() => _isFavorite = value);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value ? (ar ? 'أُضيف القارئ إلى المفضلة' : 'Added to favorites') : (ar ? 'أُزيل القارئ من المفضلة' : 'Removed from favorites'))));
+    try {
+      final value = await Way2QuranFavorites.toggle(widget.reciterSlug);
+      if (mounted) {
+        setState(() => _isFavorite = value);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value ? (ar ? 'أُضيف القارئ إلى المفضلة' : 'Added to favorites') : (ar ? 'أُزيل القارئ من المفضلة' : 'Removed from favorites'))));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تحديث المفضلة' : 'Could not update favorites')));
+      }
     }
   }
   Future<void> _play(Way2QuranAudioFile audio, bool ar) async {
