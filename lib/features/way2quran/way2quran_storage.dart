@@ -5,6 +5,7 @@ class Way2QuranStorage {
   Way2QuranStorage._();
 
   static const String recitationsRelativePath = 'way2quran/recitations';
+  static const String translationsRelativePath = 'way2quran/translations';
 
   /// Sanitizes API-derived filename stems before they are used in local paths.
   static String safeFileStem(String slug) {
@@ -14,6 +15,14 @@ class Way2QuranStorage {
 
   static String recitationFilePath(String appDocumentsPath, String slug) =>
       '$appDocumentsPath/$recitationsRelativePath/${safeFileStem(slug)}.mp3';
+
+  /// Stores each translation edition and surah in a separate private JSON file.
+  static String translationFilePath(
+    String appDocumentsPath,
+    int surahNumber,
+    String edition,
+  ) =>
+      '$appDocumentsPath/$translationsRelativePath/' + surahNumber.toString() + '_' + safeFileStem(edition) + '.json';
 
   /// Writes a completed download through a temporary file so interrupted
   /// network or disk writes never appear as a finished library item.
