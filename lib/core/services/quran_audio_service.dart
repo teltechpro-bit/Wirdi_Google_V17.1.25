@@ -73,6 +73,8 @@ class QuranAudioService extends ChangeNotifier {
   int _playlistStartAyah = 1;
   int _playlistEndAyah = 1;
   bool _fullSurahOnly = false;
+  bool _externalPlaylistMode = false;
+  List<String> _externalPlaylistTitles = const <String>[];
   Map<int, ({int startMs, int endMs})> _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
 
   int? playingAyah;
@@ -220,6 +222,17 @@ class QuranAudioService extends ChangeNotifier {
 
     _indexSub = _player.currentIndexStream.listen((index) {
       if (_stopping || index == null) return;
+      if (_externalPlaylistMode) {
+        position = _player.position;
+        duration = _player.duration ?? Duration.zero;
+        if (index >= 0 && index < _externalPlaylistTitles.length) {
+          externalTitle = _externalPlaylistTitles[index];
+        }
+        isBuffering = _player.processingState == ja.ProcessingState.loading ||
+            _player.processingState == ja.ProcessingState.buffering;
+        notifyListeners();
+        return;
+      }
 
       final ayah = _fullSurahOnly ? _ayahForFullSurahPosition(_player.position) : (_playlistStartAyah + index);
       if (!_fullSurahOnly && (ayah < _playlistStartAyah || ayah > _playlistEndAyah)) return;
@@ -239,6 +252,11 @@ class QuranAudioService extends ChangeNotifier {
     _positionSub = _player.positionStream.listen((p) {
       if (_stopping) return;
       position = p;
+      if (_externalPlaylistMode) {
+        duration = _player.duration ?? Duration.zero;
+        notifyListeners();
+        return;
+      }
       final ayah = playingAyah;
       if (_fullSurahOnly) {
         playingAyah = _ayahForFullSurahPosition(p);
@@ -251,6 +269,10 @@ class QuranAudioService extends ChangeNotifier {
     _durationSub = _player.durationStream.listen((d) {
       if (_stopping || d == null || d <= Duration.zero) return;
       duration = d;
+      if (_externalPlaylistMode) {
+        notifyListeners();
+        return;
+      }
       final ayah = playingAyah;
       if (!_fullSurahOnly && ayah != null) {
         _progress.setKnownDuration(ayah, d);
@@ -269,6 +291,8 @@ class QuranAudioService extends ChangeNotifier {
 
       if (state.processingState == ja.ProcessingState.completed) {
         unawaited(_setQuranWakelock(false));
+        _externalPlaylistMode = false;
+        _externalPlaylistTitles = const <String>[];
         playingAyah = null;
         playingWholeSurah = false;
         position = Duration.zero;
@@ -314,6 +338,8 @@ class QuranAudioService extends ChangeNotifier {
     SurahModel surah,
     List<SurahModel> allSurahs,
   ) {
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
     _surahNumber = surah.number;
     _surahName = surah.name;
     _totalAyahsInSurah = surah.ayahs.length;
@@ -586,8 +612,69 @@ class QuranAudioService extends ChangeNotifier {
     return ja.LoopMode.off;
   }
 
+  /// Plays a local queue in order through the shared Quran audio player.
+  /// The queue is kept separate from Quran ayah-index tracking.
+  Future<void> playExternalFiles(
+    List<String> paths, {
+    required List<String> titles,
+  }) async {
+    if (paths.isEmpty) return;
+    if (paths.length != titles.length) {
+      throw ArgumentError('Every audio path must have a matching title');
+    }
+    await PlaybackCoordinator.stopRadioForQuran();
+    _playToken++;
+    _stopping = false;
+    _externalPlaylistMode = true;
+    _externalPlaylistTitles = List<String>.unmodifiable(titles);
+    _rangeStartAyah = null;
+    _rangeEndAyah = null;
+    _fullSurahOnly = false;
+    _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
+    playingAyah = null;
+    playingWholeSurah = false;
+    externalUrl = paths.first;
+    externalTitle = titles.first;
+    isPaused = false;
+    isBuffering = true;
+    position = Duration.zero;
+    duration = Duration.zero;
+    repeatCurrent = false;
+    repeatCreditsRemaining = null;
+    notifyListeners();
+    try {
+      await _player.stop();
+      await _player.setLoopMode(ja.LoopMode.off);
+      await _player.setAudioSources(
+        paths.map((path) => ja.AudioSource.file(path)).toList(),
+        preload: true,
+        initialIndex: 0,
+        initialPosition: Duration.zero,
+      );
+      await _player.setSpeed(playbackRate);
+      unawaited(_player.play());
+      isBuffering = false;
+      duration = _player.duration ?? Duration.zero;
+      notifyListeners();
+    } catch (e, st) {
+      _externalPlaylistMode = false;
+      _externalPlaylistTitles = const <String>[];
+      isBuffering = false;
+      externalUrl = null;
+      externalTitle = null;
+      AppLogger.error('Failed to start local audio queue', error: e, stackTrace: st);
+      notifyListeners();
+    }
+  }
+
   Future<void> playExternalFile(String path, {String? title}) async {
     if (path.isEmpty) return;
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
+    _rangeStartAyah = null;
+    _rangeEndAyah = null;
+    _fullSurahOnly = false;
+    _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     await PlaybackCoordinator.stopRadioForQuran();
     _playToken++;
     _stopping = false;
@@ -620,6 +707,8 @@ class QuranAudioService extends ChangeNotifier {
 
   Future<void> playExternalUrl(String url, {String? title}) async {
     if (url.isEmpty) return;
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
     _playToken++;
     _stopping = false;
@@ -812,6 +901,8 @@ class QuranAudioService extends ChangeNotifier {
     playingWholeSurah = false;
     externalUrl = null;
     externalTitle = null;
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
     _fullSurahOnly = false;
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     isPaused = false;
