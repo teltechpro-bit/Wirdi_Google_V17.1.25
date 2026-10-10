@@ -487,7 +487,11 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
   Future<Way2QuranReciter> _loadReciter() async {
     try {
       final reciter = await Way2QuranRepository().getReciter(widget.reciterSlug);
-      await Way2QuranFavorites.cacheReciter(reciter);
+      try {
+        await Way2QuranFavorites.cacheReciter(reciter);
+      } catch (_) {
+        // Cache failures must not hide a successfully fetched live profile.
+      }
       return reciter;
     } catch (_) {
       final cached = await Way2QuranFavorites.cachedReciter(widget.reciterSlug);
@@ -703,7 +707,11 @@ class _Way2QuranFavoritesScreenState extends State<Way2QuranFavoritesScreen> {
       slugs.map((slug) async {
         try {
           final reciter = await repo.getReciter(slug, increaseViews: false);
-          await Way2QuranFavorites.cacheReciter(reciter);
+          try {
+            await Way2QuranFavorites.cacheReciter(reciter);
+          } catch (_) {
+            // A local cache failure must not discard the live API result.
+          }
           return reciter;
         } catch (_) {
           // Keep favorite cards visible offline with their last cached summary.
