@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'way2quran_models.dart';
-import 'way2quran_repository.dart';\nimport 'way2quran_storage.dart';
+import 'way2quran_repository.dart';
+import 'way2quran_storage.dart';
 
 class Way2QuranMushafScreen extends StatefulWidget {
   const Way2QuranMushafScreen({super.key});
