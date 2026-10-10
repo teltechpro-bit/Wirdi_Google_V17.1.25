@@ -380,10 +380,8 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
     try {
       final bytes = await Way2QuranRepository().downloadBytes(rec.downloadUrl);
       final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory('${dir.path}/${Way2QuranStorage.recitationsRelativePath}');
-      await folder.create(recursive: true);
       final file = File(Way2QuranStorage.recitationFilePath(dir.path, rec.slug));
-      await file.writeAsBytes(bytes, flush: true);
+      await Way2QuranStorage.writeBytesAtomically(file, bytes);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi')));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'تعذر تنزيل التلاوة' : 'Could not download the recitation')));
@@ -429,7 +427,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
           } else {
             final url = audio.downloadUrl.isNotEmpty ? audio.downloadUrl : audio.url;
             final bytes = await Way2QuranRepository().downloadBytes(url);
-            await file.writeAsBytes(bytes, flush: true);
+            await Way2QuranStorage.writeBytesAtomically(file, bytes);
             saved++;
           }
         } catch (_) {
