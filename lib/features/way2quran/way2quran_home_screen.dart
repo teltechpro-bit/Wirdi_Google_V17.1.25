@@ -697,12 +697,15 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
                 return _ReciterCard(
                   reciter: reciter,
                   ar: ar,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
-                    ),
-                  ),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => Way2QuranReciterScreen(reciterSlug: reciter.slug),
+                      ),
+                    );
+                    await _loadWirdiViewCounts();
+                  },
                 );
               },
             ),
