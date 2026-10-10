@@ -33,19 +33,14 @@ class Reciters {
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
-    // Additional verified AlQuran.Cloud ayah-audio editions. Keep these on
-    // the original per-ayah CDN path so the Quran reader can highlight each
-    // ayah from the just_audio playlist index.
+    // Additional editions verified in the AlQuran.Cloud per-ayah CDN
+    // index (6236 ayah files); the playlist index therefore stays aligned
+    // with Wirdi's current-ayah highlighting.
     ReciterOption('ar.abdullahbasfar', 'عبد الله بصفر', 'Abdullah Basfar'),
-    ReciterOption('ar.ahmadalnufais', 'أحمد النفيس', 'Ahmad Al-Nufais'),
-    ReciterOption('ar.bandarbalila', 'بندر بليلة', 'Bandar Balila'),
-    ReciterOption('ar.faresabbad', 'فارس عباد', 'Fares Abbad'),
-    ReciterOption('ar.ibrahimalakhdar', 'إبراهيم الأخضر', 'Ibrahim Al-Akhdar'),
-    ReciterOption('ar.khalifaaltunaiji', 'خليفة الطنيجي', 'Khalifa Al-Tunaiji'),
-    ReciterOption('ar.muhammadayyub', 'محمد أيوب', 'Muhammad Ayyub'),
-    ReciterOption('ar.nabilarrifai', 'نبيل الرفاعي', 'Nabil Al-Rifai'),
-    ReciterOption('ar.salahalbudair', 'صلاح البدير', 'Salah Al-Budair'),
-    ReciterOption('ar.omaralkazabri', 'عمر القزابري', 'Omar Al-Kazabri'),
+    ReciterOption('ar.abdulsamad', 'عبد الباسط عبد الصمد', 'Abdul Samad'),
+    ReciterOption('ar.ibrahimakhbar', 'إبراهيم الأخضر', 'Ibrahim Akhdar'),
+    ReciterOption('ar.muhammadayyoub', 'محمد أيوب', 'Muhammad Ayyoub'),
+    ReciterOption('ar.parhizgar', 'محمود خليل بارهيزكار', 'Mahmoud Khalil Parhizgar'),
   ];
 
   static ReciterOption byId(String id) =>
