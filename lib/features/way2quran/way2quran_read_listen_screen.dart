@@ -149,31 +149,21 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       return;
     }
     setState(() => downloading = true);
-    File? partial;
     try {
       final bytes = await repo.downloadBytes(url);
       final dir = await getApplicationDocumentsDirectory();
       // Use the shared directory read by Wirdi's Downloads and playlists.
-      final folder = Directory('${dir.path}/${Way2QuranStorage.recitationsRelativePath}');
-      await folder.create(recursive: true);
       final reciterSlug = selectedReciter?.slug ?? 'reciter';
       final recitationSlug = selectedRecitation ?? 'recitation';
       final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
       final file = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
-      partial = File('${file.path}.part');
-      await partial!.writeAsBytes(bytes, flush: true);
-      if (await file.exists()) await file.delete();
-      await partial!.rename(file.path);
-      partial = null;
+      await Way2QuranStorage.writeBytesAtomically(file, bytes);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(arSafe() ? 'تم تنزيل التلاوة داخل Wirdi' : 'Recitation downloaded inside Wirdi'),
         ));
       }
     } catch (_) {
-      try {
-        if (partial != null && await partial!.exists()) await partial!.delete();
-      } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(arSafe() ? 'تعذر تنزيل التلاوة' : 'Could not download the recitation.'),
