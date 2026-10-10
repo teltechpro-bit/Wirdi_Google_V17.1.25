@@ -147,7 +147,7 @@ class _Way2QuranHomeScreenState extends State<Way2QuranHomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى الإذاعات القرآنية داخل وردي' : 'Listen to Quran radio stations inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RadioScreen()))),
+        _ExploreCard(icon: Icons.radio_rounded, title: ar ? 'إذاعة القرآن الكريم' : 'Quran Radio', subtitle: ar ? 'استمع إلى الإذاعات القرآنية داخل وردي' : 'Listen to Quran radio stations inside Wirdi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RadioScreen(quranOnly: true)))),
         const SizedBox(height: 12),
         _ExploreCard(
           icon: Icons.auto_awesome_rounded,
