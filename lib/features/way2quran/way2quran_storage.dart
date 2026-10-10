@@ -22,7 +22,7 @@ class Way2QuranStorage {
     int surahNumber,
     String edition,
   ) =>
-      '$appDocumentsPath/$translationsRelativePath/' + surahNumber.toString() + '_' + safeFileStem(edition) + '.json';
+      '$appDocumentsPath/$translationsRelativePath/${surahNumber}_${safeFileStem(edition)}.json';
 
   /// Writes a completed download through a temporary file so interrupted
   /// network or disk writes never appear as a finished library item.
