@@ -268,7 +268,7 @@ class QuranAudioService extends ChangeNotifier {
             endTiming != null &&
             p.inMilliseconds >= endTiming.endMs) {
           _rangeStopTriggered = true;
-          final endPosition = Duration(milliseconds: endTiming.endMs);
+          final endPosition = Duration(milliseconds: endTiming.endMs > 0 ? endTiming.endMs - 1 : 0);
           position = endPosition;
           playingAyah = rangeEnd;
           isPaused = true;
