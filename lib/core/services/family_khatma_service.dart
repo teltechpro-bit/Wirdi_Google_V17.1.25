@@ -267,14 +267,10 @@ class FamilyKhatmaService {
       final snap = await ref.get();
       final data = snap.data() ?? <String, dynamic>{};
       final claims = data['claims'];
-      final updates = <String, dynamic>{};
-      if (claims is Map) {
-        claims.forEach((k, v) {
-          if (v is Map && v['uid'] == user.uid && v['done'] != true) {
-            updates['claims.$k'] = FieldValue.delete();
-          }
-        });
-      }
+      // Current claims are stored under claims/{uid}/juzs/{juz}. Remove the
+      // departing member's entire claim record so no completed or unfinished
+      // juz remains stuck as "taken" after they leave.
+      final hasOwnClaims = claims is Map && claims.containsKey(user.uid);
       final memberUids = (data['memberUids'] is List) ? List<String>.from(data['memberUids'] as List) : <String>[];
       final remaining = memberUids.where((m) => m != user.uid).toList();
       if (data['ownerUid'] == user.uid) {
@@ -286,9 +282,12 @@ class FamilyKhatmaService {
         // intentionally explicit rather than silently choosing another member.
         throw const FamilyKhatmaException('notOwner');
       }
-      if (updates.isNotEmpty) {
-        // Claims first (rule: members may edit only claims/rounds in one write).
-        await ref.update(updates);
+      if (hasOwnClaims) {
+        // Separate writes are intentional: the security rules permit a member
+        // to edit only their own claims entry, then their own membership entry.
+        await ref.update(<String, dynamic>{
+          'claims.${user.uid}': FieldValue.delete(),
+        });
       }
       await ref.update(<String, dynamic>{
         'memberUids': FieldValue.arrayRemove(<String>[user.uid]),
