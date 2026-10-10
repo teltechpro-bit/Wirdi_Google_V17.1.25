@@ -32,7 +32,6 @@ void main() {
     expect(verifiedAyahIds, containsAll(<String>['hafs', 'warsh']));
     expect(verifiedAyahIds.length, 2);
   });
-}
 
   test('reader names fall back safely when Arabic localization is missing', () {
     const reader = RiwayahReader(
@@ -73,3 +72,4 @@ void main() {
     expect(localized.nameFor('ar'), 'قارئ ورش');
     expect(blankLocalized.nameFor('ar'), 'Warsh Reader');
   });
+}
