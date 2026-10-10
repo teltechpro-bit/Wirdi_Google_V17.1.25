@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'way2quran_models.dart';
 import 'way2quran_repository.dart';
+import 'way2quran_view_counter.dart';
 
 /// Wirdi-native discovery shelves backed by the live reciter catalogue.
 /// Editorial shelves are derived only from records returned by the API.
@@ -17,6 +18,7 @@ class Way2QuranDiscoveryScreen extends StatefulWidget {
 class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
   final Way2QuranRepository _repository = Way2QuranRepository();
   late Future<List<Way2QuranReciter>> _recitersFuture;
+  Map<String, int> _viewCounts = <String, int>{};
 
   bool get _ar => Localizations.localeOf(context).languageCode == 'ar';
 
@@ -28,6 +30,8 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
 
   Future<List<Way2QuranReciter>> _loadReciters() async {
     final page = await _repository.getRecitersPage(pageSize: 100, sort: 'arabicName');
+    final counts = await Way2QuranViewCounter.all();
+    if (mounted) setState(() => _viewCounts = counts);
     return page.reciters;
   }
 
@@ -105,7 +109,17 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
     final note = values[2].isEmpty ? '' : '\n\n${values[2]}';
     final message = '$title$note\n\n${values[1]}\n\n'
         '${_ar ? 'مشاركة من وردي' : 'Shared from Wirdi'}';
-    await Share.share(message, subject: title);
+    try {
+      await Share.share(message, subject: title);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'تعذرت مشاركة التلاوة. تأكد من وجود تطبيق يدعم المشاركة.'
+              : 'Could not share this recitation. Check that a sharing app is available.'),
+        ));
+      }
+    }
   }
 
   void _openReciter(Way2QuranReciter reciter) {
@@ -152,9 +166,9 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
             return Center(child: Text(_ar ? 'لا توجد نتائج متاحة الآن.' : 'No reciters are available right now.'));
           }
           final byPopularity = [...reciters]
-            ..sort((a, b) => b.totalViews.compareTo(a.totalViews));
+            ..sort((a, b) => (_viewCounts[b.slug] ?? 0).compareTo(_viewCounts[a.slug] ?? 0));
           final hiddenGems = [...reciters]
-            ..sort((a, b) => a.totalViews.compareTo(b.totalViews));
+            ..sort((a, b) => (_viewCounts[a.slug] ?? 0).compareTo(_viewCounts[b.slug] ?? 0));
           final dayIndex = DateTime.now().difference(DateTime(2020, 1, 1)).inDays % reciters.length;
           final spotlight = reciters[dayIndex];
 
@@ -191,25 +205,27 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
               _DiscoveryReciterTile(
                 reciter: spotlight,
                 ar: _ar,
+                views: _viewCounts[spotlight.slug] ?? 0,
                 onTap: () => _openReciter(spotlight),
                 badge: _ar ? 'اختيار اليوم' : 'Daily pick',
               ),
               const SizedBox(height: 20),
               _ShelfHeader(
-                title: _ar ? 'استمع بعمق' : 'Deep listens',
-                subtitle: _ar ? 'ابدأ من القراء الأكثر استماعًا في المكتبة' : 'Start with widely listened-to voices in the catalogue',
+                title: _ar ? 'الأكثر مشاهدة داخل وِرْدِي' : 'Most viewed in Wirdi',
+                subtitle: _ar ? 'حسب المشاهدات المسجلة على هذا الجهاز' : 'Based on views recorded on this device',
               ),
               const SizedBox(height: 8),
               ...byPopularity.take(8).map((r) => _DiscoveryReciterTile(
                     reciter: r,
                     ar: _ar,
+                    views: _viewCounts[r.slug] ?? 0,
                     onTap: () => _openReciter(r),
                     badge: null,
                   )),
               const SizedBox(height: 20),
               _ShelfHeader(
                 title: _ar ? 'جواهر خفية' : 'Hidden gems',
-                subtitle: _ar ? 'اكتشف قراء أقل مشاهدة ضمن النتائج المتاحة' : 'Discover less-viewed reciters in the available results',
+                subtitle: _ar ? 'قراء لم تفتح صفحاتهم كثيرًا على هذا الجهاز' : 'Reciters with fewer profile opens on this device',
               ),
               const SizedBox(height: 8),
               ...hiddenGems.take(8).map((r) => _DiscoveryReciterTile(
@@ -260,11 +276,13 @@ class _ShelfHeader extends StatelessWidget {
 class _DiscoveryReciterTile extends StatelessWidget {
   final Way2QuranReciter reciter;
   final bool ar;
+  final int views;
   final VoidCallback onTap;
   final String? badge;
   const _DiscoveryReciterTile({
     required this.reciter,
     required this.ar,
+    required this.views,
     required this.onTap,
     required this.badge,
   });
@@ -279,7 +297,7 @@ class _DiscoveryReciterTile extends StatelessWidget {
             child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null,
           ),
           title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${reciter.totalViews} ${ar ? 'مشاهدة' : 'views'}'),
+          subtitle: Text('${views} ${ar ? 'مشاهدة داخل وِرْدِي' : 'Wirdi views on this device'}'),
           trailing: badge == null
               ? const Icon(Icons.play_circle_outline_rounded)
               : Chip(label: Text(badge!)),
