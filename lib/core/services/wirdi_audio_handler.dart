@@ -44,7 +44,11 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   void _onQuranChanged() {
     if (_quranActive) {
-      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
+      // Include external metadata in the deduplication key. During an external
+      // queue, the active title changes without an ayah index changing; omitting
+      // it leaves Android showing the first track for the entire queue.
+      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.externalTitle}|'
+          '${quranAudio.externalUrl}|${quranAudio.duration.inSeconds}|${quranAudio.isPaused}|'
           '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.surahEstimatedTotal.inSeconds}';
       if (key == _lastQuranKey) return;
       _lastQuranKey = key;
