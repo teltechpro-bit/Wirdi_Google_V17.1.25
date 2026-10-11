@@ -319,6 +319,12 @@ class QuranAudioService extends ChangeNotifier {
         _externalPlaylistTitles = const <String>[];
         playingAyah = null;
         playingWholeSurah = false;
+        // Clear external metadata at natural completion as well as explicit
+        // stop; otherwise the media handler can keep publishing a stale
+        // external track after playback has ended.
+        externalUrl = null;
+        externalTitle = null;
+        isPaused = true;
         position = Duration.zero;
         duration = Duration.zero;
         isBuffering = false;
