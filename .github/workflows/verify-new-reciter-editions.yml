@@ -21,7 +21,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           source = Path('lib/core/data/reciters.dart').read_text(encoding='utf-8')
           expected = [
@@ -31,7 +30,7 @@ jobs:
               'ar.muhammadayyoub',
           ]
           for edition_id in expected:
-              count = len(re.findall(r\"ReciterOption\\(''\" + re.escape(edition_id) + r\"''\", source))
+              count = source.count(f\"ReciterOption('{edition_id}'\")
               if count != 1:
                   raise SystemExit(f'FAIL: {edition_id} appears {count} times in reciters.dart; expected exactly once')
               print(f'OK: {edition_id} appears exactly once in reciters.dart')
