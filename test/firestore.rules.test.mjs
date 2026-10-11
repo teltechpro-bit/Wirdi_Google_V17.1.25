@@ -54,6 +54,23 @@ test('unauthenticated users cannot read group khatmas', async () => {
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'family_khatmas', 'ABC234')));
 });
 
+test('a signed-in user can get a group by code to join, but cannot list all groups', async () => {
+  await seedGroup('ABC234', group());
+  const db = env.authenticatedContext('outsider').firestore();
+  // Joining uses doc(code).get(); this single-document read must remain
+  // possible for authenticated users who have received the invitation code.
+  await assertSucceeds(getDoc(doc(db, 'family_khatmas', 'ABC234')));
+  // Broad collection reads are not allowed to non-members.
+  const { getDocs, collection, query, where } = await import('firebase/firestore');
+  await assertFails(getDocs(collection(db, 'family_khatmas')));
+  // Member-scoped query is permitted and matches myGroups().
+  const memberDb = env.authenticatedContext('owner').firestore();
+  await assertSucceeds(getDocs(query(
+    collection(memberDb, 'family_khatmas'),
+    where('memberUids', 'array-contains', 'owner'),
+  )));
+});
+
 test('a signed-in owner can create a group containing only themselves', async () => {
   const db = env.authenticatedContext('owner').firestore();
   await assertSucceeds(setDoc(doc(db, 'family_khatmas', 'ABC234'), group()));
