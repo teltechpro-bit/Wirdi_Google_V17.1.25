@@ -15,6 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Check edition IDs match the app source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          source = Path('lib/core/data/reciters.dart').read_text(encoding='utf-8')
+          expected = [
+              'ar.abdurrahmaansudais',
+              'ar.saoodshuraym',
+              'ar.abdulbasitmurattal',
+              'ar.muhammadayyoub',
+          ]
+          for edition_id in expected:
+              count = len(re.findall(r\"ReciterOption\\(''\" + re.escape(edition_id) + r\"''\", source))
+              if count != 1:
+                  raise SystemExit(f'FAIL: {edition_id} appears {count} times in reciters.dart; expected exactly once')
+              print(f'OK: {edition_id} appears exactly once in reciters.dart')
+          PY
       - name: Check edition metadata and representative ayah audio URLs
         env:
           PYTHONUNBUFFERED: '1'
