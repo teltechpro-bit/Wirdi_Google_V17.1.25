@@ -79,7 +79,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   Future<void> _loadMushafBackground() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString('settings_mushaf_background');
-    const validStyles = {'madinah', 'plain', 'parchment', 'green', 'blue'};
+    const validStyles = {'madinah', 'plain', 'parchment', 'green', 'blue', 'sand', 'rose', 'lavender', 'mint', 'grey'};
     if (mounted && stored != null && validStyles.contains(stored)) {
       setState(() => _mushafBackground = stored);
     }
@@ -399,6 +399,51 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                   children: [
                     Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أزرق هادئ' : 'Soft blue')),
                     if (_mushafBackground == 'blue') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:sand',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'رملي دافئ' : 'Warm sand')),
+                    if (_mushafBackground == 'sand') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:rose',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'وردي هادئ' : 'Soft rose')),
+                    if (_mushafBackground == 'rose') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:lavender',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'لافندر فاتح' : 'Light lavender')),
+                    if (_mushafBackground == 'lavender') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:mint',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'نعناعي فاتح' : 'Soft mint')),
+                    if (_mushafBackground == 'mint') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:grey',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'رمادي فاتح' : 'Light grey')),
+                    if (_mushafBackground == 'grey') const Icon(Icons.check, size: 18),
                   ],
                 ),
               ),
@@ -952,6 +997,11 @@ class _MushafPageViewState extends State<_MushafPageView> {
                 'parchment' => const [Color(0xFFF4E4C1), Color(0xFFEAD5A5), Color(0xFFF8EBD0)],
                 'green' => const [Color(0xFFF0F7E9), Color(0xFFE2EED8), Color(0xFFF7FBF2)],
                 'blue' => const [Color(0xFFEEF5FA), Color(0xFFDDEAF4), Color(0xFFF7FBFE)],
+                'sand' => const [Color(0xFFF8F0E0), Color(0xFFEDE0C7), Color(0xFFFFF9ED)],
+                'rose' => const [Color(0xFFFFF1F2), Color(0xFFF6DDE1), Color(0xFFFFF8F8)],
+                'lavender' => const [Color(0xFFF5F1FC), Color(0xFFE7DFF5), Color(0xFFFCFAFF)],
+                'mint' => const [Color(0xFFEFF9F3), Color(0xFFD9EFE3), Color(0xFFF8FFFB)],
+                'grey' => const [Color(0xFFF5F5F5), Color(0xFFE7E7E7), Color(0xFFFFFFFF)],
                 _ => const [Color(0xFFFFFDF4), Color(0xFFF7F0D9), Color(0xFFFFFCF0)],
               },
             ),
@@ -962,6 +1012,11 @@ class _MushafPageViewState extends State<_MushafPageView> {
                 'parchment' => const Color(0xFF9E793D),
                 'green' => const Color(0xFF6C9461),
                 'blue' => const Color(0xFF739BB8),
+                'sand' => const Color(0xFFB99A6A),
+                'rose' => const Color(0xFFC98291),
+                'lavender' => const Color(0xFF9D8AC8),
+                'mint' => const Color(0xFF6FA98B),
+                'grey' => const Color(0xFFB7B7B7),
                 _ => const Color(0xFFB99A52).withValues(alpha: 0.8),
               },
               width: 2,
