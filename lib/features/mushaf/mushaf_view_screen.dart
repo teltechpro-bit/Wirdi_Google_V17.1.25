@@ -852,6 +852,10 @@ class _MushafPageViewState extends State<_MushafPageView> {
         fontSize: 22 * widget.fontScale,
         height: 2.4,
         fontWeight: FontWeight.normal,
+        // Mushaf paper backgrounds are intentionally light in both app themes.
+        // Explicit ink color prevents dark-theme text colors from becoming
+        // white/invisible on the light page; explicit tajweed colors still win.
+        color: const Color(0xFF1A1A1A),
       ),
     );
   }
@@ -886,7 +890,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                     Bismillah.text,
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.rtl,
-                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal),
+                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal, color: const Color(0xFF1A1A1A)),
                   ),
                 ],
                 const SizedBox(height: 16),
