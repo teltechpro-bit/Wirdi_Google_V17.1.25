@@ -2,6 +2,7 @@ import '../../core/services/tajweed_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/bismillah.dart';
 import '../../core/data/reciters.dart';
@@ -69,9 +70,19 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   void initState() {
     super.initState();
     _future = _loadAll();
+    _loadMushafBackground();
     _currentPageIndex = (widget.initialPage ?? 1) - 1;
     _pageController = PageController(initialPage: (widget.initialPage ?? 1) - 1);
     quranAudio.addListener(_onAudioChanged);
+  }
+
+  Future<void> _loadMushafBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('settings_mushaf_background');
+    const validStyles = {'madinah', 'plain', 'parchment', 'green', 'blue'};
+    if (mounted && stored != null && validStyles.contains(stored)) {
+      setState(() => _mushafBackground = stored);
+    }
   }
 
   Future<(List<MushafPage>, List<SurahModel>)> _loadAll() async {
@@ -294,7 +305,10 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               } else if (value == 'fontInc') {
                 setState(() => _fontScale = (_fontScale + 0.1).clamp(0.7, 1.6));
               } else if (value.startsWith('bg:')) {
-                setState(() => _mushafBackground = value.substring(3));
+                final style = value.substring(3);
+                setState(() => _mushafBackground = style);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('settings_mushaf_background', style);
               } else if (value == 'reciter') {
                 final languageCode = Localizations.localeOf(context).languageCode;
                 final chosen = await showModalBottomSheet<String>(
