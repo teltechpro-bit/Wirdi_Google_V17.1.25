@@ -368,7 +368,11 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         onChanged: (v) async {
                           if (v == null) return;
                           setState(() => selectedWirdiReciterId = v);
-                          await appSettings.setReciterId(v);
+                          await quranAudio.changeReciter(
+                            v,
+                            surah: surah,
+                            allSurahs: surahs,
+                          );
                           if (mounted) setState(() {});
                         },
                       ),
