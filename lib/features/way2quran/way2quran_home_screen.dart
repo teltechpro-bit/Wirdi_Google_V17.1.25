@@ -209,7 +209,7 @@ class _LibraryTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       leading: CircleAvatar(radius: 26, backgroundImage: reciter.photo.isEmpty ? null : NetworkImage(reciter.photo), child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null),
       title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(reciter.totalViews.toString() + ' ' + (ar ? 'مشاهدة' : 'views')),
+      subtitle: Text(ar ? 'استمع إلى التلاوات المتاحة' : 'Explore available recitations'),
       trailing: const Icon(Icons.chevron_right_rounded),
     ),
   );
@@ -329,7 +329,7 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
           return ListView(padding:const EdgeInsets.fromLTRB(16,0,16,24),children:[
             if(data.reciters.isNotEmpty)...[
               Text(ar?'القراء':'Reciters',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
-              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(r.totalViews.toString()+' '+(ar?'مشاهدة':'views')),trailing:const Icon(Icons.chevron_right_rounded)))),
+              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(ar?'تلاوات قرآنية':'Quran recitations'),trailing:const Icon(Icons.chevron_right_rounded)))),
               const SizedBox(height:18)],
             if(data.recitations.isNotEmpty)...[
               Text(ar?'القراءات والروايات':'Recitations',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
@@ -541,7 +541,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
                     ? const CircleAvatar(child: Icon(Icons.person))
                     : CircleAvatar(backgroundImage: NetworkImage(r.photo)),
                 title: Text(r.name(ar)),
-                subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()),
+                subtitle: Text(ar ? 'تلاوات قرآنية متاحة' : 'Available Quran recitations'),
               ),
             ),
             const SizedBox(height: 12),
@@ -560,7 +560,7 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
       final index = selected.clamp(0, r.recitations.length - 1);
       final rec = r.recitations[index];
       return ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: ListTile(leading: r.photo.isEmpty ? const CircleAvatar(child: Icon(Icons.person)) : CircleAvatar(backgroundImage: NetworkImage(r.photo)), title: Text(r.name(ar)), subtitle: Text((ar ? 'المشاهدات: ' : 'Views: ') + r.totalViews.toString()))),
+        Card(child: ListTile(leading: r.photo.isEmpty ? const CircleAvatar(child: Icon(Icons.person)) : CircleAvatar(backgroundImage: NetworkImage(r.photo)), title: Text(r.name(ar)), subtitle: Text(ar ? 'تلاوات قرآنية متاحة' : 'Available Quran recitations'))),
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(value: index, decoration: InputDecoration(labelText: ar ? 'الرواية' : 'Riwayah', border: const OutlineInputBorder()), items: List.generate(r.recitations.length, (i) => DropdownMenuItem(value: i, child: Text(r.recitations[i].name(ar)))), onChanged: (v) { if (v != null) setState(() => selected = v); }),
         const SizedBox(height: 12),
@@ -631,7 +631,6 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         DropdownButton<String>(value: sort, underline: const SizedBox.shrink(), items: [
           DropdownMenuItem(value: 'arabicName', child: Text(ar ? 'أبجدي' : 'A–Z')),
           DropdownMenuItem(value: 'mostListened', child: Text(ar ? 'الأكثر استماعًا' : 'Most listened')),
-          DropdownMenuItem(value: 'views', child: Text(ar ? 'الأكثر مشاهدة' : 'Most viewed')),
         ], onChanged: (v) { if (v != null) {
           sort = v;
           _load(nextPage: 1);
