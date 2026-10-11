@@ -21,7 +21,13 @@ class WirdiAudioHandler extends BaseAudioHandler {
   }
 
   bool get _radioActive => RadioService.instance.currentStation != null;
-  bool get _quranActive => quranAudio.playingAyah != null;
+  // External recitations (downloaded or opened from the recitations page)
+  // use the same QuranAudioService player but have no ayah index. They must
+  // still be published to Android's media session.
+  bool get _quranActive =>
+      quranAudio.playingAyah != null ||
+      quranAudio.externalTitle != null ||
+      quranAudio.externalUrl != null;
 
   void _onRadioChanged() {
     if (_radioActive) {
@@ -38,7 +44,11 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   void _onQuranChanged() {
     if (_quranActive) {
-      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
+      // Include external metadata in the deduplication key. During an external
+      // queue, the active title changes without an ayah index changing; omitting
+      // it leaves Android showing the first track for the entire queue.
+      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.externalTitle}|'
+          '${quranAudio.externalUrl}|${quranAudio.duration.inSeconds}|${quranAudio.isPaused}|'
           '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.surahEstimatedTotal.inSeconds}';
       if (key == _lastQuranKey) return;
       _lastQuranKey = key;
@@ -86,15 +96,27 @@ class WirdiAudioHandler extends BaseAudioHandler {
   void _publishQuranState() {
     final q = quranAudio;
     final ayah = q.playingAyah;
-    if (ayah == null) return;
+    final isExternal = ayah == null &&
+        (q.externalTitle != null || q.externalUrl != null);
+    if (ayah == null && !isExternal) return;
 
     final total = q.totalAyahsInSurah;
     mediaItem.add(MediaItem(
-      id: 'quran_surah_${q.currentSurahNumber ?? 0}',
-      title: q.currentSurahName ?? 'Quran',
-      artist: total > 0 ? 'Ayah $ayah / $total  -  Wirdi' : 'Ayah $ayah  -  Wirdi',
+      id: isExternal
+          ? 'wirdi_audio_${q.externalUrl ?? q.externalTitle ?? 'recitation'}'
+          : 'quran_surah_${q.currentSurahNumber ?? 0}',
+      title: isExternal
+          ? (q.externalTitle?.trim().isNotEmpty == true
+              ? q.externalTitle!
+              : 'Wirdi Recitation')
+          : (q.currentSurahName ?? 'Quran'),
+      artist: isExternal
+          ? 'Wirdi'
+          : (total > 0 ? 'Ayah $ayah / $total  -  Wirdi' : 'Ayah $ayah  -  Wirdi'),
       // Surah-level length (an estimate until every ayah has been measured).
-      duration: q.surahEstimatedTotal > Duration.zero ? q.surahEstimatedTotal : null,
+      duration: isExternal
+          ? (q.duration > Duration.zero ? q.duration : null)
+          : (q.surahEstimatedTotal > Duration.zero ? q.surahEstimatedTotal : null),
     ));
 
     playbackState.add(playbackState.value.copyWith(
@@ -112,7 +134,7 @@ class WirdiAudioHandler extends BaseAudioHandler {
           ? AudioProcessingState.loading
           : AudioProcessingState.ready,
       playing: !q.isPaused,
-      updatePosition: q.surahElapsed,
+      updatePosition: isExternal ? q.position : q.surahElapsed,
       speed: q.playbackRate,
     ));
   }
