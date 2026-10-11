@@ -357,11 +357,51 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               PopupMenuItem(value: 'fontDec', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تصغير الخط' : 'Decrease font')),
               PopupMenuItem(value: 'fontInc', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تكبير الخط' : 'Increase font')),
               const PopupMenuDivider(),
-              PopupMenuItem(value: 'bg:madinah', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية مصحف المدينة' : 'Madinah ivory')),
-              PopupMenuItem(value: 'bg:plain', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أبيض كلاسيكي' : 'Classic white')),
-              PopupMenuItem(value: 'bg:parchment', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'ورق معتّق' : 'Warm parchment')),
-              PopupMenuItem(value: 'bg:green', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أخضر فاتح' : 'Soft green')),
-              PopupMenuItem(value: 'bg:blue', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أزرق هادئ' : 'Soft blue')),
+              PopupMenuItem(
+                value: 'bg:madinah',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية مصحف المدينة' : 'Madinah ivory')),
+                    if (_mushafBackground == 'madinah') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:plain',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أبيض كلاسيكي' : 'Classic white')),
+                    if (_mushafBackground == 'plain') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:parchment',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'ورق معتّق' : 'Warm parchment')),
+                    if (_mushafBackground == 'parchment') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:green',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أخضر فاتح' : 'Soft green')),
+                    if (_mushafBackground == 'green') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bg:blue',
+                child: Row(
+                  children: [
+                    Expanded(child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'أزرق هادئ' : 'Soft blue')),
+                    if (_mushafBackground == 'blue') const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
             ],
           ),
           ListenableBuilder(
