@@ -1,0 +1,145 @@
+name: Verify added Quran reciter editions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'lib/core/data/reciters.dart'
+      - '.github/workflows/verify-new-reciter-editions.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-editions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Check edition IDs match the app source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path('lib/core/data/reciters.dart').read_text(encoding='utf-8')
+          expected = [
+              'ar.abdurrahmaansudais',
+              'ar.saoodshuraym',
+              'ar.abdulbasitmurattal',
+              'ar.muhammadayyoub',
+          ]
+          for edition_id in expected:
+              count = source.count(f"ReciterOption('{edition_id}'")
+              if count != 1:
+                  raise SystemExit(f'FAIL: {edition_id} appears {count} times in reciters.dart; expected exactly once')
+              print(f'OK: {edition_id} appears exactly once in reciters.dart')
+          PY
+      - name: Check edition metadata and representative ayah audio URLs
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          editions = {
+              "ar.abdurrahmaansudais": "عبد الرحمن السديس",
+              "ar.saoodshuraym": "سعود الشريم",
+              "ar.abdulbasitmurattal": "عبد الباسط عبد الصمد (مرتل)",
+              "ar.muhammadayyoub": "محمد أيوب",
+          }
+          sample_ayahs = [(1, 1), (2, 255), (19, 1), (112, 1), (114, 6)]
+
+          def get_json(url):
+              req = urllib.request.Request(
+                  url, headers={"User-Agent": "Wirdi-reciter-edition-verifier/1.0"}
+              )
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"HTTP {response.status}: {url}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          def check_audio(url):
+              if not isinstance(url, str) or not url.startswith("https://"):
+                  raise RuntimeError(f"Missing or non-HTTPS audio URL: {url!r}")
+              req = urllib.request.Request(
+                  url,
+                  headers={
+                      "User-Agent": "Wirdi-reciter-edition-verifier/1.0",
+                      "Range": "bytes=0-0",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      if response.status not in (200, 206):
+                          raise RuntimeError(f"Audio HTTP {response.status}: {url}")
+                      if response.status == 200:
+                          # Some CDNs ignore Range and return the whole MP3. Close immediately.
+                          response.close()
+                      return response.status
+              except urllib.error.HTTPError as exc:
+                  raise RuntimeError(f"Audio HTTP {exc.code}: {url}") from exc
+
+          failures = []
+          for edition_id, expected_name in editions.items():
+              print(f"\n== {edition_id} ==")
+              try:
+                  catalog = get_json("https://api.alquran.cloud/v1/edition/format/audio")
+                  editions_data = catalog.get("data")
+                  if not isinstance(editions_data, list):
+                      raise RuntimeError(f"Unexpected audio edition catalog: {catalog!r}")
+                  edition = next(
+                      (item for item in editions_data
+                       if isinstance(item, dict) and item.get("identifier") == edition_id),
+                      None,
+                  )
+                  if not isinstance(edition, dict):
+                      available = sorted(
+                          item.get("identifier", "") for item in editions_data
+                          if isinstance(item, dict) and item.get("identifier")
+                      )
+                      related = [
+                          item for item in available
+                          if any(token in item for token in ("sudais", "shuraym", "shuraim", "abdulbasit", "ayyoub", "ayoub"))
+                      ]
+                      raise RuntimeError(
+                          f"Edition {edition_id!r} is absent from live audio catalog; "
+                          f"related identifiers: {related}"
+                      )
+                  if edition.get("identifier") != edition_id:
+                      raise RuntimeError(f"Identifier mismatch: {edition.get('identifier')!r}")
+                  if edition.get("format") != "audio":
+                      raise RuntimeError(f"Expected audio edition, got {edition.get('format')!r}")
+                  if edition.get("language") != "ar":
+                      raise RuntimeError(f"Expected Arabic edition, got {edition.get('language')!r}")
+                  print(f"Metadata OK: {edition.get('name')} ({edition.get('language')}/{edition.get('format')})")
+
+                  for surah, ayah in sample_ayahs:
+                      payload = get_json(
+                          f"https://api.alquran.cloud/v1/ayah/{surah}:{ayah}/{edition_id}"
+                      )
+                      data = payload.get("data")
+                      if not isinstance(data, dict):
+                          raise RuntimeError(f"No ayah metadata for {surah}:{ayah}")
+                      if data.get("numberInSurah") != ayah or data.get("surah", {}).get("number") != surah:
+                          raise RuntimeError(f"Wrong ayah returned for {surah}:{ayah}: {data!r}")
+                      audio_url = data.get("audio")
+                      status = check_audio(audio_url)
+                      print(f"OK {surah}:{ayah} audio HTTP {status}")
+                      time.sleep(0.15)
+              except Exception as exc:
+                  failures.append(f"{edition_id}: {exc}")
+                  print(f"FAIL: {exc}", file=sys.stderr)
+
+          print("\n== Summary ==")
+          if failures:
+              for failure in failures:
+                  print(f"FAILED: {failure}", file=sys.stderr)
+              sys.exit(1)
+          print(f"PASS: all {len(editions)} editions and {len(editions) * len(sample_ayahs)} representative ayah audio URLs verified.")
+          print("Note: this network probe does not test in-app playback or synchronized verse highlighting.")
+          PY
