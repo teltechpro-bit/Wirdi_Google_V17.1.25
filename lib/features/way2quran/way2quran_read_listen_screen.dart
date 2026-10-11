@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/models/quran_models.dart';
+import '../../core/data/reciters.dart';
+import '../../core/services/settings_service.dart';
 import '../../core/services/quran_audio_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/qiraat_service.dart';
@@ -23,6 +25,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   late Future<List<SurahModel>> surahsFuture;
   late Future<Way2QuranRecitersPage> recitersFuture;
   Way2QuranReciter? selectedReciter;
+  String selectedWirdiReciterId = appSettings.reciterId;
   String? selectedRecitation;
   int? selectedSurah;
   int fromAyah = 1;
@@ -183,27 +186,36 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     return null;
   }
 
-  Future<void> _play(SurahModel surah) async {
-    final audio = _audioFor(surah);
-    final dir = await getApplicationDocumentsDirectory();
-    final reciterSlug = selectedReciter?.slug ?? 'reciter';
-    final recitationSlug = selectedRecitation ?? 'recitation';
-    final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
-    final fileName = '${Way2QuranStorage.safeFileStem(fileStem)}.mp3';
-    final localFile = File(Way2QuranStorage.recitationFilePath(dir.path, fileStem));
-    // Keep playback working for files downloaded by older app versions.
-    final legacyFile = File('${dir.path}/way2quran/audio/$fileName');
-    final localExists = await localFile.exists();
-    final legacyExists = !localExists && await legacyFile.exists();
-    final playableFile = localExists ? localFile : legacyFile;
-    final url = audio?.url.isNotEmpty == true ? audio!.url : audio?.downloadUrl ?? '';
-    if (!localExists && url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة لهذه السورة عند هذا القارئ')));
+  Future<void> _play(SurahModel surah, List<SurahModel> allSurahs) async {
+    // Use Wirdi's native ayah-by-ayah engine. This is the same playback path
+    // used by the Quran reader, so the selected reciter, ayah highlight,
+    // progress tracking, lock-screen media session, and seeking stay aligned.
+    final reciterId = selectedWirdiReciterId;
+    if (!Reciters.all.any((r) => r.id == reciterId)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(Localizations.localeOf(context).languageCode == 'ar'
+            ? 'القارئ المختار غير متاح في مشغل وِرْدِي الأصلي.'
+            : 'The selected reciter is not available in Wirdi native playback.'),
+      ));
       return;
     }
-    await quranAudio.setSpeed(speed);
-    final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
-    if (localExists || legacyExists) { await quranAudio.playExternalFile(playableFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
+    try {
+      await quranAudio.changeReciter(
+        reciterId,
+        surah: surah,
+        allSurahs: allSurahs,
+      );
+      await quranAudio.setSpeed(speed);
+      await quranAudio.playWholeSurah(surah, allSurahs);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(Localizations.localeOf(context).languageCode == 'ar'
+              ? 'تعذر تشغيل القارئ المختار. لم يتم التحويل إلى قارئ آخر.'
+              : 'Could not play the selected reciter. No fallback reciter was used.'),
+        ));
+      }
+    }
   }
 
   Future<void> _playSelectedAyahRange(SurahModel surah) async {
@@ -340,13 +352,37 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: Reciters.all.any((r) => r.id == selectedWirdiReciterId)
+                            ? selectedWirdiReciterId
+                            : Reciters.all.first.id,
+                        decoration: InputDecoration(
+                          labelText: ar ? 'قارئ وِرْدِي الأساسي' : 'Wirdi Quran reader',
+                          helperText: ar ? 'يُستخدم في تشغيل المصحف وتظليل الآيات' : 'Used by the Quran reader and ayah highlighting',
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: Reciters.all.map((r) => DropdownMenuItem(
+                          value: r.id,
+                          child: Text(r.displayNameFor(Localizations.localeOf(context).languageCode)),
+                        )).toList(),
+                        onChanged: (v) async {
+                          if (v == null) return;
+                          setState(() => selectedWirdiReciterId = v);
+                          await appSettings.setReciterId(v);
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       FutureBuilder<Way2QuranRecitersPage>(
                         future: recitersFuture,
                         builder: (context, snap) {
                           final items = snap.data?.reciters ?? const <Way2QuranReciter>[];
                           return DropdownButtonFormField<String>(
                             value: selectedReciter?.slug,
-                            decoration: InputDecoration(labelText: ar ? 'القارئ' : 'Reciter', border: const OutlineInputBorder()),
+                            decoration: InputDecoration(
+                              labelText: ar ? 'قارئ مكتبة التلاوات والتنزيل' : 'Recitation library / download source',
+                              border: const OutlineInputBorder(),
+                            ),
                             items: items.map((r) => DropdownMenuItem(value: r.slug, child: Text(r.name(ar)))).toList(),
                             onChanged: (v) {
                               final r = items.where((x) => x.slug == v).firstOrNull;
@@ -440,7 +476,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      Row(children: [Expanded(child: FilledButton.icon(onPressed: selectedReciter == null || selectedRecitation == null ? null : () => _play(surah), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل السورة' : 'Play Surah'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
+                      Row(children: [Expanded(child: FilledButton.icon(onPressed: () => _play(surah, surahs), icon: const Icon(Icons.play_arrow_rounded), label: Text(ar ? 'تشغيل بالقارئ الأساسي' : 'Play with Wirdi reader'))), const SizedBox(width: 10), OutlinedButton.icon(onPressed: selectedReciter == null || selectedRecitation == null || downloading ? null : () => _download(surah), icon: downloading ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.download_rounded), label: Text(ar ? 'تنزيل' : 'Download'))]),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: () => _playSelectedAyahRange(surah),
@@ -451,8 +487,8 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
                       ),
                       Text(
                         ar
-                            ? 'يستخدم هذا الزر رواية قارئ وِرْدِي المختارة أعلاه في دليل القراءات، وليس قارئ صفحة الاستماع.'
-                            : 'Uses the selected Wirdi Qira’at reader, not the reciter selected on this page.',
+                            ? 'يستخدم تشغيل وِرْدِي الأصلي بالقارئ المحدد أعلاه مع تزامن تظليل الآيات.'
+                            : 'Uses Wirdi's native selected reader and keeps ayah highlighting synchronized.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
