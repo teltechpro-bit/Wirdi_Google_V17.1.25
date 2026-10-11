@@ -27,10 +27,10 @@ jobs:
           import urllib.request
 
           editions = {
-              "ar.sudais": "عبد الرحمن السديس",
-              "ar.shuraim": "سعود الشريم",
-              "ar.abdulbasit": "عبد الباسط عبد الصمد",
-              "ar.muhammadayoub": "محمد أيوب",
+              "ar.abdurrahmaansudais": "عبد الرحمن السديس",
+              "ar.saoodshuraym": "سعود الشريم",
+              "ar.abdulbasitmurattal": "عبد الباسط عبد الصمد (مرتل)",
+              "ar.muhammadayyoub": "محمد أيوب",
           }
           sample_ayahs = [(1, 1), (2, 255), (19, 1), (112, 1), (114, 6)]
 
