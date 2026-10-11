@@ -33,6 +33,11 @@ class Reciters {
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
+    // Additional ayah-by-ayah editions documented by AlQuran.Cloud.
+    ReciterOption('ar.sudais', 'عبد الرحمن السديس', 'Abdul Rahman Al-Sudais'),
+    ReciterOption('ar.shuraim', 'سعود الشريم', 'Saud Al-Shuraim'),
+    ReciterOption('ar.abdulbasit', 'عبد الباسط عبد الصمد', 'Abdul Basit Abdul Samad'),
+    ReciterOption('ar.muhammadayoub', 'محمد أيوب', 'Muhammad Ayyoub'),
   ];
 
   static ReciterOption byId(String id) =>
