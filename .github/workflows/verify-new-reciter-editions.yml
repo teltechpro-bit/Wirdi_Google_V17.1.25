@@ -68,10 +68,28 @@ jobs:
           for edition_id, expected_name in editions.items():
               print(f"\n== {edition_id} ==")
               try:
-                  metadata = get_json(f"https://api.alquran.cloud/v1/edition/{edition_id}")
-                  edition = metadata.get("data")
+                  catalog = get_json("https://api.alquran.cloud/v1/edition/format/audio")
+                  editions_data = catalog.get("data")
+                  if not isinstance(editions_data, list):
+                      raise RuntimeError(f"Unexpected audio edition catalog: {catalog!r}")
+                  edition = next(
+                      (item for item in editions_data
+                       if isinstance(item, dict) and item.get("identifier") == edition_id),
+                      None,
+                  )
                   if not isinstance(edition, dict):
-                      raise RuntimeError(f"Unexpected edition metadata: {metadata!r}")
+                      available = sorted(
+                          item.get("identifier", "") for item in editions_data
+                          if isinstance(item, dict) and item.get("identifier")
+                      )
+                      related = [
+                          item for item in available
+                          if any(token in item for token in ("sudais", "shuraym", "shuraim", "abdulbasit", "ayyoub", "ayoub"))
+                      ]
+                      raise RuntimeError(
+                          f"Edition {edition_id!r} is absent from live audio catalog; "
+                          f"related identifiers: {related}"
+                      )
                   if edition.get("identifier") != edition_id:
                       raise RuntimeError(f"Identifier mismatch: {edition.get('identifier')!r}")
                   if edition.get("format") != "audio":
