@@ -78,13 +78,22 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
     }
     setState(() => downloading.add(mushaf.slug));
     try {
-      final bytes = await repo.downloadBytes(mushaf.downloadUrl);
-      if (!Way2QuranRepository.isPdfPayload(bytes)) {
+      final file = await _localFile(mushaf);
+      await repo.downloadToFile(mushaf.downloadUrl, file.path);
+      final header = await file.openRead(0, 5).fold<List<int>>(
+        <int>[],
+        (bytes, chunk) => bytes..addAll(chunk),
+      );
+      if (!Way2QuranRepository.isPdfPayload(header)) {
+        await file.delete();
         throw const FormatException('Mushaf endpoint did not return a PDF file');
       }
-      final file = await _localFile(mushaf);
-      await Way2QuranStorage.writeBytesAtomically(file, bytes);
-      await repo.incrementMushafDownload(mushaf.slug);
+      // Download success must not be reversed by an optional analytics call.
+      try {
+        await repo.incrementMushafDownload(mushaf.slug);
+      } catch (_) {
+        // Best-effort metric; do not retry automatically.
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
