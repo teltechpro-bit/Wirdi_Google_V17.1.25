@@ -88,6 +88,18 @@ class QuranAudioService extends ChangeNotifier {
   bool repeatSurah = false;
   String? externalTitle;
   String? externalUrl;
+  String? externalError;
+
+  /// Accept only absolute HTTPS URLs with a valid host for remote audio.
+  static bool isValidExternalAudioUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    return uri != null &&
+        uri.isAbsolute &&
+        uri.scheme.toLowerCase() == 'https' &&
+        uri.host.isNotEmpty &&
+        !uri.host.contains(RegExp(r'\\s')) &&
+        uri.userInfo.isEmpty;
+  }
 
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
@@ -731,11 +743,22 @@ class QuranAudioService extends ChangeNotifier {
   }
 
   Future<void> playExternalUrl(String url, {String? title}) async {
-    if (url.isEmpty) return;
+    final normalizedUrl = url.trim();
+    if (!isValidExternalAudioUrl(normalizedUrl)) {
+      externalError = 'Invalid audio URL: an absolute HTTPS URL is required.';
+      isBuffering = false;
+      externalUrl = null;
+      externalTitle = title;
+      await _setQuranWakelock(false);
+      notifyListeners();
+      return;
+    }
+
     _externalPlaylistMode = false;
     _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
     _playToken++;
+    final token = _playToken;
     _stopping = false;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
@@ -743,29 +766,59 @@ class QuranAudioService extends ChangeNotifier {
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     playingAyah = null;
     playingWholeSurah = false;
-    externalUrl = url;
+    externalUrl = normalizedUrl;
     externalTitle = title;
+    externalError = null;
     isPaused = false;
     isBuffering = true;
     position = Duration.zero;
     duration = Duration.zero;
     notifyListeners();
+
     try {
       await _player.stop();
       await _player.setLoopMode(ja.LoopMode.off);
-      await _player.setAudioSource(ja.AudioSource.uri(Uri.parse(url)));
+      await _player
+          .setAudioSource(ja.AudioSource.uri(Uri.parse(normalizedUrl)))
+          .timeout(const Duration(seconds: 30));
+      if (token != _playToken) return;
       await _player.setSpeed(playbackRate);
+      // Player-state stream owns buffering/playing state; don't report ready
+      // before the native player actually starts processing the source.
       unawaited(_player.play());
-      isBuffering = false;
       duration = _player.duration ?? Duration.zero;
       notifyListeners();
-    } catch (e, st) {
+    } on TimeoutException catch (e, st) {
+      if (token != _playToken) return;
       isBuffering = false;
+      externalError = 'Audio loading timed out after 30 seconds. Please retry.';
       externalUrl = null;
       externalTitle = null;
+      await _setQuranWakelock(false);
+      AppLogger.error('Timed out loading external Quran audio', error: e, stackTrace: st);
+      notifyListeners();
+    } catch (e, st) {
+      if (token != _playToken) return;
+      isBuffering = false;
+      externalError = 'Unable to play this audio. Check the connection and try again.';
+      externalUrl = null;
+      externalTitle = null;
+      await _setQuranWakelock(false);
       AppLogger.error('Failed to start external Quran audio', error: e, stackTrace: st);
       notifyListeners();
     }
+  }
+
+  /// Retry the last remote track after a reported loading/playback failure.
+  Future<void> retryExternalUrl() async {
+    final url = externalUrl;
+    final title = externalTitle;
+    if (url == null || !isValidExternalAudioUrl(url)) {
+      externalError = 'There is no valid remote audio URL to retry.';
+      notifyListeners();
+      return;
+    }
+    await playExternalUrl(url, title: title);
   }
 
   Future<void> pause() async {
