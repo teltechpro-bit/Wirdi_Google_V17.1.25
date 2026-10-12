@@ -8,10 +8,20 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Only read repository contents during CI. No workflow step needs write access.
+permissions:
+  contents: read
+
+# Avoid spending runners on superseded commits/PR updates.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repo
