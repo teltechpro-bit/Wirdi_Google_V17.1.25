@@ -738,7 +738,7 @@ class QuranAudioService extends ChangeNotifier {
     return parsed != null &&
         parsed.scheme.toLowerCase() == 'https' &&
         parsed.host.isNotEmpty &&
-        !parsed.host.contains(RegExp(r'\\s')) &&
+        !parsed.host.contains(RegExp(r'\s')) &&
         parsed.userInfo.isEmpty;
   }
 
