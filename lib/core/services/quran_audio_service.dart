@@ -792,8 +792,6 @@ class QuranAudioService extends ChangeNotifier {
       if (token != _playToken) return;
       isBuffering = false;
       externalError = 'Audio loading timed out after 30 seconds. Please retry.';
-      externalUrl = null;
-      externalTitle = null;
       await _setQuranWakelock(false);
       AppLogger.error('Timed out loading external Quran audio', error: e, stackTrace: st);
       notifyListeners();
@@ -801,8 +799,6 @@ class QuranAudioService extends ChangeNotifier {
       if (token != _playToken) return;
       isBuffering = false;
       externalError = 'Unable to play this audio. Check the connection and try again.';
-      externalUrl = null;
-      externalTitle = null;
       await _setQuranWakelock(false);
       AppLogger.error('Failed to start external Quran audio', error: e, stackTrace: st);
       notifyListeners();
