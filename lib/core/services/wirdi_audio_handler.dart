@@ -21,7 +21,7 @@ class WirdiAudioHandler extends BaseAudioHandler {
   }
 
   bool get _radioActive => RadioService.instance.currentStation != null;
-  bool get _quranActive => quranAudio.playingAyah != null;
+  bool get _quranActive => quranAudio.playingAyah != null || quranAudio.externalUrl != null;
 
   void _onRadioChanged() {
     if (_radioActive) {
@@ -37,7 +37,14 @@ class WirdiAudioHandler extends BaseAudioHandler {
   String? _lastQuranKey;
 
   void _onQuranChanged() {
-    if (_quranActive) {
+    if (quranAudio.externalUrl != null) {
+      final key = 'external|${quranAudio.externalUrl}|${quranAudio.externalTitle}|'
+          '${quranAudio.isPaused}|${quranAudio.isBuffering}|'
+          '${quranAudio.playbackRate}|${quranAudio.duration.inMilliseconds}';
+      if (key == _lastQuranKey) return;
+      _lastQuranKey = key;
+      _publishExternalState();
+    } else if (quranAudio.playingAyah != null) {
       final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
           '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.surahEstimatedTotal.inSeconds}';
       if (key == _lastQuranKey) return;
@@ -47,6 +54,40 @@ class WirdiAudioHandler extends BaseAudioHandler {
       _lastQuranKey = null;
       if (!_radioActive) _publishIdle();
     }
+  }
+
+  void _publishExternalState() {
+    final q = quranAudio;
+    final url = q.externalUrl;
+    if (url == null) return;
+    mediaItem.add(MediaItem(
+      id: url,
+      title: (q.externalTitle ?? '').trim().isNotEmpty
+          ? q.externalTitle!.trim()
+          : 'Quran recitation',
+      artist: 'Wirdi',
+      duration: q.duration > Duration.zero ? q.duration : null,
+    ));
+    playbackState.add(playbackState.value.copyWith(
+      controls: [
+        MediaControl.stop,
+        q.isPaused ? MediaControl.play : MediaControl.pause,
+      ],
+      systemActions: const {
+        MediaAction.play,
+        MediaAction.pause,
+        MediaAction.stop,
+        MediaAction.seek,
+      },
+      androidCompactActionIndices: const [0, 1],
+      processingState: q.isBuffering
+          ? AudioProcessingState.loading
+          : AudioProcessingState.ready,
+      playing: !q.isPaused && !q.isBuffering,
+      updatePosition: q.position,
+      bufferedPosition: q.position,
+      speed: q.playbackRate,
+    ));
   }
 
   void _publishRadioState() {
@@ -143,6 +184,13 @@ class WirdiAudioHandler extends BaseAudioHandler {
       await RadioService.instance.pause();
     } else if (_quranActive) {
       await quranAudio.pause();
+    }
+  }
+
+  @override
+  Future<void> seek(Duration position) async {
+    if (_quranActive && !_radioActive) {
+      await quranAudio.seek(position);
     }
   }
 
