@@ -21,7 +21,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
   }
 
   bool get _radioActive => RadioService.instance.currentStation != null;
-  bool get _quranActive => quranAudio.playingAyah != null;
+  bool get _quranActive =>
+      quranAudio.playingAyah != null || quranAudio.externalUrl != null;
 
   void _onRadioChanged() {
     if (_radioActive) {
@@ -38,8 +39,11 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   void _onQuranChanged() {
     if (_quranActive) {
-      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
-          '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.surahEstimatedTotal.inSeconds}';
+      final key = '${quranAudio.externalUrl}|${quranAudio.externalTitle}|'
+          '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|'
+          '${quranAudio.isPaused}|${quranAudio.isBuffering}|'
+          '${quranAudio.playbackRate}|${quranAudio.duration.inSeconds}|'
+          '${quranAudio.surahEstimatedTotal.inSeconds}';
       if (key == _lastQuranKey) return;
       _lastQuranKey = key;
       _publishQuranState();
@@ -85,6 +89,37 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   void _publishQuranState() {
     final q = quranAudio;
+    if (q.externalUrl != null) {
+      mediaItem.add(MediaItem(
+        id: 'external_quran_audio',
+        title: (q.externalTitle?.trim().isNotEmpty ?? false)
+            ? q.externalTitle!.trim()
+            : 'Quran recitation',
+        artist: 'Wirdi',
+        duration: q.duration > Duration.zero ? q.duration : null,
+      ));
+      playbackState.add(playbackState.value.copyWith(
+        controls: [
+          MediaControl.stop,
+          q.isPaused ? MediaControl.play : MediaControl.pause,
+        ],
+        systemActions: const {
+          MediaAction.play,
+          MediaAction.pause,
+          MediaAction.stop,
+          MediaAction.seek,
+        },
+        androidCompactActionIndices: const [0, 1],
+        processingState: q.isBuffering
+            ? AudioProcessingState.loading
+            : AudioProcessingState.ready,
+        playing: !q.isPaused && !q.isBuffering,
+        updatePosition: q.position,
+        speed: q.playbackRate,
+      ));
+      return;
+    }
+
     final ayah = q.playingAyah;
     if (ayah == null) return;
 
@@ -157,6 +192,13 @@ class WirdiAudioHandler extends BaseAudioHandler {
   Future<void> skipToPrevious() async {
     if (_radioActive) {
       await RadioService.instance.playPrevious();
+    }
+  }
+
+  @override
+  Future<void> seek(Duration position) async {
+    if (_quranActive && !_radioActive) {
+      await quranAudio.seek(position);
     }
   }
 
