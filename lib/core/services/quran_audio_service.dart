@@ -97,7 +97,7 @@ class QuranAudioService extends ChangeNotifier {
         uri.isAbsolute &&
         uri.scheme.toLowerCase() == 'https' &&
         uri.host.isNotEmpty &&
-        !uri.host.contains(RegExp(r'\\s')) &&
+        !uri.host.contains(RegExp(r'\s')) &&
         uri.userInfo.isEmpty;
   }
 
