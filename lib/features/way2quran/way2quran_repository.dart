@@ -207,7 +207,7 @@ class Way2QuranRepository {
         !uri.isAbsolute ||
         uri.scheme.toLowerCase() != 'https' ||
         uri.host.isEmpty ||
-        uri.host.contains(RegExp(r'\\s')) ||
+        uri.host.contains(RegExp(r'\s')) ||
         uri.userInfo.isNotEmpty) {
       throw const FormatException('A valid HTTPS download URL is required');
     }
@@ -254,7 +254,7 @@ class Way2QuranRepository {
         !uri.isAbsolute ||
         uri.scheme.toLowerCase() != 'https' ||
         uri.host.isEmpty ||
-        uri.host.contains(RegExp(r'\\s')) ||
+        uri.host.contains(RegExp(r'\s')) ||
         uri.userInfo.isNotEmpty) {
       throw const FormatException('A valid HTTPS download URL is required');
     }
