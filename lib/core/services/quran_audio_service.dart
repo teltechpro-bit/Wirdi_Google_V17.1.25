@@ -774,19 +774,21 @@ class QuranAudioService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _player.stop();
-      await _player.setLoopMode(ja.LoopMode.off);
-      await _player.setAudioSource(
-        ja.AudioSource.uri(Uri.parse(candidate)),
-      ).timeout(const Duration(seconds: 30));
-      if (token != _playToken) return;
-      await _player.setSpeed(playbackRate);
-      unawaited(_player.play());
-      await _player.playerStateStream
-          .firstWhere((state) =>
+      await (() async {
+        await _player.stop();
+        await _player.setLoopMode(ja.LoopMode.off);
+        await _player.setAudioSource(
+          ja.AudioSource.uri(Uri.parse(candidate)),
+        );
+        if (token != _playToken) return;
+        await _player.setSpeed(playbackRate);
+        unawaited(_player.play());
+        await _player.playerStateStream.firstWhere(
+          (state) =>
               state.playing ||
-              state.processingState == ja.ProcessingState.completed)
-          .timeout(const Duration(seconds: 30));
+              state.processingState == ja.ProcessingState.completed,
+        );
+      })().timeout(const Duration(seconds: 30));
       if (token != _playToken) return;
       duration = _player.duration ?? Duration.zero;
       // The player-state listener owns isBuffering from this point onward.
