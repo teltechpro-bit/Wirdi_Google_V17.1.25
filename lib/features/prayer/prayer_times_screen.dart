@@ -18,7 +18,6 @@ import '../../shared/widgets/wirdi_identity_background.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/services/weather_service.dart';
 import '../../core/services/sunrise_sunset_calculator.dart';
-import 'package:geolocator/geolocator.dart';
 import 'prayer_chart_screen.dart';
 import '../qibla/qibla_screen.dart';
 
@@ -99,15 +98,17 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
 
   Future<void> _loadWeatherAndSun() async {
     try {
-      final w = await WeatherService.getWeatherAtPrayerTime('now');
-      if (mounted) setState(() => _weather = w);
+      final w = await WeatherService.getWeatherAtSavedLocation();
+      if (mounted && w != null) setState(() => _weather = w);
     } catch (_) {}
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-      ).timeout(const Duration(seconds: 10));
-      final sun = SunriseSunsetCalculator.calculate(position.latitude, position.longitude, DateTime.now());
-      if (mounted) setState(() => _sunTimes = sun);
+      final prefs = await SharedPreferences.getInstance();
+      final latitude = prefs.getDouble('cache_prayer_lat_v1');
+      final longitude = prefs.getDouble('cache_prayer_lon_v1');
+      if (latitude != null && longitude != null) {
+        final sun = SunriseSunsetCalculator.calculate(latitude, longitude, DateTime.now());
+        if (mounted) setState(() => _sunTimes = sun);
+      }
     } catch (_) {}
   }
 
@@ -372,8 +373,8 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
               } else if (value == 'weather') {
                 () async {
                   try {
-                    final w = await WeatherService.getWeatherAtPrayerTime('now');
-                    if (!context.mounted) return;
+                    final w = await WeatherService.getWeatherAtSavedLocation();
+                    if (!context.mounted || w == null) return;
                     showDialog<void>(
                       context: context,
                       builder: (_) => AlertDialog(
@@ -392,10 +393,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
               } else if (value == 'sun') {
                 () async {
                   try {
-                    final position = await Geolocator.getCurrentPosition(
-                      locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-                    ).timeout(const Duration(seconds: 10));
-                    final sun = SunriseSunsetCalculator.calculate(position.latitude, position.longitude, DateTime.now());
+                    final prefs = await SharedPreferences.getInstance();
+                    final latitude = prefs.getDouble('cache_prayer_lat_v1');
+                    final longitude = prefs.getDouble('cache_prayer_lon_v1');
+                    if (latitude == null || longitude == null) return;
+                    final sun = SunriseSunsetCalculator.calculate(latitude, longitude, DateTime.now());
                     if (!context.mounted) return;
                     String fmt(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
                     showDialog<void>(
