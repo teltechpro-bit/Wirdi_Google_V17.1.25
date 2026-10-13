@@ -252,6 +252,11 @@ class PrayerService {
 
   /// Restores the last-used mode (GPS or manual city) on app start,
   /// falling back to cache if a fresh fetch isn't possible right now.
+  static const _locationPromptAttemptedKey = 'prayer_location_prompt_attempted_v1';
+
+  /// Loads prayer times without prompting for GPS on ordinary home refreshes.
+  /// Once a location has been chosen, the saved location/cache is the default;
+  /// GPS is only explicitly refreshed by the user from the prayer settings.
   static Future<PrayerTimesResult> fetchUsingSavedPreference() async {
     final mode = await savedMode();
     if (mode == 'manual') {
@@ -266,6 +271,17 @@ class PrayerService {
         }
       }
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    final cached = await _tryLoadCache();
+    if (cached != null) return cached;
+
+    // No location has ever been saved. Ask at most once from automatic
+    // startup/home refresh; a declined request must not be repeated on refresh.
+    if (prefs.getBool(_locationPromptAttemptedKey) == true) {
+      throw PrayerAvailability.permissionDenied;
+    }
+    await prefs.setBool(_locationPromptAttemptedKey, true);
     return fetchPrayerTimes();
   }
 
