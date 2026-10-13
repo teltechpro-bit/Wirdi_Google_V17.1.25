@@ -15,3 +15,12 @@ void main() {
     });
   });
 }
+
+
+  group('curated Quran radio stream endpoints', () {
+    test('Bahrain Quran direct HLS URL is HTTPS and playlist-based', () {
+      const url = 'https://5c7b683162943.streamlock.net/live/ngrp:bahrainquran_all/playlist.m3u8';
+      expect(RadioStation.isSecureUrl(url), isTrue);
+      expect(Uri.parse(url).path, endsWith('/playlist.m3u8'));
+    });
+  });
