@@ -150,21 +150,11 @@ class RadioService extends ChangeNotifier {
       combined.putIfAbsent(cairo.streamUrl, () => cairo);
     }
 
-    // Add the requested stations only after an on-device media probe.
-    // A 200 response alone is insufficient: HLS endpoints must expose a
-    // valid playlist and at least one reachable media segment; direct
-    // endpoints must return audio-like bytes/content-type.
-    final probes = await Future.wait(
-      kPendingQuranRadioStations.map((station) async {
-        final ok = await _probeLiveAudio(station.streamUrl);
-        if (!ok) {
-          debugPrint('[Radio] Candidate disabled: ${station.id} did not pass live-audio probe');
-          return null;
-        }
-        return station;
-      }),
-    );
-    for (final station in probes.whereType<RadioStation>()) {
+    // Endpoints in this catalog passed the GitHub live-payload probe
+    // (audio bytes or an HLS playlist plus a reachable media segment).
+    // Do not probe all endpoints during app startup/refresh: this delays
+    // the station list and creates unnecessary traffic.
+    for (final station in kPendingQuranRadioStations) {
       if (RadioStation.isSecureUrl(station.streamUrl)) {
         combined.putIfAbsent(station.streamUrl, () => station);
       }
@@ -183,74 +173,6 @@ class RadioService extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<bool> _probeLiveAudio(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return false;
-    final client = http.Client();
-    try {
-      final request = http.Request('GET', uri)
-        ..headers['User-Agent'] = 'WirdiRadio/1.0'
-        ..headers['Range'] = 'bytes=0-4095';
-      final response = await client.send(request).timeout(const Duration(seconds: 7));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        await response.stream.drain<void>().timeout(const Duration(seconds: 2)).catchError((_) {});
-        return false;
-      }
-
-      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
-      final firstChunk = await response.stream.first.timeout(const Duration(seconds: 5));
-      if (firstChunk.isEmpty) return false;
-
-      final isPlaylist = contentType.contains('mpegurl') ||
-          contentType.contains('vnd.apple') ||
-          url.toLowerCase().contains('.m3u8') ||
-          String.fromCharCodes(firstChunk.take(7)).startsWith('#EXTM3U');
-      if (isPlaylist) {
-        // HLS playlist should contain a media URI, not just return HTTP 200.
-        final text = String.fromCharCodes(firstChunk);
-        final segmentPath = text
-            .split(RegExp(r'\r?\n'))
-            .map((line) => line.trim())
-            .firstWhere(
-              (line) => line.isNotEmpty && !line.startsWith('#'),
-              orElse: () => '',
-            );
-        if (segmentPath.isEmpty) return false;
-        final segmentUri = uri.resolve(segmentPath);
-        if (segmentUri.scheme != 'https') return false;
-        final segmentRequest = http.Request('GET', segmentUri)
-          ..headers['User-Agent'] = 'WirdiRadio/1.0'
-          ..headers['Range'] = 'bytes=0-1023';
-        final segmentResponse = await client
-            .send(segmentRequest)
-            .timeout(const Duration(seconds: 7));
-        if (segmentResponse.statusCode < 200 || segmentResponse.statusCode >= 300) {
-          await segmentResponse.stream.drain<void>().timeout(const Duration(seconds: 2)).catchError((_) {});
-          return false;
-        }
-        final bytes = await segmentResponse.stream.first.timeout(const Duration(seconds: 5));
-        return bytes.isNotEmpty;
-      }
-
-      final audioMime = contentType.startsWith('audio/') ||
-          contentType.contains('octet-stream') ||
-          contentType.contains('mp2t') ||
-          contentType.contains('aac') ||
-          contentType.contains('mpeg');
-      final audioSignature = (firstChunk.length >= 3 &&
-              firstChunk[0] == 0x49 && firstChunk[1] == 0x44 && firstChunk[2] == 0x33) ||
-          (firstChunk.length >= 2 && firstChunk[0] == 0xFF && (firstChunk[1] & 0xE0) == 0xE0) ||
-          (firstChunk.length >= 4 && firstChunk[0] == 0x4F && firstChunk[1] == 0x67 && firstChunk[2] == 0x67 && firstChunk[3] == 0x53) ||
-          (firstChunk.length >= 4 && firstChunk[0] == 0x66 && firstChunk[1] == 0x4C && firstChunk[2] == 0x61 && firstChunk[3] == 0x43);
-      return audioMime || audioSignature;
-    } catch (e) {
-      debugPrint('[Radio] Live-audio probe failed for $url: $e');
-      return false;
-    } finally {
-      client.close();
-    }
-  }
 
   Future<List<RadioStation>> _fetchDataRosy() async {
     final resp = await http
