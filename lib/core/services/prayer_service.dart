@@ -273,6 +273,42 @@ class PrayerService {
     }
 
     final prefs = await SharedPreferences.getInstance();
+    final latitude = prefs.getDouble(_cacheLatKey);
+    final longitude = prefs.getDouble(_cacheLonKey);
+    if (latitude != null && longitude != null) {
+      // Refresh the timetable for the saved coordinates without asking for
+      // the device's current location. The user controls when GPS is updated.
+      try {
+        final url = AppSources.prayerTimesUrl(
+          latitude: latitude,
+          longitude: longitude,
+          method: appSettings.prayerCalcMethod,
+          school: await _schoolFromMathhab(),
+        );
+        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+        if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        final timings = decoded['data']['timings'] as Map<String, dynamic>;
+        final tzName = _tzNameFrom(decoded);
+        final label = prefs.getString(_cacheLocationLabelKey);
+        await _saveCache(
+          timings: timings,
+          locationLabel: label,
+          mode: 'gps',
+          manualCity: null,
+          latitude: latitude,
+          longitude: longitude,
+          tzName: tzName,
+        );
+        return _buildResult(timings, isFromCache: false, cachedAt: DateTime.now(), locationLabel: label, tzName: tzName);
+      } catch (e, st) {
+        AppLogger.error('Saved-location prayer refresh failed; using cache', error: e, stackTrace: st);
+        final cached = await _tryLoadCache();
+        if (cached != null) return cached;
+        throw PrayerAvailability.networkErrorNoCache;
+      }
+    }
+
     final cached = await _tryLoadCache();
     if (cached != null) return cached;
 
