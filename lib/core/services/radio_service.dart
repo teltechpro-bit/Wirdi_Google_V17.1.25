@@ -207,7 +207,9 @@ class RadioService extends ChangeNotifier {
           if (!contentType.contains('octet-stream')) return true;
         }
         if (prefix.startsWith('id3') || prefix.startsWith('ogg') ||
-            prefix.startsWith('fla') || prefix.startsWith('riff')) return true;
+            prefix.startsWith('fla') || prefix.startsWith('riff')) {
+          return true;
+        }
         if (bytes.length > 1 && bytes[0] == 0xff && (bytes[1] & 0xe0) == 0xe0) return true;
         return false;
       } finally {
