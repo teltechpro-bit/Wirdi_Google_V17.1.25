@@ -69,11 +69,11 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getInt(_pageBackgroundKey) ?? 0;
     if (!mounted) return;
-    setState(() => _pageBackgroundChoice = saved.clamp(0, _pageBackgrounds.length - 1));
+    setState(() => _pageBackgroundChoice = saved.clamp(0, _pageBackgrounds.length - 1).toInt());
   }
 
   Future<void> _setPageBackground(int choice) async {
-    setState(() => _pageBackgroundChoice = choice.clamp(0, _pageBackgrounds.length - 1));
+    setState(() => _pageBackgroundChoice = choice.clamp(0, _pageBackgrounds.length - 1).toInt());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_pageBackgroundKey, _pageBackgroundChoice);
   }
