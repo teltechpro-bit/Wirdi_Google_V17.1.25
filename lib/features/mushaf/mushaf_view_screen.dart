@@ -609,6 +609,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
                   fontScale: _fontScale,
+                  // Apply the selected paper style in page-flip mode too.
+                  backgroundStyle: _mushafBackground,
                 );
               },
             ),
