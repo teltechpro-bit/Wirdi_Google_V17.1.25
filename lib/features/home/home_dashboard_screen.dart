@@ -17,7 +17,6 @@ import '../../core/services/moon_calculator.dart';
 import '../../core/services/prayer_display.dart';
 import '../../core/services/weather_service.dart';
 import '../../core/services/sunrise_sunset_calculator.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../core/services/prayer_notification_scheduler.dart';
 import '../../core/services/prayer_service.dart';
 import '../../core/services/settings_service.dart';
@@ -190,8 +189,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       // no-op -- sunrise/sunset row just won't show
     }
     try {
-      final weather = await WeatherService.getWeatherAtPrayerTime('now');
-      if (mounted) setState(() => _weather = weather);
+      final weather = await WeatherService.getWeatherAtSavedLocation();
+      if (mounted && weather != null) setState(() => _weather = weather);
     } catch (_) {
       // no-op -- weather row just won't show
     }
