@@ -133,6 +133,19 @@ class RadioService extends ChangeNotifier {
     await mergeFrom(_fetchDataRosy, 'Data-Rosy');
     await mergeFrom(_fetchUthumany, 'Uthumany');
     await mergeFrom(_fetchIprd, 'IPRD');
+
+    // Validate the supplied direct streams before exposing them. A 200 status
+    // alone is not enough: require actual audio bytes or an HLS playlist.
+    final candidateResults = await Future.wait(
+      kExternalRadioCandidates.map((station) async {
+        final valid = await _isPlayableStream(station.streamUrl);
+        return valid ? station : null;
+      }),
+    );
+    for (final station in candidateResults.whereType<RadioStation>()) {
+      combined.putIfAbsent(station.streamUrl, () => station);
+    }
+
     // Keep the Cairo Quran station available even if an upstream catalog
     // temporarily omits it. This is the HTTPS stream documented by the
     // public Islamic-APIs radio endpoint.
@@ -163,6 +176,50 @@ class RadioService extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  /// Performs a bounded probe: follows redirects, reads only the first
+  /// response chunk, and rejects HTML/JSON error pages even when HTTP is 200.
+  Future<bool> _isPlayableStream(String url) async {
+    if (!RadioStation.isSecureUrl(url)) return false;
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(url))
+        ..headers['Range'] = 'bytes=0-4095'
+        ..headers['Icy-MetaData'] = '0';
+      final response = await client.send(request).timeout(const Duration(seconds: 7));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        await response.stream.listen((_) {}).cancel();
+        return false;
+      }
+      final iterator = StreamIterator<List<int>>(response.stream);
+      try {
+        final hasChunk = await iterator.moveNext().timeout(const Duration(seconds: 5));
+        if (!hasChunk || iterator.current.isEmpty) return false;
+        final bytes = iterator.current;
+        final prefix = String.fromCharCodes(bytes.take(32)).trimLeft().toLowerCase();
+        final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+        if (prefix.startsWith('#extm3u')) return true;
+        if (contentType.contains('audio/') ||
+            contentType.contains('application/vnd.apple.mpegurl') ||
+            contentType.contains('application/x-mpegurl') ||
+            contentType.contains('application/octet-stream')) {
+          // Generic binary responses still need a recognizable audio signature.
+          if (!contentType.contains('octet-stream')) return true;
+        }
+        if (prefix.startsWith('id3') || prefix.startsWith('ogg') ||
+            prefix.startsWith('fla') || prefix.startsWith('riff')) return true;
+        if (bytes.length > 1 && bytes[0] == 0xff && (bytes[1] & 0xe0) == 0xe0) return true;
+        return false;
+      } finally {
+        await iterator.cancel();
+      }
+    } catch (e) {
+      debugPrint('[Radio] Stream probe rejected $url: $e');
+      return false;
+    } finally {
+      client.close();
+    }
+  }
 
   Future<List<RadioStation>> _fetchDataRosy() async {
     final resp = await http
