@@ -133,6 +133,7 @@ class RadioService extends ChangeNotifier {
     await mergeFrom(_fetchDataRosy, 'Data-Rosy');
     await mergeFrom(_fetchUthumany, 'Uthumany');
     await mergeFrom(_fetchIprd, 'IPRD');
+    await mergeFrom(_fetchVerifiedExternalRadios, 'verified external Quran radios');
     // Keep the Cairo Quran station available even if an upstream catalog
     // temporarily omits it. This is the HTTPS stream documented by the
     // public Islamic-APIs radio endpoint.
@@ -163,6 +164,82 @@ class RadioService extends ChangeNotifier {
     notifyListeners();
   }
 
+
+
+  /// Probe actual response bytes (not merely HTTP 200) before listing external
+  /// streams. HLS candidates must return a valid M3U playlist; audio streams
+  /// must advertise audio/octet-stream or begin with a recognizable MPEG sync.
+  Future<bool> _isPlayableRadioStream(RadioStation station) async {
+    if (!RadioStation.isSecureUrl(station.streamUrl)) return false;
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(station.streamUrl))
+        ..headers.addAll({
+          'Range': 'bytes=0-4095',
+          'Icy-MetaData': '0',
+          'User-Agent': 'Wirdi-Radio-Stream-Probe/1.0',
+        });
+      final response = await client.send(request).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200 && response.statusCode != 206) {
+        await response.stream.drain<void>().timeout(const Duration(seconds: 2), onTimeout: () {});
+        return false;
+      }
+      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+      final prefix = <int>[];
+      final subscription = response.stream.listen((chunk) {
+        final remaining = 4096 - prefix.length;
+        if (remaining > 0) prefix.addAll(chunk.take(remaining));
+      });
+      try {
+        await subscription.asFuture<void>().timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        await subscription.cancel();
+      } catch (_) {
+        await subscription.cancel();
+      }
+      if (prefix.isEmpty) return false;
+      final textPrefix = String.fromCharCodes(prefix.take(128)).trimLeft();
+      final isHls = contentType.contains('mpegurl') || station.streamUrl.toLowerCase().contains('.m3u8');
+      if (isHls) {
+        if (!textPrefix.startsWith('#EXTM3U')) return false;
+        final lines = String.fromCharCodes(prefix).split(RegExp(r'\r?\n'));
+        final segment = lines.map((line) => line.trim()).firstWhere(
+          (line) => line.isNotEmpty && !line.startsWith('#'),
+          orElse: () => '',
+        );
+        if (segment.isEmpty) return false;
+        final segmentUri = Uri.parse(station.streamUrl).resolve(segment);
+        final segmentRequest = http.Request('GET', segmentUri)
+          ..headers['Range'] = 'bytes=0-511'
+          ..headers['User-Agent'] = 'Wirdi-Radio-Stream-Probe/1.0';
+        final segmentResponse = await client.send(segmentRequest).timeout(const Duration(seconds: 5));
+        if (segmentResponse.statusCode != 200 && segmentResponse.statusCode != 206) {
+          await segmentResponse.stream.drain<void>();
+          return false;
+        }
+        final bytes = await segmentResponse.stream.take(1).toList().timeout(const Duration(seconds: 3));
+        return bytes.isNotEmpty && bytes.first.isNotEmpty;
+      }
+      final looksAudio = contentType.startsWith('audio/') ||
+          contentType.contains('application/octet-stream') ||
+          (prefix.length >= 2 && prefix[0] == 0xFF && (prefix[1] & 0xE0) == 0xE0);
+      return looksAudio;
+    } catch (e) {
+      debugPrint('[Radio] Stream probe failed for ${station.id}: $e');
+      return false;
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<RadioStation>> _fetchVerifiedExternalRadios() async {
+    final results = await Future.wait(kExternalQuranRadioCandidates.map((station) async {
+      final valid = await _isPlayableRadioStream(station);
+      debugPrint('[Radio] external candidate ${station.id}: ${valid ? "PASS" : "DISABLED"}');
+      return valid ? station : null;
+    }));
+    return results.whereType<RadioStation>().toList();
+  }
 
   Future<List<RadioStation>> _fetchDataRosy() async {
     final resp = await http
