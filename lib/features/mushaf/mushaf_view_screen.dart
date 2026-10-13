@@ -1,6 +1,7 @@
 import '../../core/services/tajweed_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../core/data/bismillah.dart';
@@ -53,6 +54,29 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   int _currentPageIndex = 0;
   ScrollController? _continuousScrollController;
   double _fontScale = 1.0;
+  static const _pageBackgroundKey = 'wirdi_mushaf_page_background_v1';
+  int _pageBackgroundChoice = 0;
+  static const List<Color> _pageBackgrounds = [
+    Color(0xFFF7F0DC), // classic warm paper
+    Color(0xFFFFFDF5), // clean ivory
+    Color(0xFFE8E0C8), // Madinah-inspired parchment
+    Color(0xFF202820), // night reading
+  ];
+
+  Color get _pageBackgroundColor => _pageBackgrounds[_pageBackgroundChoice];
+
+  Future<void> _loadPageBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getInt(_pageBackgroundKey) ?? 0;
+    if (!mounted) return;
+    setState(() => _pageBackgroundChoice = saved.clamp(0, _pageBackgrounds.length - 1));
+  }
+
+  Future<void> _setPageBackground(int choice) async {
+    setState(() => _pageBackgroundChoice = choice.clamp(0, _pageBackgrounds.length - 1));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_pageBackgroundKey, _pageBackgroundChoice);
+  }
 
   /// Cached once [_loadAll] resolves, so [_onAudioChanged] (which fires
   /// on every ayah transition, independent of the FutureBuilder) can
@@ -68,6 +92,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   void initState() {
     super.initState();
     _future = _loadAll();
+    _loadPageBackground();
     _currentPageIndex = (widget.initialPage ?? 1) - 1;
     _pageController = PageController(initialPage: (widget.initialPage ?? 1) - 1);
     quranAudio.addListener(_onAudioChanged);
@@ -288,7 +313,10 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
             tooltip: Localizations.localeOf(context).languageCode == 'ar' ? 'خيارات القراءة' : 'Reading options',
             icon: const Icon(Icons.tune_rounded),
             onSelected: (value) async {
-              if (value == 'fontDec') {
+              if (value.startsWith('paper')) {
+                final choice = int.tryParse(value.substring(5));
+                if (choice != null) await _setPageBackground(choice);
+              } else if (value == 'fontDec') {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
                 setState(() => _fontScale = (_fontScale + 0.1).clamp(0.7, 1.6));
@@ -339,6 +367,11 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               PopupMenuItem(value: 'reciter', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'القارئ' : 'Reciter')),
               PopupMenuItem(value: 'fontDec', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تصغير الخط' : 'Decrease font')),
               PopupMenuItem(value: 'fontInc', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تكبير الخط' : 'Increase font')),
+              const PopupMenuDivider(),
+              PopupMenuItem(value: 'paper0', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية ورق دافئ' : 'Warm paper')),
+              PopupMenuItem(value: 'paper1', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية عاجية فاتحة' : 'Ivory paper')),
+              PopupMenuItem(value: 'paper2', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية مصحف المدينة' : 'Madinah-style parchment')),
+              PopupMenuItem(value: 'paper3', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية ليلية' : 'Night paper')),
             ],
           ),
           ListenableBuilder(
@@ -463,6 +496,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
                     fontScale: _fontScale,
+                    pageBackgroundColor: _pageBackgroundColor,
                   );
                 },
               ),
@@ -526,7 +560,8 @@ class _MushafPageView extends StatefulWidget {
   // of relying on LayoutBuilder's constraints.maxHeight in that mode.
   final double? targetHeight;
   final double fontScale;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0});
+  final Color pageBackgroundColor;
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, this.pageBackgroundColor = const Color(0xFFF7F0DC)});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -877,7 +912,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                   maxHeight: minCardHeight > 0 ? minCardHeight : double.infinity,
                 ),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: widget.pageBackgroundColor,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.goldAccent.withValues(alpha: 0.5), width: 2),
             boxShadow: [
