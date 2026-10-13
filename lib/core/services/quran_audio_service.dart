@@ -92,7 +92,9 @@ class QuranAudioService extends ChangeNotifier {
 
   /// Accept only absolute HTTPS URLs with a valid host for remote audio.
   static bool isValidExternalAudioUrl(String value) {
-    final uri = Uri.tryParse(value.trim());
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized.contains(RegExp(r'\s'))) return false;
+    final uri = Uri.tryParse(normalized);
     return uri != null &&
         uri.isAbsolute &&
         uri.scheme.toLowerCase() == 'https' &&
