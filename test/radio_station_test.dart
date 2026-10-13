@@ -15,12 +15,10 @@ void main() {
       expect(RadioStation.isSecureUrl('example.com/stream'), isFalse);
     });
   });
-}
-
 
   group('External Quran radio candidates', () {
     test('all requested candidates use HTTPS and stable stream endpoints', () {
-      expect(kExternalRadioCandidates, hasLength(14));
+      expect(kExternalRadioCandidates, hasLength(16));
       for (final station in kExternalRadioCandidates) {
         expect(RadioStation.isSecureUrl(station.streamUrl), isTrue,
             reason: station.id);
