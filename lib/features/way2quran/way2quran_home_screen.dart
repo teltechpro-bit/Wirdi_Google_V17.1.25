@@ -488,8 +488,12 @@ class _Way2QuranReciterScreenState extends State<Way2QuranReciterScreen> {
 
   Future<Way2QuranReciter> _loadReciter() async {
     try {
-      final localCount = await Way2QuranViewCounter.increment(widget.reciterSlug);
-      if (mounted) setState(() => _localViews = localCount);
+      try {
+        final localCount = await Way2QuranViewCounter.increment(widget.reciterSlug);
+        if (mounted) setState(() => _localViews = localCount);
+      } catch (_) {
+        // Local metrics must never prevent reciter playback or profile loading.
+      }
       final reciter = await Way2QuranRepository().getReciter(widget.reciterSlug, increaseViews: false);
       try {
         await Way2QuranFavorites.cacheReciter(reciter);
