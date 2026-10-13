@@ -1,6 +1,7 @@
 import '../../core/services/tajweed_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../core/data/bismillah.dart';
@@ -53,6 +54,38 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   int _currentPageIndex = 0;
   ScrollController? _continuousScrollController;
   double _fontScale = 1.0;
+  static const _pageBackgroundKey = 'wirdi_mushaf_page_background_v1';
+  String _pageBackgroundStyle = 'parchment';
+
+  Color get _pageBackgroundColor => switch (_pageBackgroundStyle) {
+    'white' => const Color(0xFFFFFFFF),
+    'ivory' => const Color(0xFFFFFDF4),
+    'cream' => const Color(0xFFF8F0DD),
+    _ => const Color(0xFFF1E4C8),
+  };
+
+  Future<void> _loadPageBackgroundStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_pageBackgroundKey);
+    if (!mounted || saved == null) return;
+    if (const {'white', 'ivory', 'cream', 'parchment'}.contains(saved)) {
+      setState(() => _pageBackgroundStyle = saved);
+    }
+  }
+
+  Future<void> _setPageBackgroundStyle(String style) async {
+    if (!const {'white', 'ivory', 'cream', 'parchment'}.contains(style)) return;
+    setState(() => _pageBackgroundStyle = style);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pageBackgroundKey, style);
+  }
+
+  String _pageBackgroundLabel(String style, bool isArabic) => switch (style) {
+    'white' => isArabic ? 'أبيض' : 'White',
+    'ivory' => isArabic ? 'عاجي' : 'Ivory',
+    'cream' => isArabic ? 'كريمي' : 'Cream',
+    _ => isArabic ? 'ورق المصحف' : 'Mushaf paper',
+  };
 
   /// Cached once [_loadAll] resolves, so [_onAudioChanged] (which fires
   /// on every ayah transition, independent of the FutureBuilder) can
@@ -68,6 +101,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   void initState() {
     super.initState();
     _future = _loadAll();
+    _loadPageBackgroundStyle();
     _currentPageIndex = (widget.initialPage ?? 1) - 1;
     _pageController = PageController(initialPage: (widget.initialPage ?? 1) - 1);
     quranAudio.addListener(_onAudioChanged);
@@ -285,6 +319,41 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
             },
           ),
           PopupMenuButton<String>(
+            tooltip: Localizations.localeOf(context).languageCode == 'ar' ? 'خلفية صفحة المصحف' : 'Mushaf page background',
+            icon: const Icon(Icons.palette_outlined),
+            onSelected: (style) => _setPageBackgroundStyle(style),
+            itemBuilder: (_) => [
+              for (final style in const ['parchment', 'cream', 'ivory', 'white'])
+                PopupMenuItem<String>(
+                  value: style,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: switch (style) {
+                            'white' => const Color(0xFFFFFFFF),
+                            'ivory' => const Color(0xFFFFFDF4),
+                            'cream' => const Color(0xFFF8F0DD),
+                            _ => const Color(0xFFF1E4C8),
+                          },
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(_pageBackgroundLabel(style, Localizations.localeOf(context).languageCode == 'ar')),
+                      if (_pageBackgroundStyle == style) ...[
+                        const Spacer(),
+                        const Icon(Icons.check, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          PopupMenuButton<String>(
             tooltip: Localizations.localeOf(context).languageCode == 'ar' ? 'خيارات القراءة' : 'Reading options',
             icon: const Icon(Icons.tune_rounded),
             onSelected: (value) async {
@@ -463,6 +532,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
                     fontScale: _fontScale,
+                    pageBackgroundColor: _pageBackgroundColor,
                   );
                 },
               ),
@@ -500,6 +570,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
                   fontScale: _fontScale,
+                  pageBackgroundColor: _pageBackgroundColor,
                 );
               },
             ),
@@ -526,7 +597,8 @@ class _MushafPageView extends StatefulWidget {
   // of relying on LayoutBuilder's constraints.maxHeight in that mode.
   final double? targetHeight;
   final double fontScale;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0});
+  final Color pageBackgroundColor;
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, required this.pageBackgroundColor, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -877,7 +949,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                   maxHeight: minCardHeight > 0 ? minCardHeight : double.infinity,
                 ),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: widget.pageBackgroundColor,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.goldAccent.withValues(alpha: 0.5), width: 2),
             boxShadow: [
