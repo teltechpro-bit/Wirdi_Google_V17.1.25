@@ -150,6 +150,23 @@ class RadioService extends ChangeNotifier {
       combined.putIfAbsent(cairo.streamUrl, () => cairo);
     }
 
+    // Bahrain Quran Radio (direct HLS playlist). This canonical channel path
+    // is listed by public IPTV directories; the user-provided radio-106-1
+    // path is not the same endpoint, so prefer the channel-specific playlist.
+    const bahrainQuran = RadioStation(
+      id: 'official_bahrain_quran',
+      nameAr: 'إذاعة القرآن الكريم من البحرين',
+      nameEn: 'Bahrain Quran Radio',
+      streamUrl: 'https://5c7b683162943.streamlock.net/live/ngrp:bahrainquran_all/playlist.m3u8',
+      country: 'Bahrain',
+      countryCode: 'BH',
+      category: 'quran',
+      isOfficial: true,
+    );
+    if (RadioStation.isSecureUrl(bahrainQuran.streamUrl)) {
+      combined.putIfAbsent(bahrainQuran.streamUrl, () => bahrainQuran);
+    }
+
     if (combined.isNotEmpty) {
       _liveStations = combined.values.toList();
       _activeSource = RadioSource.combined;
