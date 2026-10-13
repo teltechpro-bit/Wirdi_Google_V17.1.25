@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wirdi/core/models/radio_station.dart';
+import 'package:wirdi/core/data/radio_stations.dart';
 
 void main() {
   group('RadioStation.isSecureUrl', () {
@@ -15,3 +16,18 @@ void main() {
     });
   });
 }
+
+
+  group('External Quran radio candidates', () {
+    test('all requested candidates use HTTPS and stable stream endpoints', () {
+      expect(kExternalRadioCandidates, hasLength(16));
+      for (final station in kExternalRadioCandidates) {
+        expect(RadioStation.isSecureUrl(station.streamUrl), isTrue,
+            reason: station.id);
+        expect(station.streamUrl.toLowerCase(), isNot(contains('.ts')),
+            reason: 'Do not add transient TS segments: ${station.id}');
+        expect(station.streamUrl.toLowerCase(), isNot(contains('.aac')),
+            reason: 'Do not add transient AAC segments: ${station.id}');
+      }
+    });
+  });
