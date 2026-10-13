@@ -177,11 +177,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   Future<void> _loadWeatherAndSun() async {
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-      ).timeout(const Duration(seconds: 10));
-      final sun = SunriseSunsetCalculator.calculate(position.latitude, position.longitude, DateTime.now());
-      if (mounted) setState(() => _sunTimes = sun);
+      // Do not request a fresh GPS fix on every home refresh. Sunrise/sunset
+      // is optional; prayer times and their saved location remain authoritative.
+      final prefs = await SharedPreferences.getInstance();
+      final lat = prefs.getDouble('cache_prayer_lat_v1');
+      final lon = prefs.getDouble('cache_prayer_lon_v1');
+      if (lat != null && lon != null) {
+        final sun = SunriseSunsetCalculator.calculate(lat, lon, DateTime.now());
+        if (mounted) setState(() => _sunTimes = sun);
+      }
     } catch (_) {
       // no-op -- sunrise/sunset row just won't show
     }
