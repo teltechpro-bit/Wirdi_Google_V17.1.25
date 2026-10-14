@@ -353,7 +353,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                   children: [
                     Expanded(child: Text(isArabic ? ar : en)),
                     if (selectedFont == family)
-                      const Icon(Icons.check_rounded, size: 18, color: AppColors.primaryEmerald),
+                      Icon(Icons.check_rounded, size: 18, color: AppColors.primaryEmerald),
                   ],
                 );
               }
