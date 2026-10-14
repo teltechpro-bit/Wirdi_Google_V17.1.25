@@ -33,6 +33,9 @@ class Reciters {
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
+    // Additional ayah-by-ayah edition verified against the live audio catalog.
+    // Sudais, Shuraim, and Abdul Basit editions already exist above; do not duplicate them.
+    ReciterOption('ar.muhammadayyoub', 'محمد أيوب', 'Muhammad Ayyoub'),
   ];
 
   static ReciterOption byId(String id) =>
