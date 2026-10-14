@@ -234,12 +234,23 @@ class Way2QuranRepository {
   static bool isPdfPayload(List<int> bytes) =>
       bytes.length >= 5 && String.fromCharCodes(bytes.take(5)) == '%PDF-';
 
-  Future<List<int>> downloadBytes(String url) async {
-    if (url.isEmpty) throw Exception('Empty download URL');
-    final uri = Uri.tryParse(url);
-    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
-      throw FormatException('Invalid audio download URL');
+  /// Accept absolute links and API-provided relative file paths.
+  static Uri resolveDownloadUri(String url) {
+    final value = url.trim();
+    if (value.isEmpty) throw const FormatException('Empty download URL');
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) throw const FormatException('Invalid download URL');
+    final uri = parsed.hasScheme
+        ? parsed
+        : Uri.parse(baseUrl).resolveUri(parsed);
+    if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      throw const FormatException('Invalid download URL');
     }
+    return uri;
+  }
+
+  Future<List<int>> downloadBytes(String url) async {
+    final uri = resolveDownloadUri(url);
     final response = await _client
         .get(uri)
         .timeout(const Duration(minutes: 2));
