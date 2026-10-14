@@ -10,6 +10,7 @@ import '../../core/models/mushaf_models.dart';
 import '../../core/models/quran_models.dart';
 import '../../core/services/mushaf_repository.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/qiraat_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/settings_service.dart';
 import '../../core/services/user_progress_service.dart';
@@ -753,13 +754,16 @@ class _MushafPageViewState extends State<_MushafPageView> {
     return null;
   }
 
-  void _playAyah(MushafAyahRef ayah) {
+  Future<void> _playAyah(MushafAyahRef ayah) async {
     final surah = _surahFor(ayah.surahNumber);
     if (surah == null) return;
     if (quranAudio.isPlayingFor(ayah.surahNumber, ayah.ayahNumber)) {
-      quranAudio.stop();
+      await quranAudio.stop();
     } else {
-      quranAudio.playAyah(surah, widget.allSurahs, ayah.ayahNumber);
+      // The original Mushaf always uses Wirdi's selected Hafs edition.
+      // Browsing the external recitation library must not hijack this path.
+      await QiraatService.instance.setRiwayah('hafs');
+      await quranAudio.playAyah(surah, widget.allSurahs, ayah.ayahNumber);
     }
   }
 
@@ -842,6 +846,9 @@ class _MushafPageViewState extends State<_MushafPageView> {
         fontSize: 22 * widget.fontScale,
         height: 2.4,
         fontWeight: FontWeight.normal,
+        // Mushaf pages use light paper even in dark app mode; keep the base
+        // Quran ink dark while Tajweed spans retain their own rule colors.
+        color: Colors.black87,
       ),
     );
   }
@@ -876,7 +883,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                     Bismillah.text,
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.rtl,
-                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal),
+                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal, color: Colors.black87),
                   ),
                 ],
                 const SizedBox(height: 16),
