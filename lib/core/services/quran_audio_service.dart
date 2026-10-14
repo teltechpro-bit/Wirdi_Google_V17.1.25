@@ -402,12 +402,20 @@ class QuranAudioService extends ChangeNotifier {
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
   }
 
+  void _clearExternalPlaybackState() {
+    _externalPlaylistMode = false;
+    _externalPlaylistTitles = const <String>[];
+    externalUrl = null;
+    externalTitle = null;
+  }
+
   Future<void> playAyah(
     SurahModel surah,
     List<SurahModel> allSurahs,
     int ayahNumber, {
     bool keepRepeat = false,
   }) async {
+    _clearExternalPlaybackState();
     await PlaybackCoordinator.stopRadioForQuran();
     // Keep a single tapped ayah as the stop boundary for full-surah-only
     // riwayah sources; otherwise playback can continue into the next ayah.
@@ -436,6 +444,7 @@ class QuranAudioService extends ChangeNotifier {
     SurahModel surah,
     List<SurahModel> allSurahs,
   ) async {
+    _clearExternalPlaybackState();
     await PlaybackCoordinator.stopRadioForQuran();
     _rangeStartAyah = null;
     _rangeEndAyah = null;
@@ -467,6 +476,7 @@ class QuranAudioService extends ChangeNotifier {
       throw ArgumentError('Invalid Quran ayah range');
     }
 
+    _clearExternalPlaybackState();
     await PlaybackCoordinator.stopRadioForQuran();
     _rangeStartAyah = startAyah;
     _rangeEndAyah = endAyah;
