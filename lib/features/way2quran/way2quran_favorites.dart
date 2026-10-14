@@ -7,6 +7,28 @@ import 'way2quran_models.dart';
 class Way2QuranFavorites {
   static const _key = 'way2quran.favorite_reciter_slugs';
 
+  static const _localViewsPrefix = 'way2quran.local_reciter_views.v1.';
+
+  static String _viewKey(String slug) => '$_localViewsPrefix${Uri.encodeComponent(slug.trim())}';
+
+  /// Count profile opens locally; never import or mutate the source website's counters.
+  static Future<int> recordLocalView(String slug) async {
+    final normalized = slug.trim();
+    if (normalized.isEmpty) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    final key = _viewKey(normalized);
+    final next = (prefs.getInt(key) ?? 0) + 1;
+    await prefs.setInt(key, next);
+    return next;
+  }
+
+  static Future<int> localViews(String slug) async {
+    final normalized = slug.trim();
+    if (normalized.isEmpty) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_viewKey(normalized)) ?? 0;
+  }
+
   static const _cachePrefix = 'way2quran.favorite_reciter_summary.v1.';
 
   static String _cacheKey(String slug) => '$_cachePrefix${Uri.encodeComponent(slug)}';
