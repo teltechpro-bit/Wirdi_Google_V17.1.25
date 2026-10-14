@@ -96,7 +96,7 @@ class Way2QuranMushaf {
     slug: j['slug']?.toString() ?? '',
     arabicName: j['arabicName']?.toString() ?? '',
     englishName: j['englishName']?.toString() ?? '',
-    downloadUrl: (j['downloadURL'] ?? j['downloadUrl'])?.toString() ?? '',
+    downloadUrl: (j['downloadURL'] ?? j['downloadUrl'] ?? j['download_url'] ?? j['pdfURL'] ?? j['pdfUrl'] ?? j['fileURL'] ?? j['fileUrl'] ?? j['url'])?.toString() ?? '',
     imageUrl: (j['imageURL'] ?? j['imageUrl'])?.toString() ?? '',
     totalDownloads: int.tryParse(j['totalDownloads']?.toString() ?? '0') ?? 0,
   );
