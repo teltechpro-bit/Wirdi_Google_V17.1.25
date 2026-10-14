@@ -758,7 +758,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
   Future<void> _playAyah(MushafAyahRef ayah) async {
     final surah = _surahFor(ayah.surahNumber);
     if (surah == null) return;
-    if (quranAudio.isPlayingFor(ayah.surahNumber, ayah.ayahNumber)) {
+    if (!quranAudio.isExternalPlayback && quranAudio.isPlayingFor(ayah.surahNumber, ayah.ayahNumber)) {
       await quranAudio.stop();
     } else {
       // The original Mushaf always uses Wirdi's selected Hafs edition.
