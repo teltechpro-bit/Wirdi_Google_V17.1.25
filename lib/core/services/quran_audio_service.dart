@@ -100,6 +100,10 @@ class QuranAudioService extends ChangeNotifier {
   int? get currentSurahNumber => _surahNumber;
   String? get currentSurahName => _surahName;
 
+  /// External recitations share this same player but do not have a Quran ayah index.
+  /// Expose that state so the OS media session can publish their metadata too.
+  bool get isExternalPlayback => externalUrl != null;
+
   bool isPlayingFor(int surahNumber, int ayahNumber) =>
       _surahNumber == surahNumber && playingAyah == ayahNumber;
 
