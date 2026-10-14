@@ -86,7 +86,7 @@ class WirdiAudioHandler extends BaseAudioHandler {
   void _publishQuranState() {
     final q = quranAudio;
     final ayah = q.playingAyah;
-    if (ayah == null) return;
+    if (ayah == null && !q.isExternalPlayback) return;
 
     final total = q.totalAyahsInSurah;
     final external = q.isExternalPlayback;
