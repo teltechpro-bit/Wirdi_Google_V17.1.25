@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class WeatherData {
@@ -11,13 +11,28 @@ class WeatherData {
 }
 
 class WeatherService {
+  /// Compatibility wrapper: weather uses the location already selected for
+  /// prayer times and never prompts for GPS.
   static Future<WeatherData> getWeatherAtPrayerTime(String prayer) async {
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-    ).timeout(const Duration(seconds: 10));
+    final weather = await getWeatherAtSavedLocation();
+    if (weather == null) {
+      throw StateError('No saved prayer-time location');
+    }
+    return weather;
+  }
+
+  static Future<WeatherData?> getWeatherAtSavedLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final latitude = prefs.getDouble('cache_prayer_lat_v1');
+    final longitude = prefs.getDouble('cache_prayer_lon_v1');
+    if (latitude == null || longitude == null) return null;
+    return getWeatherAtCoordinates(latitude, longitude);
+  }
+
+  static Future<WeatherData> getWeatherAtCoordinates(double latitude, double longitude) async {
     final uri = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
-      '?latitude=${position.latitude}&longitude=${position.longitude}'
+      '?latitude=$latitude&longitude=$longitude'
       '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code',
     );
     final response = await http.get(uri).timeout(const Duration(seconds: 15));

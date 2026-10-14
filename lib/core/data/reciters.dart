@@ -33,6 +33,15 @@ class Reciters {
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
+    // Additional editions with verified per-ayah audio, preserving the
+    // original Wirdi reciter selection and exact playlist-index highlighting.
+    ReciterOption('ar.abdullahbasfar', 'عبد الله بصفر', 'Abdullah Basfar'),
+    ReciterOption('ar.abdulsamad', 'عبد الباسط عبد الصمد', 'Abdul Samad'),
+    ReciterOption('ar.ibrahimakhbar', 'إبراهيم الأخضر', 'Ibrahim Akhdar'),
+    ReciterOption('ar.parhizgar', 'محمود خليل بارهيزكار', 'Mahmoud Khalil Parhizgar'),
+    // Additional ayah-by-ayah edition verified against the live audio catalog.
+    // Sudais, Shuraim, and Abdul Basit editions already exist above; do not duplicate them.
+    ReciterOption('ar.muhammadayyoub', 'محمد أيوب', 'Muhammad Ayyoub'),
   ];
 
   static ReciterOption byId(String id) =>

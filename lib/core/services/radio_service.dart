@@ -69,6 +69,87 @@ class RadioService extends ChangeNotifier {
   List<RadioStation> get favoriteStations =>
       _liveStations.where((s) => _favoriteIds.contains(s.id)).toList();
 
+  // Curated stations are probed as actual stream responses before they
+  // enter the catalogue. A successful HTTP status alone is not sufficient:
+  // HLS must return an EXT M3U playlist, and audio endpoints must return
+  // audio-like content rather than an HTML/API error page.
+  static const List<RadioStation> _curatedStreamCandidates = [
+    RadioStation(id: 'w2q_egypt', nameAr: 'إذاعة القرآن الكريم من مصر', nameEn: 'Egypt Holy Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/egypt-holy-quran-radio', country: 'Egypt', countryCode: 'EG', category: 'quran'),
+    RadioStation(id: 'w2q_saudi', nameAr: 'إذاعة القرآن الكريم من السعودية', nameEn: 'Saudi Holy Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/holy-quran-from-saudia-arabia', country: 'Saudi Arabia', countryCode: 'SA', category: 'quran'),
+    RadioStation(id: 'w2q_kuwait', nameAr: 'إذاعة القرآن الكريم من الكويت', nameEn: 'Kuwait Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/kuwait-quran', country: 'Kuwait', countryCode: 'KW', category: 'quran'),
+    RadioStation(id: 'w2q_pakistan', nameAr: 'إذاعة القرآن الكريم من باكستان', nameEn: 'Pakistan Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/pakistan-quran', country: 'Pakistan', countryCode: 'PK', category: 'quran'),
+    RadioStation(id: 'w2q_palestine', nameAr: 'إذاعة القرآن الكريم من فلسطين', nameEn: 'Palestine Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/palestine-quran', country: 'Palestine', countryCode: 'PS', category: 'quran'),
+    RadioStation(id: 'w2q_sharjah', nameAr: 'إذاعة القرآن الكريم من الشارقة', nameEn: 'Sharjah Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/uae-sharjah-quran', country: 'UAE', countryCode: 'AE', category: 'quran'),
+    RadioStation(id: 'w2q_main', nameAr: 'الراديو الرئيسي', nameEn: 'Main Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/main-radio', country: 'International', countryCode: 'INT', category: 'quran'),
+    RadioStation(id: 'w2q_beautiful', nameAr: 'روائع التلاوات', nameEn: 'Beautiful Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/beautiful-recitations', country: 'International', countryCode: 'INT', category: 'quran'),
+    RadioStation(id: 'w2q_short', nameAr: 'تلاوات قصيرة', nameEn: 'Short Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/amazing-short-recitations', country: 'International', countryCode: 'INT', category: 'quran'),
+    RadioStation(id: 'w2q_serenity', nameAr: 'آيات السكينة', nameEn: 'Verses of Serenity', streamUrl: 'https://way2quran.com/api/external-radio/stream/verses-of-serenity', country: 'International', countryCode: 'INT', category: 'quran'),
+    RadioStation(id: 'w2q_tabari', nameAr: 'خلاصة تفسير الطبري', nameEn: 'Tafsir al-Tabari Summary', streamUrl: 'https://way2quran.com/api/external-radio/stream/interpretation-of-the-holy-qur-an-conclusion-from-tafsir-al-tabari', country: 'International', countryCode: 'INT', category: 'lectures'),
+    RadioStation(id: 'w2q_mp3quran', nameAr: 'تلاوات MP3Quran', nameEn: 'MP3Quran Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/mp3quran-109076', country: 'International', countryCode: 'INT', category: 'quran'),
+    RadioStation(id: 'live_bahrain', nameAr: 'إذاعة القرآن الكريم من البحرين', nameEn: 'Bahrain Holy Quran Radio', streamUrl: 'https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8', country: 'Bahrain', countryCode: 'BH', category: 'quran', isOfficial: true),
+    RadioStation(id: 'live_jordan', nameAr: 'إذاعة القرآن الكريم من الأردن', nameEn: 'Jordan Holy Quran Radio', streamUrl: 'https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8', country: 'Jordan', countryCode: 'JO', category: 'quran', isOfficial: true),
+    RadioStation(id: 'live_oman', nameAr: 'إذاعة القرآن الكريم من سلطنة عُمان', nameEn: 'Oman Holy Quran Radio', streamUrl: 'https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8', country: 'Oman', countryCode: 'OM', category: 'quran', isOfficial: true),
+  ];
+
+  Future<bool> _probeLiveStream(RadioStation station) async {
+    if (!RadioStation.isSecureUrl(station.streamUrl)) return false;
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(station.streamUrl))
+        ..headers['Range'] = 'bytes=0-1023'
+        ..headers['User-Agent'] = 'Wirdi/1.0 radio stream probe';
+      final response = await client.send(request).timeout(const Duration(seconds: 8));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        await response.stream.drain<void>().timeout(const Duration(seconds: 1), onTimeout: () {});
+        return false;
+      }
+
+      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+      final iterator = StreamIterator<List<int>>(response.stream);
+      final bytes = <int>[];
+      try {
+        while (bytes.length < 1024 && await iterator.moveNext().timeout(const Duration(seconds: 5))) {
+          bytes.addAll(iterator.current);
+        }
+      } finally {
+        await iterator.cancel();
+      }
+      if (bytes.isEmpty) return false;
+      final prefix = String.fromCharCodes(bytes.take(512)).trimLeft().toLowerCase();
+      if (prefix.startsWith('#extm3u')) {
+        return prefix.contains('#extinf') || prefix.contains('#ext-x-stream-inf') ||
+            prefix.contains('#ext-x-targetduration') || prefix.contains('#ext-x-media');
+      }
+      if (contentType.contains('mpegurl') || contentType.contains('vnd.apple')) return false;
+      if (contentType.startsWith('audio/') || contentType.contains('octet-stream')) {
+        // Reject common HTML/JSON error payloads even when served with a
+        // misleading audio/octet-stream content type.
+        return !prefix.startsWith('<!doctype html') &&
+            !prefix.startsWith('<html') &&
+            !prefix.startsWith('{') &&
+            !prefix.startsWith('[') &&
+            bytes.length >= 128;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('[Radio] Stream probe failed for ${station.id}: $e');
+      return false;
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<RadioStation>> _fetchVerifiedCuratedStreams() async {
+    final results = await Future.wait(
+      _curatedStreamCandidates.map((station) async {
+        final ok = await _probeLiveStream(station);
+        debugPrint('[Radio] ${station.id}: ${ok ? "verified" : "disabled (stream probe failed)"}');
+        return ok ? station : null;
+      }),
+    );
+    return results.whereType<RadioStation>().toList();
+  }
+
   // ── Init ─────────────────────────────────────────────────────────
   Future<void> init() async {
     if (_initialized) return;
@@ -133,6 +214,7 @@ class RadioService extends ChangeNotifier {
     await mergeFrom(_fetchDataRosy, 'Data-Rosy');
     await mergeFrom(_fetchUthumany, 'Uthumany');
     await mergeFrom(_fetchIprd, 'IPRD');
+    await mergeFrom(_fetchVerifiedCuratedStreams, 'verified curated Quran streams');
     // Keep the Cairo Quran station available even if an upstream catalog
     // temporarily omits it. This is the HTTPS stream documented by the
     // public Islamic-APIs radio endpoint.

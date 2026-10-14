@@ -91,7 +91,6 @@ jobs:
             "Pakistan - Way2Quran": "https://way2quran.com/api/external-radio/stream/pakistan-quran",
             "Palestine - Way2Quran": "https://way2quran.com/api/external-radio/stream/palestine-quran",
             "Sharjah - Way2Quran": "https://way2quran.com/api/external-radio/stream/uae-sharjah-quran",
-            "Tafsir Summary - Way2Quran": "https://way2quran.com/api/external-radio/stream/a-summary-of-the-interpretation-of-the-holy-quran",
             "Bahrain HLS": "https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8",
             "Jordan HLS": "https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8",
             "Oman HLS": "https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8",

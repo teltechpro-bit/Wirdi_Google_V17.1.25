@@ -252,6 +252,23 @@ class FamilyKhatmaGroupScreen extends StatelessWidget {
   final String code;
   const FamilyKhatmaGroupScreen({super.key, required this.code});
 
+  Future<void> _share(BuildContext context, String message) async {
+    try {
+      await Share.share(message);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(bi(
+            context,
+            'تعذرت المشاركة من هذا الجهاز. يمكنك نسخ الرمز ومشاركته يدويًا.',
+            'Sharing is unavailable on this device. You can copy and share the code manually.',
+          )),
+        ),
+      );
+    }
+  }
+
   Future<void> _run(BuildContext context, Future<void> Function() action) async {
     try {
       await action();
@@ -334,10 +351,11 @@ class FamilyKhatmaGroupScreen extends StatelessWidget {
                 IconButton(
                   tooltip: bi(context, 'مشاركة الرمز', 'Share code'),
                   icon: const Icon(Icons.share),
-                  onPressed: () => Share.share(
+                  onPressed: () => _share(
+                    context,
                     bi(
                       context,
-                      'انضم إلى ختمتنا الجماعية في تطبيق وردي. الرمز: ${g.code}',
+                      'انضم إلى ختمتنا الجماعية في تطبيق وِرْدِي. الرمز: ${g.code}',
                       'Join our group khatma in the Wirdi app. Code: ${g.code}',
                     ),
                   ),

@@ -3,7 +3,7 @@ import 'package:wirdi/features/way2quran/way2quran_models.dart';
 
 void main() {
   group('Way2Quran API models', () {
-    test('reciter parses nested recitation and per-surah audio files', () {
+    test('reciter parses nested audio but never imports source-site view counts', () {
       final reciter = Way2QuranReciter.fromJson({
         'slug': 'sample-reciter',
         'arabicName': 'قارئ تجريبي',
@@ -30,7 +30,7 @@ void main() {
       expect(reciter.slug, 'sample-reciter');
       expect(reciter.name(true), 'قارئ تجريبي');
       expect(reciter.name(false), 'Sample Reciter');
-      expect(reciter.totalViews, 1234);
+      expect(reciter.totalViews, 0);
       expect(reciter.recitations, hasLength(1));
       expect(reciter.recitations.single.slug, 'hafs');
       expect(reciter.recitations.single.audioFiles.single.surahNumber, 1);
@@ -66,6 +66,20 @@ void main() {
       expect(mushaf.imageUrl, 'https://files.example/cover.jpg');
       expect(mushaf.totalDownloads, 42);
       expect(mushaf.name(true), 'مصحف تجريبي');
+    });
+
+    test('Mushaf model recognizes common PDF URL field names', () {
+      for (final key in ['downloadURL', 'downloadUrl', 'download_url', 'downloadLink', 'download_link', 'pdfURL', 'pdfUrl', 'pdf', 'fileURL', 'fileUrl', 'filePath', 'file_path', 'file', 'path', 'url']) {
+        final mushaf = Way2QuranMushaf.fromJson({
+          'slug': 'mushaf-$key',
+          key: 'https://files.example/$key.pdf',
+        });
+        expect(
+          mushaf.downloadUrl,
+          'https://files.example/$key.pdf',
+          reason: 'Expected $key to be recognized as the download URL',
+        );
+      }
     });
 
     test('reciter pagination only reports a next page when one exists', () {

@@ -104,7 +104,20 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       final ok = await _speech.initialize(
         onError: (error) {
           if (!mounted) return;
-          setState(() => _lastError = error.errorMsg);
+          final message = error.errorMsg;
+          final normalized = message.toLowerCase();
+          final permissionIssue = normalized.contains('permission') ||
+              normalized.contains('not authorized') ||
+              normalized.contains('microphone') ||
+              normalized.contains('audio');
+          setState(() {
+            _lastError = message;
+            if (permissionIssue) {
+              _speechUnavailable = true;
+              _session = false;
+              _listening = false;
+            }
+          });
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
@@ -143,8 +156,15 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         });
       }
       return true;
-    } catch (_) {
-      if (mounted) setState(() => _speechUnavailable = true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _speechUnavailable = true;
+          _lastError = error.toString();
+          _session = false;
+          _listening = false;
+        });
+      }
       return false;
     }
   }
@@ -195,7 +215,12 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _lastError = e.toString());
+      if (!mounted) return;
+      setState(() {
+        _lastError = e.toString();
+        _session = false;
+        _listening = false;
+      });
     }
   }
 
@@ -220,7 +245,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     }
     if (!mounted) return;
     if (_finalWords.isEmpty) {
-      setState(() => _lastError = 'لم يصل نص من خدمة التعرف على الصوت. حاول التلاوة مرة أخرى.');
+      setState(() {
+        _lastError = 'لم يصل نص من خدمة التعرف على الصوت. تأكد من السماح بالميكروفون وتثبيت/تفعيل خدمة Google للتعرف على الكلام وحزمة اللغة العربية، ثم حاول مرة أخرى.';
+        _speechUnavailable = true;
+        _listening = false;
+      });
       return;
     }
     _align(finalizing: true);

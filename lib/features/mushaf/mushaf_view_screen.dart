@@ -2,6 +2,7 @@ import '../../core/services/tajweed_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/bismillah.dart';
 import '../../core/data/reciters.dart';
@@ -28,6 +29,60 @@ class MushafViewScreen extends StatefulWidget {
 }
 
 class _MushafViewScreenState extends State<MushafViewScreen> {
+  static const _backgroundPreferenceKey = 'wirdi_mushaf_page_background_v1';
+  // Light paper tones preserve readability and Tajweed colors in both views.
+  static const _pageBackgrounds = <Color>[
+    Color(0xFFF8F4E8), // classic paper
+    Color(0xFFF1E2C2), // Madinah-inspired parchment
+    Color(0xFFF1F4E8), // soft sage
+    Color(0xFFEAF1F6), // cool paper
+  ];
+  int _backgroundStyle = 0;
+
+  Color _pageBackground(BuildContext context) =>
+      _backgroundStyle == 0 ? Theme.of(context).cardColor : _pageBackgrounds[_backgroundStyle];
+
+  Future<void> _loadBackgroundPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getInt(_backgroundPreferenceKey) ?? 0;
+    if (mounted) setState(() => _backgroundStyle = stored.clamp(0, _pageBackgrounds.length - 1).toInt());
+  }
+
+  Future<void> _chooseBackground() async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final labels = isArabic
+        ? const ['الورق الافتراضي', 'ورق بلون مصحف المدينة', 'أخضر هادئ', 'أزرق فاتح']
+        : const ['Default paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper'];
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(isArabic ? 'خلفية صفحات المصحف' : 'Mushaf page background',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            for (var i = 0; i < labels.length; i++)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: i == 0 ? Theme.of(context).cardColor : _pageBackgrounds[i],
+                  child: i == _backgroundStyle ? const Icon(Icons.check, color: Colors.black54) : null,
+                ),
+                title: Text(labels[i]),
+                trailing: i == _backgroundStyle ? const Icon(Icons.radio_button_checked) : const Icon(Icons.radio_button_off),
+                onTap: () => Navigator.pop(sheetContext, i),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _backgroundStyle = selected);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_backgroundPreferenceKey, selected);
+  }
   late Future<(List<MushafPage>, List<SurahModel>)> _future;
   late PageController _pageController;
 
@@ -68,6 +123,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   void initState() {
     super.initState();
     _future = _loadAll();
+    _loadBackgroundPreference();
     _currentPageIndex = (widget.initialPage ?? 1) - 1;
     _pageController = PageController(initialPage: (widget.initialPage ?? 1) - 1);
     quranAudio.addListener(_onAudioChanged);
@@ -292,6 +348,18 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                 setState(() => _fontScale = (_fontScale - 0.1).clamp(0.7, 1.6));
               } else if (value == 'fontInc') {
                 setState(() => _fontScale = (_fontScale + 0.1).clamp(0.7, 1.6));
+              } else if (value == 'mushafMadani' ||
+                  value == 'mushafQpcHafs' ||
+                  value == 'mushafUthmanic') {
+                final family = switch (value) {
+                  'mushafQpcHafs' => 'QuranQPCHafs',
+                  'mushafUthmanic' => 'QuranKFGQPCUthmanic',
+                  _ => 'default',
+                };
+                await appSettings.setQuranFontFamily(family);
+                if (mounted) setState(() {});
+              } else if (value == 'background') {
+                await _chooseBackground();
               } else if (value == 'reciter') {
                 final languageCode = Localizations.localeOf(context).languageCode;
                 final chosen = await showModalBottomSheet<String>(
@@ -335,11 +403,40 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                 }
               }
             },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'reciter', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'القارئ' : 'Reciter')),
-              PopupMenuItem(value: 'fontDec', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تصغير الخط' : 'Decrease font')),
-              PopupMenuItem(value: 'fontInc', child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تكبير الخط' : 'Increase font')),
-            ],
+            itemBuilder: (_) {
+              final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+              final selectedFont = appSettings.quranFontFamily;
+              Widget fontOption(String ar, String en, String family) {
+                return Row(
+                  children: [
+                    Expanded(child: Text(isArabic ? ar : en)),
+                    if (selectedFont == family)
+                      Icon(Icons.check_rounded, size: 18, color: AppColors.primaryEmerald),
+                  ],
+                );
+              }
+
+              return [
+                PopupMenuItem(value: 'reciter', child: Text(isArabic ? 'القارئ' : 'Reciter')),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'mushafMadani',
+                  child: fontOption('مصحف المدينة (الخط الحالي)', 'Madani Mushaf (current font)', 'default'),
+                ),
+                PopupMenuItem(
+                  value: 'mushafQpcHafs',
+                  child: fontOption('خط مصحف حفص QPC', 'QPC Hafs script', 'QuranQPCHafs'),
+                ),
+                PopupMenuItem(
+                  value: 'mushafUthmanic',
+                  child: fontOption('الخط العثماني', 'Uthmanic script', 'QuranKFGQPCUthmanic'),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(value: 'background', child: Text(isArabic ? 'خلفية صفحات المصحف' : 'Mushaf page background')),
+                PopupMenuItem(value: 'fontDec', child: Text(isArabic ? 'تصغير الخط' : 'Decrease font')),
+                PopupMenuItem(value: 'fontInc', child: Text(isArabic ? 'تكبير الخط' : 'Increase font')),
+              ];
+            },
           ),
           ListenableBuilder(
             listenable: quranAudio,
@@ -463,6 +560,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
                     fontScale: _fontScale,
+                    backgroundColor: _pageBackground(context),
                   );
                 },
               ),
@@ -500,6 +598,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
                   fontScale: _fontScale,
+                  backgroundColor: _pageBackground(context),
                 );
               },
             ),
@@ -526,7 +625,8 @@ class _MushafPageView extends StatefulWidget {
   // of relying on LayoutBuilder's constraints.maxHeight in that mode.
   final double? targetHeight;
   final double fontScale;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0});
+  final Color backgroundColor;
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -877,7 +977,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                   maxHeight: minCardHeight > 0 ? minCardHeight : double.infinity,
                 ),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: widget.backgroundColor,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.goldAccent.withValues(alpha: 0.5), width: 2),
             boxShadow: [

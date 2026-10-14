@@ -225,6 +225,29 @@ void main() {
   });
 
 
+  group('Way2QuranRepository download URL resolution', () {
+    test('keeps absolute URLs unchanged', () {
+      expect(
+        Way2QuranRepository.resolveDownloadUri('https://cdn.example.com/book.pdf').toString(),
+        'https://cdn.example.com/book.pdf',
+      );
+    });
+
+    test('resolves root-relative API file links against the site origin', () {
+      expect(
+        Way2QuranRepository.resolveDownloadUri('/uploads/book.pdf').toString(),
+        'https://way2quran.com/uploads/book.pdf',
+      );
+    });
+
+    test('rejects unsupported URL schemes', () {
+      expect(
+        () => Way2QuranRepository.resolveDownloadUri('javascript:alert(1)'),
+        throwsFormatException,
+      );
+    });
+  });
+
   group('Way2QuranRepository downloads', () {
     test('recognizes a real PDF signature and rejects non-PDF content', () {
       expect(
