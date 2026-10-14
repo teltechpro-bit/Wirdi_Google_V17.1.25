@@ -296,6 +296,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     }
     if (surahNumber == null) return;
     final surah = surahs.firstWhere((s) => s.number == surahNumber, orElse: () => surahs.first);
+    await QiraatService.instance.setRiwayah('hafs');
     await quranAudio.playWholeSurah(surah, surahs);
   }
 
