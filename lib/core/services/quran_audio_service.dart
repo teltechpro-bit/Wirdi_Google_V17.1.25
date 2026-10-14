@@ -369,6 +369,8 @@ class QuranAudioService extends ChangeNotifier {
   ) {
     _externalPlaylistMode = false;
     _externalPlaylistTitles = const <String>[];
+    externalUrl = null;
+    externalTitle = null;
     _surahNumber = surah.number;
     _surahName = surah.name;
     _totalAyahsInSurah = surah.ayahs.length;
@@ -715,7 +717,8 @@ class QuranAudioService extends ChangeNotifier {
 
   Future<void> playExternalFile(String path, {String? title}) async {
     if (path.isEmpty) return;
-    _externalPlaylistMode = false;
+    // Keep external audio out of Quran ayah highlighting and index tracking.
+    _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
     _rangeStartAyah = null;
     _rangeEndAyah = null;
@@ -753,7 +756,8 @@ class QuranAudioService extends ChangeNotifier {
 
   Future<void> playExternalUrl(String url, {String? title}) async {
     if (url.isEmpty) return;
-    _externalPlaylistMode = false;
+    // External tracks must never be interpreted as Quran ayah indexes by indexStream.
+    _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
     _playToken++;
