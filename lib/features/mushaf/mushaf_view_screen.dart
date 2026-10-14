@@ -37,6 +37,12 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     Color(0xFFF1E2C2), // Madinah-inspired parchment
     Color(0xFFF1F4E8), // soft sage
     Color(0xFFEAF1F6), // cool paper
+    Color(0xFFF7E8D0), // warm sand
+    Color(0xFFF4E8EA), // soft rose
+    Color(0xFFEDE8F6), // light lavender
+    Color(0xFFE3F0E8), // mint paper
+    Color(0xFFECEBE5), // stone grey
+    Color(0xFFFFFDF5), // ivory
   ];
   int _backgroundStyle = 0;
 
@@ -53,8 +59,14 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   Future<void> _chooseBackground() async {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final labels = isArabic
-        ? const ['الورق الافتراضي', 'ورق بلون مصحف المدينة', 'أخضر هادئ', 'أزرق فاتح']
-        : const ['Default paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper'];
+        ? const [
+            'ورق كلاسيكي', 'ورق بلون مصحف المدينة', 'أخضر هادئ', 'أزرق فاتح',
+            'رملي دافئ', 'وردي هادئ', 'لافندر فاتح', 'نعناعي', 'رمادي حجري', 'عاجي',
+          ]
+        : const [
+            'Classic paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper',
+            'Warm sand', 'Soft rose', 'Light lavender', 'Mint paper', 'Stone grey', 'Ivory',
+          ];
     final selected = await showModalBottomSheet<int>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -69,7 +81,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
             for (var i = 0; i < labels.length; i++)
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: i == 0 ? Theme.of(context).cardColor : _pageBackgrounds[i],
+                  backgroundColor: _pageBackgrounds[i],
                   child: i == _backgroundStyle ? const Icon(Icons.check, color: Colors.black54) : null,
                 ),
                 title: Text(labels[i]),
