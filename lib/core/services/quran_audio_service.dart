@@ -89,6 +89,7 @@ class QuranAudioService extends ChangeNotifier {
   bool repeatSurah = false;
   String? externalTitle;
   String? externalUrl;
+  String? externalError;
 
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
@@ -785,13 +786,30 @@ class QuranAudioService extends ChangeNotifier {
     }
   }
 
+  /// Accept only absolute HTTPS audio URLs with a real host.
+  static bool isValidExternalAudioUrl(String value) {
+    final parsed = Uri.tryParse(value.trim());
+    return parsed != null &&
+        parsed.scheme.toLowerCase() == 'https' &&
+        parsed.host.isNotEmpty &&
+        !parsed.host.contains(RegExp(r'\\s')) &&
+        parsed.userInfo.isEmpty;
+  }
+
   Future<void> playExternalUrl(String url, {String? title}) async {
-    if (url.isEmpty) return;
-    // External tracks must never be interpreted as Quran ayah indexes by indexStream.
-    _externalPlaylistMode = true;
+    final candidate = url.trim();
+    if (!isValidExternalAudioUrl(candidate)) {
+      externalError = candidate.isEmpty
+          ? 'Audio URL is empty.'
+          : 'Audio URL must be a valid HTTPS URL with a host.';
+      isBuffering = false;
+      notifyListeners();
+      return;
+    }
+    _externalPlaylistMode = false;
     _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
-    _playToken++;
+    final token = ++_playToken;
     _stopping = false;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
@@ -799,29 +817,59 @@ class QuranAudioService extends ChangeNotifier {
     _fullSurahTimings = const <int, ({int startMs, int endMs})>{};
     playingAyah = null;
     playingWholeSurah = false;
-    externalUrl = url;
+    externalUrl = candidate;
     externalTitle = title;
+    externalError = null;
     isPaused = false;
     isBuffering = true;
     position = Duration.zero;
     duration = Duration.zero;
     notifyListeners();
+
     try {
       await _player.stop();
       await _player.setLoopMode(ja.LoopMode.off);
-      await _player.setAudioSource(ja.AudioSource.uri(Uri.parse(url)));
+      await _player.setAudioSource(ja.AudioSource.uri(Uri.parse(candidate)));
+      if (token != _playToken) return;
       await _player.setSpeed(playbackRate);
       unawaited(_player.play());
-      isBuffering = false;
+      await _player.playerStateStream.firstWhere(
+        (state) =>
+            state.playing ||
+            state.processingState == ja.ProcessingState.completed,
+      ).timeout(const Duration(seconds: 30));
+      if (token != _playToken) return;
       duration = _player.duration ?? Duration.zero;
+      isBuffering = _player.processingState == ja.ProcessingState.loading ||
+          _player.processingState == ja.ProcessingState.buffering;
       notifyListeners();
     } catch (e, st) {
+      if (token != _playToken) return;
       isBuffering = false;
-      externalUrl = null;
-      externalTitle = null;
+      isPaused = true;
+      externalError = e is TimeoutException
+          ? 'Audio did not start within 30 seconds. Check your connection and retry.'
+          : 'Unable to play this audio. Check the link and your connection.';
+      await _setQuranWakelock(false);
+      try {
+        await _player.stop();
+      } catch (_) {
+        // Keep the original playback error.
+      }
       AppLogger.error('Failed to start external Quran audio', error: e, stackTrace: st);
       notifyListeners();
     }
+  }
+
+  Future<void> retryExternalUrl() async {
+    final url = externalUrl;
+    if (url == null || !isValidExternalAudioUrl(url)) {
+      externalError = 'There is no valid audio link to retry.';
+      isBuffering = false;
+      notifyListeners();
+      return;
+    }
+    await playExternalUrl(url, title: externalTitle);
   }
 
   /// Plays a Way2Quran full-surah recording while keeping Wirdi's ayah
