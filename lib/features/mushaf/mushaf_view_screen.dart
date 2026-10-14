@@ -40,8 +40,9 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   ];
   int _backgroundStyle = 0;
 
-  Color _pageBackground(BuildContext context) =>
-      _backgroundStyle == 0 ? Theme.of(context).cardColor : _pageBackgrounds[_backgroundStyle];
+  // Always use a paper tone for Quran pages, including the default style.
+  // Theme.cardColor becomes dark in dark mode and made the Quran ink disappear.
+  Color _pageBackground(BuildContext context) => _pageBackgrounds[_backgroundStyle];
 
   Future<void> _loadBackgroundPreference() async {
     final prefs = await SharedPreferences.getInstance();
