@@ -7,7 +7,13 @@ service cloud.firestore {
     }
 
     match /family_khatmas/{code} {
-      allow read: if request.auth != null;
+      // A signed-in user may GET a known code to join the group. This is
+      // intentionally not LIST: collection queries must be constrained to
+      // groups whose memberUids contains the caller. A caller who knows a
+      // valid code can see that one group's join metadata before joining.
+      allow get: if request.auth != null;
+      allow list: if request.auth != null
+        && request.auth.uid in resource.data.memberUids;
 
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid
