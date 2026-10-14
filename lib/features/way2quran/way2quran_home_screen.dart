@@ -329,7 +329,7 @@ class _Way2QuranSearchScreenState extends State<Way2QuranSearchScreen> {
           return ListView(padding:const EdgeInsets.fromLTRB(16,0,16,24),children:[
             if(data.reciters.isNotEmpty)...[
               Text(ar?'القراء':'Reciters',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
-              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),,trailing:const Icon(Icons.chevron_right_rounded)))),
+              ...data.reciters.map((r)=>Card(child:ListTile(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>Way2QuranReciterScreen(reciterSlug:r.slug))),leading:CircleAvatar(radius:28,backgroundImage:r.photo.isEmpty?null:NetworkImage(r.photo),child:r.photo.isEmpty?const Icon(Icons.person):null),title:Text(r.name(ar),style:const TextStyle(fontWeight:FontWeight.w800)),trailing:const Icon(Icons.chevron_right_rounded)))),
               const SizedBox(height:18)],
             if(data.recitations.isNotEmpty)...[
               Text(ar?'القراءات والروايات':'Recitations',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:8),
