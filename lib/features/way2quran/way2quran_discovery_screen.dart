@@ -160,10 +160,10 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
           if (reciters.isEmpty) {
             return Center(child: Text(_ar ? 'لا توجد نتائج متاحة الآن.' : 'No reciters are available right now.'));
           }
-          final byPopularity = [...reciters]
-            ..sort((a, b) => b.totalViews.compareTo(a.totalViews));
-          final hiddenGems = [...reciters]
-            ..sort((a, b) => a.totalViews.compareTo(b.totalViews));
+          // Source-site view counters are not imported into Wirdi, so discovery
+          // shelves use the catalogue order instead of pretending those counts are local.
+          final byPopularity = [...reciters];
+          final hiddenGems = [...reciters.reversed];
           final dayIndex = DateTime.now().difference(DateTime(2020, 1, 1)).inDays % reciters.length;
           final spotlight = reciters[dayIndex];
 
@@ -206,7 +206,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
               const SizedBox(height: 20),
               _ShelfHeader(
                 title: _ar ? 'استمع بعمق' : 'Deep listens',
-                subtitle: _ar ? 'ابدأ من القراء الأكثر استماعًا في المكتبة' : 'Start with widely listened-to voices in the catalogue',
+                subtitle: _ar ? 'تصفّح المزيد من القراء في المكتبة' : 'Browse more reciters in the catalogue',
               ),
               const SizedBox(height: 8),
               ...byPopularity.take(8).map((r) => _DiscoveryReciterTile(
@@ -218,7 +218,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
               const SizedBox(height: 20),
               _ShelfHeader(
                 title: _ar ? 'جواهر خفية' : 'Hidden gems',
-                subtitle: _ar ? 'اكتشف قراء أقل مشاهدة ضمن النتائج المتاحة' : 'Discover less-viewed reciters in the available results',
+                subtitle: _ar ? 'اختيارات أخرى من القراء المتاحين' : 'Another selection from the available reciters',
               ),
               const SizedBox(height: 8),
               ...hiddenGems.take(8).map((r) => _DiscoveryReciterTile(
