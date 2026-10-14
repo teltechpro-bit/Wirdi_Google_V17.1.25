@@ -68,6 +68,20 @@ void main() {
       expect(mushaf.name(true), 'مصحف تجريبي');
     });
 
+    test('Mushaf model recognizes common PDF URL field names', () {
+      for (final key in ['download_url', 'pdfURL', 'pdfUrl', 'fileURL', 'fileUrl', 'url']) {
+        final mushaf = Way2QuranMushaf.fromJson({
+          'slug': 'mushaf-$key',
+          key: 'https://files.example/$key.pdf',
+        });
+        expect(
+          mushaf.downloadUrl,
+          'https://files.example/$key.pdf',
+          reason: 'Expected $key to be recognized as the download URL',
+        );
+      }
+    });
+
     test('reciter pagination only reports a next page when one exists', () {
       const first = Way2QuranRecitersPage(
         reciters: [],
