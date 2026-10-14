@@ -178,10 +178,12 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
       final value = await Way2QuranPlaylistStore.all();
       if (mounted) setState(() { _playlists = value; _loading = false; });
     } catch (error) {
-      if (mounted) setState(() {
-        _loadError = error.toString();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loadError = error.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
