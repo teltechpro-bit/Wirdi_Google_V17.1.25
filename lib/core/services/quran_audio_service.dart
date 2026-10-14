@@ -792,7 +792,7 @@ class QuranAudioService extends ChangeNotifier {
     return parsed != null &&
         parsed.scheme.toLowerCase() == 'https' &&
         parsed.host.isNotEmpty &&
-        !parsed.host.contains(RegExp(r'\\s')) &&
+        !parsed.host.contains(RegExp(r'\s')) &&
         parsed.userInfo.isEmpty;
   }
 
@@ -806,7 +806,7 @@ class QuranAudioService extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _externalPlaylistMode = false;
+    _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
     final token = ++_playToken;
