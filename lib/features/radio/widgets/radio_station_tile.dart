@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/models/radio_station.dart';
+import '../../../core/data/radio_stations.dart';
 import '../../../core/services/radio_service.dart';
 import '../../../core/services/settings_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -90,7 +91,7 @@ class RadioStationTile extends StatelessWidget {
                   color: AppColors.primaryEmerald.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(station.category,
+                child: Text(kRadioCategories[station.category]?[lang] ?? station.category,
                     style: TextStyle(fontSize: 10,
                         color: AppColors.primaryEmerald, fontWeight: FontWeight.w600)),
               ),
