@@ -561,8 +561,11 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   // screen) so it survives navigation between screens. These getters
   // only report "playing" state when it's actually *this* surah playing
   // — audio for a different surah shouldn't appear active here.
-  int? get _playingAyah => quranAudio.isSurahActive(widget.surah.number) ? quranAudio.playingAyah : null;
-  bool get _playingWholeSurah => quranAudio.isSurahActive(widget.surah.number) && quranAudio.playingWholeSurah;
+  // External library playback shares the player but is not Wirdi's original
+  // reciter session. Do not make the main Quran page's ayah tap stop that
+  // external track instead of starting the user's saved Wirdi reciter.
+  int? get _playingAyah => !quranAudio.isExternalPlayback && quranAudio.isSurahActive(widget.surah.number) ? quranAudio.playingAyah : null;
+  bool get _playingWholeSurah => !quranAudio.isExternalPlayback && quranAudio.isSurahActive(widget.surah.number) && quranAudio.playingWholeSurah;
   bool get _repeatCurrent => quranAudio.repeatCurrent;
   bool get _isBuffering => quranAudio.isBuffering;
 
