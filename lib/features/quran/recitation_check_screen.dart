@@ -139,15 +139,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
-      if (pick == null) {
-        if (mounted) {
-          setState(() {
-            _speechUnavailable = true;
-            _lastError = 'لم تتوفر لغة عربية لخدمة التعرف على الصوت على هذا الجهاز.';
-          });
-        }
-        return false;
-      }
+      // Some Android recognition services report an empty locale list even
+      // when the Arabic pack is installed. Try the standard Saudi Arabic ID
+      // instead of rejecting the device before attempting recognition.
+      pick ??= 'ar_SA';
       if (mounted) {
         setState(() {
           _speechReady = true;
