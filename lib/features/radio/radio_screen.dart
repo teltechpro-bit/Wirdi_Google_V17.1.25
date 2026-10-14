@@ -12,7 +12,10 @@ import 'widgets/sleep_timer_sheet.dart';
 import 'radio_now_playing_screen.dart';
 
 class RadioScreen extends StatefulWidget {
-  const RadioScreen({super.key});
+  /// Optional starting category for shortcuts such as Quran Radio.
+  /// The normal app radio entry keeps the default 'all' catalogue.
+  final String initialCategory;
+  const RadioScreen({super.key, this.initialCategory = 'all'});
   @override State<RadioScreen> createState() => _RadioScreenState();
 }
 
@@ -33,7 +36,8 @@ class _RadioScreenState extends State<RadioScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _cats.length, vsync: this);
+    final initialIndex = _cats.indexOf(widget.initialCategory);
+    _tabs = TabController(length: _cats.length, vsync: this, initialIndex: initialIndex < 0 ? 0 : initialIndex);
     RadioService.instance.init();
   }
 
