@@ -73,13 +73,17 @@ jobs:
               raise SystemExit(f"No candidate audio URL passed the HTTP range/content-type check. Last error: {last_error}")
           PY
 
-      - name: Probe all requested Quran radio streams (audio bytes or playable HLS segment)
+      - name: Probe active Quran radio streams (audio bytes or playable HLS media segment)
         shell: bash
         run: |
           python - <<'PY'
           from urllib.parse import urljoin
           import requests
 
+          # Only stations that passed the first probe are active in the app.
+          # Six 502/text-html endpoints are intentionally omitted/disabled:
+          # main-radio, beautiful-recitations, amazing-short-recitations,
+          # verses-of-serenity, tafsir-al-tabari conclusion, mp3quran-109076.
           urls = {
             "Egypt - Way2Quran": "https://way2quran.com/api/external-radio/stream/egypt-holy-quran-radio",
             "Saudi Arabia - Way2Quran": "https://way2quran.com/api/external-radio/stream/holy-quran-from-saudia-arabia",
@@ -87,64 +91,59 @@ jobs:
             "Pakistan - Way2Quran": "https://way2quran.com/api/external-radio/stream/pakistan-quran",
             "Palestine - Way2Quran": "https://way2quran.com/api/external-radio/stream/palestine-quran",
             "Sharjah - Way2Quran": "https://way2quran.com/api/external-radio/stream/uae-sharjah-quran",
-            "Main Radio - Way2Quran": "https://way2quran.com/api/external-radio/stream/main-radio",
-            "Beautiful Recitations - Way2Quran": "https://way2quran.com/api/external-radio/stream/beautiful-recitations",
-            "Short Recitations - Way2Quran": "https://way2quran.com/api/external-radio/stream/amazing-short-recitations",
-            "Verses of Serenity - Way2Quran": "https://way2quran.com/api/external-radio/stream/verses-of-serenity",
             "Tafsir Summary - Way2Quran": "https://way2quran.com/api/external-radio/stream/a-summary-of-the-interpretation-of-the-holy-quran",
-            "Tafsir Tabari - Way2Quran": "https://way2quran.com/api/external-radio/stream/interpretation-of-the-holy-qur-an-conclusion-from-tafsir-al-tabari",
-            "MP3Quran - Way2Quran": "https://way2quran.com/api/external-radio/stream/mp3quran-109076",
             "Bahrain HLS": "https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8",
             "Jordan HLS": "https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8",
             "Oman HLS": "https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8",
           }
           session = requests.Session()
-          session.headers["User-Agent"] = "Wirdi-Quran-Radio-Probe/1.0"
+          session.headers["User-Agent"] = "Wirdi-Quran-Radio-Probe/1.1"
+
+          def probe_hls(url, depth=0):
+            if depth > 3:
+              raise RuntimeError("HLS nested playlist depth exceeded")
+            response = session.get(url, timeout=18, allow_redirects=True)
+            print(f"HLS playlist depth={depth} status={response.status_code} type={response.headers.get('content-type')} url={response.url}")
+            if response.status_code != 200 or "#EXTM3U" not in response.text[:8192]:
+              raise RuntimeError("invalid HLS playlist")
+            lines = [line.strip() for line in response.text.splitlines() if line.strip() and not line.strip().startswith("#")]
+            if not lines:
+              raise RuntimeError("HLS playlist has no media URI")
+            candidate = urljoin(response.url, lines[0])
+            if ".m3u8" in candidate.lower():
+              return probe_hls(candidate, depth + 1)
+            media = session.get(candidate, headers={"Range": "bytes=0-2047"}, timeout=18, stream=True, allow_redirects=True)
+            chunk = next(media.iter_content(chunk_size=2048), b"")
+            print(f"HLS media status={media.status_code} type={media.headers.get('content-type')} bytes={len(chunk)} url={media.url}")
+            good = media.status_code in (200, 206) and len(chunk) >= 32 and ".m3u8" not in media.url.lower()
+            media.close()
+            if not good:
+              raise RuntimeError("HLS media segment did not return media bytes")
+          
           failed = []
           for name, url in urls.items():
             try:
               r = session.get(url, timeout=18, stream=True, allow_redirects=True)
               ctype = r.headers.get("content-type", "").lower()
               first = next(r.iter_content(chunk_size=512), b"")
-              status = r.status_code
+              print(f"[{name}] status={r.status_code} type={ctype} first_bytes={len(first)} final={r.url}")
+              if r.status_code not in (200, 206) or not first:
+                raise RuntimeError("no stream bytes")
+              is_hls = ".m3u8" in r.url.lower() or "mpegurl" in ctype or first.lstrip().startswith(b"#EXTM3U")
               final_url = r.url
-              print(f"[{name}] status={status} type={ctype} first_bytes={len(first)} final={final_url}")
-              if status not in (200, 206) or not first:
-                failed.append(name + ": no stream bytes")
-                r.close()
-                continue
-              is_hls = (".m3u8" in final_url.lower() or "mpegurl" in ctype or first.lstrip().startswith(b"#EXTM3U"))
+              r.close()
               if is_hls:
-                r.close()
-                playlist = session.get(final_url, timeout=18)
-                if playlist.status_code != 200 or "#EXTM3U" not in playlist.text:
-                  failed.append(name + ": invalid HLS playlist")
-                  continue
-                segment = next((line.strip() for line in playlist.text.splitlines()
-                                if line.strip() and not line.strip().startswith("#")), None)
-                if not segment:
-                  failed.append(name + ": HLS playlist has no media segment")
-                  continue
-                segment_url = urljoin(playlist.url, segment)
-                sr = session.get(segment_url, headers={"Range": "bytes=0-1023"},
-                                 timeout=18, stream=True, allow_redirects=True)
-                chunk = next(sr.iter_content(chunk_size=1024), b"")
-                print(f"[{name}] segment status={sr.status_code} type={sr.headers.get('content-type')} bytes={len(chunk)}")
-                if sr.status_code not in (200, 206) or not chunk:
-                  failed.append(name + ": HLS media segment not playable")
-                sr.close()
+                probe_hls(final_url)
               else:
                 audio_type = any(x in ctype for x in ("audio/", "octet-stream", "application/aac", "application/mp4"))
                 audio_signature = first.startswith(b"ID3") or (len(first) > 1 and first[0] == 0xFF and (first[1] & 0xE0) == 0xE0)
-                if not (audio_type or audio_signature or ".mp3" in final_url.lower() or ".aac" in final_url.lower()):
-                  failed.append(name + ": response is not recognisable audio")
-                r.close()
+                if not (audio_type or audio_signature):
+                  raise RuntimeError("response is not recognisable audio")
+              print(f"STREAM_CHECK=PASS {name}")
             except Exception as exc:
               failed.append(name + ": " + type(exc).__name__ + ": " + str(exc))
+              print(f"STREAM_CHECK=FAIL {failed[-1]}")
           print(f"RADIO_STREAM_PROBE: {len(urls)-len(failed)}/{len(urls)} passed")
           if failed:
-            print("FAILED STREAMS (must remain disabled until corrected):")
-            for item in failed:
-              print(" - " + item)
-            raise SystemExit(1)
+            raise SystemExit("Active radio streams failed: " + "; ".join(failed))
           PY
