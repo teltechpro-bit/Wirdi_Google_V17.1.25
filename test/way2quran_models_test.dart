@@ -3,7 +3,7 @@ import 'package:wirdi/features/way2quran/way2quran_models.dart';
 
 void main() {
   group('Way2Quran API models', () {
-    test('reciter parses nested recitation and per-surah audio files', () {
+    test('reciter parses nested audio but never imports source-site view counts', () {
       final reciter = Way2QuranReciter.fromJson({
         'slug': 'sample-reciter',
         'arabicName': 'قارئ تجريبي',
@@ -30,7 +30,7 @@ void main() {
       expect(reciter.slug, 'sample-reciter');
       expect(reciter.name(true), 'قارئ تجريبي');
       expect(reciter.name(false), 'Sample Reciter');
-      expect(reciter.totalViews, 1234);
+      expect(reciter.totalViews, 0);
       expect(reciter.recitations, hasLength(1));
       expect(reciter.recitations.single.slug, 'hafs');
       expect(reciter.recitations.single.audioFiles.single.surahNumber, 1);
