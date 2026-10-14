@@ -72,6 +72,7 @@ import '../prayer/qiyam_night_screen.dart';
 import '../quran/car_mode_screen.dart';
 import '../quran/mutashabihat_screen.dart';
 import '../quran/recitation_check_screen.dart';
+import '../way2quran/way2quran_home_screen.dart';
 
 enum _ToolCategory { quran, prayer, fasting, zakat, azkar, knowledge, seerah, progress }
 
@@ -126,6 +127,12 @@ class IslamicToolsScreen extends StatelessWidget {
   const IslamicToolsScreen({super.key});
 
   static final List<_ToolEntry> _tools = [
+    _ToolEntry(
+      icon: Icons.headphones_rounded,
+      titleFor: (l10n) => l10n.localeName == 'ar' ? 'مكتبة التلاوات' : 'Recitation Library',
+      subtitleFor: (l10n) => l10n.localeName == 'ar' ? 'استمع إلى التلاوات، واختر القارئ والسورة، وتابع مكتبتك الصوتية' : 'Browse recitations, choose a reciter and surah, and manage your audio library',
+      builder: (_) => const Way2QuranHomeScreen(),
+    ),
     _ToolEntry(
       icon: Icons.menu_book_rounded,
       titleFor: (l10n) => l10n.localeName == 'ar' ? 'قارئ القرآن' : 'Quran Reader',
@@ -555,6 +562,7 @@ class IslamicToolsScreen extends StatelessWidget {
   /// below fires immediately (debug builds) if a future edit adds/removes a
   /// tool without updating this list, instead of silently mis-grouping it.
   static const List<_ToolCategory> _categoryByIndex = [
+    _ToolCategory.quran,
     _ToolCategory.quran,
     _ToolCategory.quran,
     _ToolCategory.quran,
