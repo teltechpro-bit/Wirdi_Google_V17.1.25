@@ -644,12 +644,6 @@ class QuranAudioService extends ChangeNotifier {
           target += initialPosition;
           if (total > Duration.zero && target > total) target = total;
         }
-
-        }
-        if (initialPosition > Duration.zero) {
-          target += initialPosition;
-          if (total > Duration.zero && target > total) target = total;
-        }
         if (target > Duration.zero) {
           await _player.seek(target, index: 0);
         }
