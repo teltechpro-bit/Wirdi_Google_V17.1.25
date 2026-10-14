@@ -240,9 +240,12 @@ class Way2QuranRepository {
     if (value.isEmpty) throw const FormatException('Empty download URL');
     final parsed = Uri.tryParse(value);
     if (parsed == null) throw const FormatException('Invalid download URL');
+    // File paths returned by the catalogue are website-relative, not
+    // API-relative. Resolving "files/mushaf.pdf" against /api incorrectly
+    // requests /api/files/mushaf.pdf and often downloads an HTML error page.
     final uri = parsed.hasScheme
         ? parsed
-        : Uri.parse(baseUrl).resolveUri(parsed);
+        : Uri.parse('https://way2quran.com/').resolveUri(parsed);
     if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
       throw const FormatException('Invalid download URL');
     }
