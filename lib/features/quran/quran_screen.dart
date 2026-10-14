@@ -13,6 +13,7 @@ import '../../core/services/arabic_text_utils.dart';
 import '../../core/services/audio_download_service.dart';
 import '../../core/services/mushaf_repository.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/qiraat_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/quran_translation_repository.dart';
 import '../../core/services/settings_service.dart';
@@ -1103,6 +1104,9 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
       surahName: widget.surah.name,
       ayahNumber: ayahNumber,
     ));
+    // The main Quran reader remains on Wirdi's original Hafs/reciter path;
+    // selecting a reader in the separate recitation library is not a global override.
+    await QiraatService.instance.setRiwayah('hafs');
     await quranAudio.playAyah(widget.surah, widget.allSurahs, ayahNumber, keepRepeat: keepRepeat);
     if (!mounted) return;
     // If this reader only exposes a full-surah stream and has no verified
