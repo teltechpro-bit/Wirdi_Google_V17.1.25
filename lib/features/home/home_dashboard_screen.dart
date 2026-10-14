@@ -17,7 +17,6 @@ import '../../core/services/moon_calculator.dart';
 import '../../core/services/prayer_display.dart';
 import '../../core/services/weather_service.dart';
 import '../../core/services/sunrise_sunset_calculator.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../core/services/prayer_notification_scheduler.dart';
 import '../../core/services/prayer_service.dart';
 import '../../core/services/settings_service.dart';
@@ -176,20 +175,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   SunTimes? _sunTimes;
 
   Future<void> _loadWeatherAndSun() async {
+    // Reuse the location already selected for prayer times. A home refresh
+    // must never trigger another OS location-permission prompt.
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-      ).timeout(const Duration(seconds: 10));
-      final sun = SunriseSunsetCalculator.calculate(position.latitude, position.longitude, DateTime.now());
-      if (mounted) setState(() => _sunTimes = sun);
+      final prefs = await SharedPreferences.getInstance();
+      final latitude = prefs.getDouble('cache_prayer_lat_v1');
+      final longitude = prefs.getDouble('cache_prayer_lon_v1');
+      if (latitude != null && longitude != null) {
+        final sun = SunriseSunsetCalculator.calculate(latitude, longitude, DateTime.now());
+        if (mounted) setState(() => _sunTimes = sun);
+        final weather = await WeatherService.getWeatherAtCoordinates(latitude, longitude);
+        if (mounted) setState(() => _weather = weather);
+      }
     } catch (_) {
-      // no-op -- sunrise/sunset row just won't show
-    }
-    try {
-      final weather = await WeatherService.getWeatherAtPrayerTime('now');
-      if (mounted) setState(() => _weather = weather);
-    } catch (_) {
-      // no-op -- weather row just won't show
+      // Weather/sunrise are optional; never request fresh GPS as a fallback.
     }
   }
 
