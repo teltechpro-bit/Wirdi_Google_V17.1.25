@@ -89,7 +89,7 @@ if 'com.ryanheise.audioservice.AudioService' not in text:
     )
     text = re.sub(r'(</application>)', audio_service_block + r'\1', text, count=1)
 
-# Add <queries> block for URL launcher and radio streams
+# Ensure package-visibility intents share a single <queries> element.
 if '<queries>' not in text:
     queries = (
         '\n    <queries>\n'
@@ -108,6 +108,17 @@ if '<queries>' not in text:
         '    </queries>\n'
     )
     text = text.replace('</manifest>', queries + '</manifest>')
+
+# Android 11+ hides recognition services unless they are declared in queries.
+if 'android.speech.RecognitionService' not in text:
+    speech_intent = (
+        '        <intent>\n'
+        '            <action android:name="android.speech.RecognitionService" />\n'
+        '        </intent>\n'
+    )
+    if '</queries>' not in text:
+        raise SystemExit('ERROR: could not add speech recognizer visibility query')
+    text = text.replace('</queries>', speech_intent + '    </queries>', 1)
 
 # Register the home-screen widget provider (was previously missing entirely --
 # the widget could never appear to the user without this receiver declaration).
