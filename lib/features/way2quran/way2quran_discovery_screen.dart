@@ -94,6 +94,9 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
         ],
       ),
     );
+    // Keep dialog TextEditingControllers alive through the reverse transition;
+    // disposing them as soon as showDialog completes can trigger a red screen.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     titleController.dispose();
     urlController.dispose();
     descriptionController.dispose();
