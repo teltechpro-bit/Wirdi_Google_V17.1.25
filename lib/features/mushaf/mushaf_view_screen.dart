@@ -45,7 +45,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   Future<void> _loadBackgroundPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getInt(_backgroundPreferenceKey) ?? 0;
-    if (mounted) setState(() => _backgroundStyle = stored.clamp(0, _pageBackgrounds.length - 1));
+    if (mounted) setState(() => _backgroundStyle = stored.clamp(0, _pageBackgrounds.length - 1).toInt());
   }
 
   Future<void> _chooseBackground() async {
