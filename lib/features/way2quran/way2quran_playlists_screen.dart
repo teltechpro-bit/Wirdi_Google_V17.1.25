@@ -308,8 +308,18 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
       ),
     );
     if (confirmed != true) return;
-    await Way2QuranPlaylistStore.delete(name);
-    if (mounted) await _load();
+    try {
+      await Way2QuranPlaylistStore.delete(name);
+      if (mounted) await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_ar
+              ? 'تعذر حذف قائمة التشغيل. حاول مرة أخرى.'
+              : 'Could not delete the playlist. Please try again.'),
+        ));
+      }
+    }
   }
 
   @override
