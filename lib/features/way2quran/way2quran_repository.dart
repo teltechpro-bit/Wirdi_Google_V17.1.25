@@ -94,24 +94,61 @@ class Way2QuranRepository {
       return const Way2QuranSearchResults(
           reciters: [], recitations: [], surahs: []);
     }
-    final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
-    final payload = unwrapApiData(response);
-    List<dynamic> list(String key) =>
-        _listPayload(payload, key, fallback: response);
+
+    // Prefer the API's combined search endpoint. If it returns an empty
+    // payload (some deployments do not expose every search index) or fails,
+    // fall back to the reciter search endpoint and the recitation directory.
+    try {
+      final response =
+          await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
+      final payload = unwrapApiData(response);
+      List<dynamic> list(String key) =>
+          _listPayload(payload, key, fallback: response);
+      final results = Way2QuranSearchResults(
+        reciters: list('reciters')
+            .whereType<Map>()
+            .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        recitations: list('recitations')
+            .whereType<Map>()
+            .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        surahs: list('surahs')
+            .whereType<Map>()
+            .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+      if (results.reciters.isNotEmpty ||
+          results.recitations.isNotEmpty ||
+          results.surahs.isNotEmpty) {
+        return results;
+      }
+    } catch (_) {
+      // Continue to the narrower, independently supported endpoints below.
+    }
+
+    List<Way2QuranReciter> reciters = <Way2QuranReciter>[];
+    List<Way2QuranRecitation> recitations = <Way2QuranRecitation>[];
+    try {
+      reciters = await getReciters(search: q, pageSize: 50);
+    } catch (_) {
+      // Keep any results from the other endpoint.
+    }
+    try {
+      final allRecitations = await getRecitations();
+      final needle = q.toLowerCase();
+      recitations = allRecitations.where((item) =>
+          item.nameAr.toLowerCase().contains(needle) ||
+          item.nameEn.toLowerCase().contains(needle) ||
+          item.slug.toLowerCase().contains(needle)).toList();
+    } catch (_) {
+      // An unavailable recitation index should not erase reciter results.
+    }
+
     return Way2QuranSearchResults(
-      reciters: list('reciters')
-          .whereType<Map>()
-          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      recitations: list('recitations')
-          .whereType<Map>()
-          .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      surahs: list('surahs')
-          .whereType<Map>()
-          .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      reciters: reciters,
+      recitations: recitations,
+      surahs: const <Way2QuranSearchSurah>[],
     );
   }
 
