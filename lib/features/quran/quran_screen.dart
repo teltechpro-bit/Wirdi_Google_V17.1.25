@@ -1130,6 +1130,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   /// currently-reciting ayah is highlighted as a bonus. Lives in
   /// [QuranAudioService] now so it keeps playing across navigation.
   Future<void> _playWholeSurah() async {
+    await QiraatService.instance.setRiwayah('hafs');
     await quranAudio.playWholeSurah(widget.surah, widget.allSurahs);
   }
 
