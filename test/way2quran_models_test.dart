@@ -69,7 +69,7 @@ void main() {
     });
 
     test('Mushaf model recognizes common PDF URL field names', () {
-      for (final key in ['download_url', 'pdfURL', 'pdfUrl', 'fileURL', 'fileUrl', 'url']) {
+      for (final key in ['downloadURL', 'downloadUrl', 'download_url', 'downloadLink', 'download_link', 'pdfURL', 'pdfUrl', 'pdf', 'fileURL', 'fileUrl', 'filePath', 'file_path', 'file', 'path', 'url']) {
         final mushaf = Way2QuranMushaf.fromJson({
           'slug': 'mushaf-$key',
           key: 'https://files.example/$key.pdf',
