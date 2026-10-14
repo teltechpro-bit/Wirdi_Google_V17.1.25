@@ -123,7 +123,13 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         finalTimeout: const Duration(seconds: 5),
       );
       if (!ok) {
-        if (mounted) setState(() => _speechUnavailable = true);
+        if (mounted) {
+          setState(() {
+            _speechUnavailable = true;
+            _lastError =
+                'لم تتمكن خدمة التعرف على الكلام من التهيئة. تحقق من تثبيت خدمة التعرف على الصوت، وتفعيلها، ومنح إذن الميكروفون، ثم أعد المحاولة.';
+          });
+        }
         return false;
       }
       final locales = await _speech.locales();
@@ -379,10 +385,18 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                         ),
                         style: TextStyle(color: Colors.red.shade700),
                       ),
-                    if (_lastError != null && !_speechUnavailable)
-                      Text(
-                        bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    if (_lastError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          bi(context, 'تفاصيل المشكلة: $_lastError', 'Diagnostic details: $_lastError'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _speechUnavailable
+                                ? Colors.red.shade700
+                                : Colors.grey,
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(
