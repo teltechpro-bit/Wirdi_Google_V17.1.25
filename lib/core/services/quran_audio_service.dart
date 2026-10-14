@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../data/app_sources.dart';
 import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
@@ -489,9 +490,13 @@ class QuranAudioService extends ChangeNotifier {
 
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
-    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
-    final fullSurahOnly = !hasAyahAudio;
 
+    // Hafs is Wirdi's established default playback path. Keep its original
+    // reciter selection and global ayah CDN mapping independent of the
+    // optional Qiraat/riwayah reader directory.
+    final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
+    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
+    final fullSurahOnly = !useOriginalHafs && !hasAyahAudio;
 
     _fullSurahOnly = fullSurahOnly;
     _playlistStartAyah = fullSurahOnly ? 1 : startAyah;
@@ -512,7 +517,7 @@ class QuranAudioService extends ChangeNotifier {
       (index) => startAyah + index,
     );
 
-    final localPaths = hasAyahAudio && qiraat.selectedRiwayahId == 'hafs'
+    final localPaths = useOriginalHafs
         ? await Future.wait(
             ayahs.map(
               (ayah) => AudioDownloadService.localPathFor(
@@ -535,18 +540,29 @@ class QuranAudioService extends ChangeNotifier {
       for (var i = 0; i < ayahs.length; i++) {
         final globalNumber = _surahAyahOffset + ayahs[i];
         final localPath = localPaths[i];
+
+        if (localPath != null) {
+          sources.add(ja.AudioSource.file(localPath));
+          continue;
+        }
+
+        if (useOriginalHafs) {
+          sources.add(ja.AudioSource.uri(Uri.parse(
+            AppSources.ayahAudioUrl(
+              globalNumber,
+              reciter: appSettings.reciterId,
+            ),
+          )));
+          continue;
+        }
+
         final url = qiraat.ayahAudioUrl(
           _surahNumber ?? 1,
           ayahs[i],
           globalNumber,
           hafsEdition: appSettings.reciterId,
         );
-
-        if (localPath != null) {
-          sources.add(ja.AudioSource.file(localPath));
-        } else if (url != null) {
-          sources.add(ja.AudioSource.uri(Uri.parse(url)));
-        } else {
+        if (url == null) {
           AppLogger.error(
             'No verified audio mapping for selected riwayah; refusing Hafs fallback.',
           );
@@ -555,6 +571,7 @@ class QuranAudioService extends ChangeNotifier {
           notifyListeners();
           return;
         }
+        sources.add(ja.AudioSource.uri(Uri.parse(url)));
       }
     }
 
