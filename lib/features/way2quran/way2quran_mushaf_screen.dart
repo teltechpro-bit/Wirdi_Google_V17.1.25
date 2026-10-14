@@ -78,12 +78,16 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
     }
     setState(() => downloading.add(mushaf.slug));
     try {
-      final bytes = await repo.downloadBytes(mushaf.downloadUrl);
-      if (!Way2QuranRepository.isPdfPayload(bytes)) {
+      final file = await _localFile(mushaf);
+      await repo.downloadToFile(mushaf.downloadUrl, file.path);
+      final header = await file.openRead(0, 5).fold<List<int>>(
+        <int>[],
+        (bytes, chunk) => bytes..addAll(chunk),
+      );
+      if (!Way2QuranRepository.isPdfPayload(header)) {
+        await file.delete();
         throw const FormatException('Mushaf endpoint did not return a PDF file');
       }
-      final file = await _localFile(mushaf);
-      await Way2QuranStorage.writeBytesAtomically(file, bytes);
       // The file is already saved locally; a failed remote counter update must
       // never turn a successful download into a misleading failure message.
       try {
