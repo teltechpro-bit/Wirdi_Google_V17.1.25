@@ -123,15 +123,25 @@ class FamilyKhatmaService {
   }
 
   Stream<List<FamilyKhatma>> myGroups() {
-    final user = _requireUser();
-    return _col
-        .where('memberUids', arrayContains: user.uid)
-        .snapshots()
-        .map((snap) => snap.docs.map(FamilyKhatma.fromDoc).toList());
+    try {
+      final user = _requireUser();
+      return _col
+          .where('memberUids', arrayContains: user.uid)
+          .snapshots()
+          .map((snap) => snap.docs.map(FamilyKhatma.fromDoc).toList());
+    } catch (error, stack) {
+      // StreamBuilder can render a recoverable error state; do not let a
+      // Firebase initialization/configuration exception escape from initState.
+      return Stream<List<FamilyKhatma>>.error(error, stack);
+    }
   }
 
   Stream<FamilyKhatma?> watch(String code) {
-    return _col.doc(code).snapshots().map((doc) => doc.exists ? FamilyKhatma.fromDoc(doc) : null);
+    try {
+      return _col.doc(code).snapshots().map((doc) => doc.exists ? FamilyKhatma.fromDoc(doc) : null);
+    } catch (error, stack) {
+      return Stream<FamilyKhatma?>.error(error, stack);
+    }
   }
 
   Future<String> create(String name) async {
