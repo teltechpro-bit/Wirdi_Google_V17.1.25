@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -252,13 +253,57 @@ class Way2QuranRepository {
     return uri;
   }
 
+  /// Streams a Mushaf PDF to a temporary file, then atomically moves it
+  /// into place so interrupted downloads do not leave a partial saved file.
+  Future<File> downloadToFile(String url, String destinationPath) async {
+    final uri = resolveDownloadUri(url);
+    if (uri.scheme.toLowerCase() != 'https' || uri.userInfo.isNotEmpty) {
+      throw const FormatException('A valid HTTPS download URL is required');
+    }
+    final destination = File(destinationPath);
+    await destination.parent.create(recursive: true);
+    final temporary = File('$destinationPath.part');
+    if (await temporary.exists()) await temporary.delete();
+
+    try {
+      final request = http.Request('GET', uri);
+      final response = await _client.send(request).timeout(const Duration(minutes: 2));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Download failed: ${response.statusCode}', uri: uri);
+      }
+      final sink = temporary.openWrite();
+      try {
+        await response.stream.timeout(const Duration(minutes: 2)).pipe(sink);
+      } finally {
+        await sink.close();
+      }
+      final header = await temporary.openRead(0, 5).fold<List<int>>(
+        <int>[],
+        (bytes, chunk) => bytes..addAll(chunk),
+      );
+      if (header.isEmpty) {
+        throw const FormatException('Download returned an empty response');
+      }
+      if (await destination.exists()) await destination.delete();
+      return await temporary.rename(destinationPath);
+    } catch (_) {
+      if (await temporary.exists()) await temporary.delete();
+      rethrow;
+    }
+  }
+
+  /// Compatibility helper for small payloads; large PDFs should use
+  /// downloadToFile to avoid buffering the entire response in memory.
   Future<List<int>> downloadBytes(String url) async {
     final uri = resolveDownloadUri(url);
+    if (uri.scheme.toLowerCase() != 'https' || uri.userInfo.isNotEmpty) {
+      throw const FormatException('A valid HTTPS download URL is required');
+    }
     final response = await _client
         .get(uri)
         .timeout(const Duration(minutes: 2));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Download failed: ${response.statusCode}');
+      throw HttpException('Download failed: ${response.statusCode}', uri: uri);
     }
     if (response.bodyBytes.isEmpty) {
       throw const FormatException('Download returned an empty response');
