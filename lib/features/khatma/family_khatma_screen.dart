@@ -74,6 +74,8 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
         ],
       ),
     );
+    // showDialog may finish before the reverse animation removes its TextField.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     controller.dispose();
     if (name == null || name.isEmpty) return;
     setState(() => _busy = true);
@@ -110,6 +112,8 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
         ],
       ),
     );
+    // Keep the controller alive until the dialog has left the widget tree.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     controller.dispose();
     if (code == null || code.isEmpty) return;
     setState(() => _busy = true);
