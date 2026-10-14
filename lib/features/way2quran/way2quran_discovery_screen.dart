@@ -105,7 +105,16 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
     final note = values[2].isEmpty ? '' : '\n\n${values[2]}';
     final message = '$title$note\n\n${values[1]}\n\n'
         '${_ar ? 'مشاركة من وردي' : 'Shared from Wirdi'}';
-    await Share.share(message, subject: title);
+    try {
+      await Share.share(message, subject: title);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_ar
+            ? 'تعذرت المشاركة من هذا الجهاز. انسخ الرابط وشاركه يدويًا.'
+            : 'Sharing is unavailable on this device. Copy the link and share it manually.'),
+      ));
+    }
   }
 
   void _openReciter(Way2QuranReciter reciter) {
