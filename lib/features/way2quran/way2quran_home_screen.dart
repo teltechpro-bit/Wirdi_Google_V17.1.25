@@ -209,7 +209,13 @@ class _LibraryTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       leading: CircleAvatar(radius: 26, backgroundImage: reciter.photo.isEmpty ? null : NetworkImage(reciter.photo), child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null),
       title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(reciter.totalViews.toString() + ' ' + (ar ? 'مشاهدة' : 'views')),
+      subtitle: FutureBuilder<int>(
+        future: Way2QuranFavorites.localViews(reciter.slug),
+        builder: (context, snapshot) => Text(
+          (snapshot.data ?? 0).toString() + ' ' +
+              (ar ? 'مشاهدة داخل وِرْدِي' : 'Wirdi views'),
+        ),
+      ),
       trailing: const Icon(Icons.chevron_right_rounded),
     ),
   );
