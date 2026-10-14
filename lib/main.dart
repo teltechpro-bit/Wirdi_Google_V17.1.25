@@ -171,7 +171,7 @@ class WirdiApp extends StatelessWidget {
         final locale = appSettings.locale;
         final isRtl  = locale.languageCode == 'ar';
         return MaterialApp(
-          title: 'Wirdi | \u0648\u0631\u062f\u064a',
+          title: 'Wirdi | وِرْدِي',
           debugShowCheckedModeBanner: false,
           locale: locale,
           supportedLocales: kSupportedLocales,
