@@ -161,6 +161,29 @@ const List<RadioStation> kFallbackStations = [
   // ── Malaysia ────────────────────────────────────────────────────
 ];
 
+
+/// Additional national Quran radio streams requested for Wirdi.
+/// Kept separate from the offline fallback until the CI stream probe confirms
+/// each endpoint serves audio/HLS data. RadioService merges these online only.
+const List<RadioStation> kRequestedQuranRadioStations = [
+  RadioStation(id: 'w2q_radio_egypt', nameAr: 'إذاعة القرآن الكريم من مصر', nameEn: 'Holy Quran Radio Egypt', streamUrl: 'https://way2quran.com/api/external-radio/stream/egypt-holy-quran-radio', country: 'Egypt', countryCode: 'EG', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_saudi', nameAr: 'إذاعة القرآن الكريم من السعودية', nameEn: 'Holy Quran Radio Saudi Arabia', streamUrl: 'https://way2quran.com/api/external-radio/stream/holy-quran-from-saudia-arabia', country: 'Saudi Arabia', countryCode: 'SA', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_kuwait', nameAr: 'إذاعة القرآن الكريم من الكويت', nameEn: 'Holy Quran Radio Kuwait', streamUrl: 'https://way2quran.com/api/external-radio/stream/kuwait-quran', country: 'Kuwait', countryCode: 'KW', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_pakistan', nameAr: 'إذاعة القرآن الكريم من باكستان', nameEn: 'Holy Quran Radio Pakistan', streamUrl: 'https://way2quran.com/api/external-radio/stream/pakistan-quran', country: 'Pakistan', countryCode: 'PK', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_palestine', nameAr: 'إذاعة القرآن الكريم من فلسطين', nameEn: 'Holy Quran Radio Palestine', streamUrl: 'https://way2quran.com/api/external-radio/stream/palestine-quran', country: 'Palestine', countryCode: 'PS', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_sharjah', nameAr: 'إذاعة القرآن الكريم من الشارقة', nameEn: 'Holy Quran Radio Sharjah', streamUrl: 'https://way2quran.com/api/external-radio/stream/uae-sharjah-quran', country: 'UAE', countryCode: 'AE', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_main', nameAr: 'إذاعة القرآن الكريم الرئيسية', nameEn: 'Main Quran Radio', streamUrl: 'https://way2quran.com/api/external-radio/stream/main-radio', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_beautiful', nameAr: 'روائع التلاوات', nameEn: 'Beautiful Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/beautiful-recitations', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_short', nameAr: 'تلاوات قصيرة', nameEn: 'Short Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/amazing-short-recitations', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_serenity', nameAr: 'آيات السكينة', nameEn: 'Verses of Serenity', streamUrl: 'https://way2quran.com/api/external-radio/stream/verses-of-serenity', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_tafsir_summary', nameAr: 'ملخص تفسير القرآن الكريم', nameEn: 'Summary of Quran Tafsir', streamUrl: 'https://way2quran.com/api/external-radio/stream/a-summary-of-the-interpretation-of-the-holy-quran', country: 'International', countryCode: 'INT', category: 'lectures', isOfficial: true),
+  RadioStation(id: 'w2q_radio_tafsir_tabari', nameAr: 'خلاصة تفسير الطبري', nameEn: 'Summary of Tafsir al-Tabari', streamUrl: 'https://way2quran.com/api/external-radio/stream/interpretation-of-the-holy-qur-an-conclusion-from-tafsir-al-tabari', country: 'International', countryCode: 'INT', category: 'lectures', isOfficial: true),
+  RadioStation(id: 'w2q_radio_mp3quran', nameAr: 'تلاوات MP3Quran', nameEn: 'MP3Quran Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/mp3quran-109076', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'external_radio_bahrain', nameAr: 'إذاعة القرآن الكريم من البحرين', nameEn: 'Bahrain Quran Radio', streamUrl: 'https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8', country: 'Bahrain', countryCode: 'BH', category: 'quran', isOfficial: true),
+  RadioStation(id: 'external_radio_jordan', nameAr: 'إذاعة القرآن الكريم من الأردن', nameEn: 'Jordan Quran Radio', streamUrl: 'https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8', country: 'Jordan', countryCode: 'JO', category: 'quran', isOfficial: true),
+  RadioStation(id: 'external_radio_oman', nameAr: 'إذاعة القرآن الكريم من سلطنة عُمان', nameEn: 'Oman Quran Radio', streamUrl: 'https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8', country: 'Oman', countryCode: 'OM', category: 'quran', isOfficial: true),
+];
+
 /// Category labels in all 7 supported languages
 const Map<String, Map<String, String>> kRadioCategories = {
   'quran':    {'ar':'القرآن الكريم','en':'Holy Quran','de':'Heiliger Quran','tr':'Kutsal Kuran','fr':'Saint Coran','es':'Sagrado Corán','id':'Al-Quran'},
