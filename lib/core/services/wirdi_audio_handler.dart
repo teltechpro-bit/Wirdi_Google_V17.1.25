@@ -21,7 +21,7 @@ class WirdiAudioHandler extends BaseAudioHandler {
   }
 
   bool get _radioActive => RadioService.instance.currentStation != null;
-  bool get _quranActive => quranAudio.playingAyah != null;
+  bool get _quranActive => quranAudio.playingAyah != null || quranAudio.isExternalPlayback;
 
   void _onRadioChanged() {
     if (_radioActive) {
@@ -38,8 +38,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   void _onQuranChanged() {
     if (_quranActive) {
-      final key = '${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
-          '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.surahEstimatedTotal.inSeconds}';
+      final key = '${quranAudio.externalUrl}|${quranAudio.externalTitle}|${quranAudio.currentSurahNumber}|${quranAudio.playingAyah}|${quranAudio.isPaused}|'
+          '${quranAudio.isBuffering}|${quranAudio.playbackRate}|${quranAudio.position.inSeconds}|${quranAudio.duration.inSeconds}|${quranAudio.surahEstimatedTotal.inSeconds}';
       if (key == _lastQuranKey) return;
       _lastQuranKey = key;
       _publishQuranState();
@@ -89,12 +89,13 @@ class WirdiAudioHandler extends BaseAudioHandler {
     if (ayah == null) return;
 
     final total = q.totalAyahsInSurah;
+    final external = q.isExternalPlayback;
     mediaItem.add(MediaItem(
-      id: 'quran_surah_${q.currentSurahNumber ?? 0}',
-      title: q.currentSurahName ?? 'Quran',
-      artist: total > 0 ? 'Ayah $ayah / $total  -  Wirdi' : 'Ayah $ayah  -  Wirdi',
-      // Surah-level length (an estimate until every ayah has been measured).
-      duration: q.surahEstimatedTotal > Duration.zero ? q.surahEstimatedTotal : null,
+      id: external ? 'wirdi_recitation_${q.externalUrl.hashCode}' : 'quran_surah_${q.currentSurahNumber ?? 0}',
+      title: external ? (q.externalTitle?.trim().isNotEmpty == true ? q.externalTitle! : 'Quran Recitation') : (q.currentSurahName ?? 'Quran'),
+      artist: external ? 'Wirdi • Recitations' : (total > 0 ? 'Ayah $ayah / $total  -  Wirdi' : 'Ayah $ayah  -  Wirdi'),
+      // External tracks have their own exact duration; Quran surah duration may be estimated.
+      duration: external ? (q.duration > Duration.zero ? q.duration : null) : (q.surahEstimatedTotal > Duration.zero ? q.surahEstimatedTotal : null),
     ));
 
     playbackState.add(playbackState.value.copyWith(
@@ -112,7 +113,7 @@ class WirdiAudioHandler extends BaseAudioHandler {
           ? AudioProcessingState.loading
           : AudioProcessingState.ready,
       playing: !q.isPaused,
-      updatePosition: q.surahElapsed,
+      updatePosition: external ? q.position : q.surahElapsed,
       speed: q.playbackRate,
     ));
   }
