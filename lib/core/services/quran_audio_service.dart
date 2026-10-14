@@ -322,6 +322,8 @@ class QuranAudioService extends ChangeNotifier {
         unawaited(_setQuranWakelock(false));
         _externalPlaylistMode = false;
         _externalPlaylistTitles = const <String>[];
+        externalUrl = null;
+        externalTitle = null;
         playingAyah = null;
         playingWholeSurah = false;
         position = Duration.zero;
