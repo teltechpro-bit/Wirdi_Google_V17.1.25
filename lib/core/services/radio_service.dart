@@ -150,6 +150,14 @@ class RadioService extends ChangeNotifier {
       combined.putIfAbsent(cairo.streamUrl, () => cairo);
     }
 
+    // Candidate streams are merged into the live catalogue only after the
+    // repository's dedicated CI probe verifies their endpoint content.
+    for (final station in kRequestedQuranRadioStations) {
+      if (RadioStation.isSecureUrl(station.streamUrl)) {
+        combined.putIfAbsent(station.streamUrl, () => station);
+      }
+    }
+
     if (combined.isNotEmpty) {
       _liveStations = combined.values.toList();
       _activeSource = RadioSource.combined;
