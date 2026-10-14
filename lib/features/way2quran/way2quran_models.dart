@@ -16,7 +16,7 @@ class Way2QuranReciter {
    final m=Map<String,dynamic>.from(e); final info=m['recitationInfo'] is Map?Map<String,dynamic>.from(m['recitationInfo']):<String,dynamic>{};
    return Way2QuranRecitationAudio(slug:s(info['slug']??m['slug']),nameAr:s(info['arabicName']??info['nameAr']??info['name']),nameEn:s(info['englishName']??info['nameEn']??info['name']),downloadUrl:s(m['downloadURL']??m['downloadUrl']),audioFiles:(m['audioFiles'] is List ? m['audioFiles'] as List : const <dynamic>[]).whereType<Map>().map(Way2QuranAudioFile.fromJson).toList());
   }).toList();
-  return Way2QuranReciter(slug:s(j['slug']),nameAr:s(j['arabicName']??j['nameAr']??j['name']),nameEn:s(j['englishName']??j['nameEn']??j['name']),photo:s(j['photo']??j['image']),totalViews:int.tryParse(s(j['totalViewers']??j['totalViews']))??0,recitations:recs);
+  return Way2QuranReciter(slug:s(j['slug']),nameAr:s(j['arabicName']??j['nameAr']??j['name']),nameEn:s(j['englishName']??j['nameEn']??j['name']),photo:s(j['photo']??j['image']),totalViews:0,recitations:recs); // Source-site counters are deliberately not imported into Wirdi.
  }
 }
 class Way2QuranRecitationAudio {
