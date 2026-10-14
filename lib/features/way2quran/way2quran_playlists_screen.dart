@@ -128,6 +128,9 @@ class Way2QuranPlaylistStore {
         ),
       ),
     );
+    // showDialog can complete as the reverse transition starts. Keep the
+    // TextField controller alive until that transition has fully left the tree.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     controller.dispose();
     if (result == null || result.trim().isEmpty) return false;
     var target = result.trim();
@@ -206,6 +209,8 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
         ],
       ),
     );
+    // Avoid a disposed TextEditingController being read during dialog dismissal.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     controller.dispose();
     if (name == null || name.trim().isEmpty) return;
     try {
