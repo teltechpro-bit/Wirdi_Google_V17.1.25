@@ -1,0 +1,85 @@
+name: Quran Radio Live Stream Probe
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe-streams:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe all proposed live streams
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          import requests
+          from urllib.parse import urljoin
+
+          way2quran = {
+              "Egypt": "https://way2quran.com/api/external-radio/stream/egypt-holy-quran-radio",
+              "Saudi Arabia": "https://way2quran.com/api/external-radio/stream/holy-quran-from-saudia-arabia",
+              "Kuwait": "https://way2quran.com/api/external-radio/stream/kuwait-quran",
+              "Pakistan": "https://way2quran.com/api/external-radio/stream/pakistan-quran",
+              "Palestine": "https://way2quran.com/api/external-radio/stream/palestine-quran",
+              "Sharjah": "https://way2quran.com/api/external-radio/stream/uae-sharjah-quran",
+              "Main radio": "https://way2quran.com/api/external-radio/stream/main-radio",
+              "Beautiful recitations": "https://way2quran.com/api/external-radio/stream/beautiful-recitations",
+              "Short recitations": "https://way2quran.com/api/external-radio/stream/amazing-short-recitations",
+              "Verses of serenity": "https://way2quran.com/api/external-radio/stream/verses-of-serenity",
+              "Quran interpretation summary": "https://way2quran.com/api/external-radio/stream/a-summary-of-the-interpretation-of-the-holy-quran",
+              "Tafsir al-Tabari summary": "https://way2quran.com/api/external-radio/stream/interpretation-of-the-holy-qur-an-conclusion-from-tafsir-al-tabari",
+              "MP3Quran": "https://way2quran.com/api/external-radio/stream/mp3quran-109076",
+          }
+          external = {
+              "Bahrain": "https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8",
+              "Jordan": "https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8",
+              "Oman": "https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8",
+          }
+          session = requests.Session()
+          session.headers["User-Agent"] = "Wirdi-Quran-Radio-Probe/1.0"
+          failures = []
+
+          def probe(name, url, is_hls=False):
+              try:
+                  r = session.get(url, headers={"Range": "bytes=0-2047"}, timeout=18, stream=True, allow_redirects=True)
+                  status, ctype, final_url = r.status_code, (r.headers.get("content-type") or "").lower(), r.url
+                  first = next(r.iter_content(2048), b"")
+                  r.close()
+                  looks_hls = b"#EXTM3U" in first or "mpegurl" in ctype or final_url.lower().endswith(".m3u8")
+                  looks_audio = any(x in ctype for x in ("audio/", "mpegurl", "octet-stream", "application/vnd.apple.mpegurl")) or first.startswith(b"ID3") or first.startswith(b"\xff\xfb") or first.startswith(b"\xff\xf3")
+                  if status not in (200, 206) or not first or not (looks_hls or looks_audio):
+                      raise RuntimeError(f"HTTP {status}; type={ctype}; bytes={len(first)}; prefix={first[:24]!r}")
+                  if looks_hls:
+                      text = first.decode("utf-8", errors="replace")
+                      segment = next((line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("#")), None)
+                      if segment:
+                          segment_url = urljoin(final_url, segment)
+                          sr = session.get(segment_url, headers={"Range": "bytes=0-511"}, timeout=15, stream=True, allow_redirects=True)
+                          sample = next(sr.iter_content(512), b"")
+                          segment_status = sr.status_code
+                          sr.close()
+                          if segment_status not in (200, 206) or not sample:
+                              raise RuntimeError(f"playlist ok but first segment failed: HTTP {segment_status}, bytes={len(sample)}")
+                          print(f"PASS | {name} | HTTP {status} | {ctype} | HLS first segment HTTP {segment_status}, {len(sample)} bytes | {final_url}")
+                          return True
+                      if not re.search(r"#EXT-X-(?:STREAM-INF|TARGETDURATION|MEDIA-SEQUENCE)", text):
+                          raise RuntimeError(f"HLS-looking response did not contain playlist directives: {first[:100]!r}")
+                  print(f"PASS | {name} | HTTP {status} | {ctype} | sample={len(first)} bytes | {final_url}")
+                  return True
+              except Exception as e:
+                  print(f"FAIL | {name} | {url} | {type(e).__name__}: {e}")
+                  failures.append(name)
+                  return False
+
+          for name, url in {**way2quran, **external}.items():
+              probe(name, url)
+          print(f"RESULT: {len(way2quran) + len(external) - len(failures)}/{len(way2quran) + len(external)} passed.")
+          if failures:
+              print("NOT VERIFIED / DO NOT ENABLE: " + ", ".join(failures))
+          PY
