@@ -14,8 +14,6 @@ void main() {
       expect(RadioStation.isSecureUrl('example.com/stream'), isFalse);
     });
   });
-}
-
 
   group('curated Quran radio stream endpoints', () {
     test('Bahrain Quran direct HLS URL is HTTPS and playlist-based', () {
@@ -24,3 +22,4 @@ void main() {
       expect(Uri.parse(url).path, endsWith('/playlist.m3u8'));
     });
   });
+}
