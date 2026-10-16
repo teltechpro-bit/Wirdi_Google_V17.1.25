@@ -84,7 +84,13 @@ class _Way2QuranMushafScreenState extends State<Way2QuranMushafScreen> {
       }
       final file = await _localFile(mushaf);
       await Way2QuranStorage.writeBytesAtomically(file, bytes);
-      await repo.incrementMushafDownload(mushaf.slug);
+      // The file is already saved locally; a failed remote counter update must
+      // never turn a successful download into a misleading failure message.
+      try {
+        await repo.incrementMushafDownload(mushaf.slug);
+      } catch (_) {
+        // Local download success does not depend on the catalogue counter API.
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

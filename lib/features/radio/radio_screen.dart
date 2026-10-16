@@ -12,7 +12,9 @@ import 'widgets/sleep_timer_sheet.dart';
 import 'radio_now_playing_screen.dart';
 
 class RadioScreen extends StatefulWidget {
-  const RadioScreen({super.key});
+  /// Opens directly on a category when launched from a feature-specific shortcut.
+  final String initialCategory;
+  const RadioScreen({super.key, this.initialCategory = 'all'});
   @override State<RadioScreen> createState() => _RadioScreenState();
 }
 
@@ -33,7 +35,12 @@ class _RadioScreenState extends State<RadioScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _cats.length, vsync: this);
+    final requestedIndex = _cats.indexOf(widget.initialCategory);
+    _tabs = TabController(
+      length: _cats.length,
+      vsync: this,
+      initialIndex: requestedIndex < 0 ? 0 : requestedIndex,
+    );
     RadioService.instance.init();
   }
 
@@ -495,4 +502,84 @@ class _MosaicCellPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MosaicCellPainter oldDelegate) =>
       oldDelegate.image != image || oldDelegate.col != col || oldDelegate.row != row;
+}
+
+/// A focused Quran-radio catalogue for the Recitations area. It reuses the
+/// existing RadioService/player so favorites and playback coordination remain
+/// shared with the main Radio feature, without opening the multi-category page.
+class QuranRadioOnlyScreen extends StatefulWidget {
+  const QuranRadioOnlyScreen({super.key});
+
+  @override
+  State<QuranRadioOnlyScreen> createState() => _QuranRadioOnlyScreenState();
+}
+
+class _QuranRadioOnlyScreenState extends State<QuranRadioOnlyScreen> {
+  @override
+  void initState() {
+    super.initState();
+    RadioService.instance.init();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ar = Localizations.localeOf(context).languageCode == 'ar';
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ar ? 'إذاعات القرآن الكريم' : 'Quran Radio'),
+        actions: [
+          ListenableBuilder(
+            listenable: RadioService.instance,
+            builder: (context, _) => IconButton(
+              tooltip: ar ? 'تحديث الإذاعات' : 'Refresh stations',
+              onPressed: RadioService.instance.loadingLive
+                  ? null
+                  : () => RadioService.instance.refreshStations(),
+              icon: RadioService.instance.loadingLive
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+            ),
+          ),
+        ],
+      ),
+      body: ListenableBuilder(
+        listenable: RadioService.instance,
+        builder: (context, _) {
+          final stations = RadioService.instance.stations
+              .where((station) => station.category == 'quran')
+              .toList();
+          return RefreshIndicator(
+            onRefresh: RadioService.instance.refreshStations,
+            child: stations.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      const SizedBox(height: 140),
+                      Center(
+                        child: Text(
+                          RadioService.instance.loadingLive
+                              ? (ar ? 'جارٍ تحميل إذاعات القرآن…' : 'Loading Quran stations…')
+                              : (ar ? 'لا توجد إذاعات متاحة حاليًا. اسحب للتحديث.' : 'No Quran stations are available. Pull to refresh.'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: stations.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 2),
+                    itemBuilder: (context, index) =>
+                        RadioStationTile(station: stations[index]),
+                  ),
+          );
+        },
+      ),
+    );
+  }
 }

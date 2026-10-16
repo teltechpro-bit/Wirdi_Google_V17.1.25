@@ -8,6 +8,29 @@ class Way2QuranFavorites {
   static const _key = 'way2quran.favorite_reciter_slugs';
 
   static const _cachePrefix = 'way2quran.favorite_reciter_summary.v1.';
+  static const _localViewsPrefix = 'way2quran.local_reciter_views.v1.';
+
+  static String _viewsKey(String slug) =>
+      '$_localViewsPrefix${Uri.encodeComponent(_normalizeSlug(slug))}';
+
+  /// Number of profile views recorded locally on this device for [slug].
+  static Future<int> localViews(String slug) async {
+    final normalized = _normalizeSlug(slug);
+    if (normalized.isEmpty) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getInt(_viewsKey(normalized)) ?? 0;
+    return value < 0 ? 0 : value;
+  }
+
+  /// Records one local profile view and returns the updated local count.
+  static Future<int> recordLocalView(String slug) async {
+    final normalized = _normalizeSlug(slug);
+    if (normalized.isEmpty) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    final next = (prefs.getInt(_viewsKey(normalized)) ?? 0) + 1;
+    await prefs.setInt(_viewsKey(normalized), next);
+    return next;
+  }
 
   static String _cacheKey(String slug) => '$_cachePrefix${Uri.encodeComponent(slug)}';
 

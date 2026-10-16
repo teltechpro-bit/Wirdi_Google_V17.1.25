@@ -94,29 +94,66 @@ class Way2QuranRepository {
       return const Way2QuranSearchResults(
           reciters: [], recitations: [], surahs: []);
     }
-    final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
-    final payload = unwrapApiData(response);
-    List<dynamic> list(String key) =>
-        _listPayload(payload, key, fallback: response);
+
+    // Prefer the API's combined search endpoint. If it returns an empty
+    // payload (some deployments do not expose every search index) or fails,
+    // fall back to the reciter search endpoint and the recitation directory.
+    try {
+      final response =
+          await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
+      final payload = unwrapApiData(response);
+      List<dynamic> list(String key) =>
+          _listPayload(payload, key, fallback: response);
+      final results = Way2QuranSearchResults(
+        reciters: list('reciters')
+            .whereType<Map>()
+            .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        recitations: list('recitations')
+            .whereType<Map>()
+            .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        surahs: list('surahs')
+            .whereType<Map>()
+            .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+      if (results.reciters.isNotEmpty ||
+          results.recitations.isNotEmpty ||
+          results.surahs.isNotEmpty) {
+        return results;
+      }
+    } catch (_) {
+      // Continue to the narrower, independently supported endpoints below.
+    }
+
+    List<Way2QuranReciter> reciters = <Way2QuranReciter>[];
+    List<Way2QuranRecitation> recitations = <Way2QuranRecitation>[];
+    try {
+      reciters = await getReciters(search: q, pageSize: 50);
+    } catch (_) {
+      // Keep any results from the other endpoint.
+    }
+    try {
+      final allRecitations = await getRecitations();
+      final needle = q.toLowerCase();
+      recitations = allRecitations.where((item) =>
+          item.nameAr.toLowerCase().contains(needle) ||
+          item.nameEn.toLowerCase().contains(needle) ||
+          item.slug.toLowerCase().contains(needle)).toList();
+    } catch (_) {
+      // An unavailable recitation index should not erase reciter results.
+    }
+
     return Way2QuranSearchResults(
-      reciters: list('reciters')
-          .whereType<Map>()
-          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      recitations: list('recitations')
-          .whereType<Map>()
-          .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      surahs: list('surahs')
-          .whereType<Map>()
-          .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      reciters: reciters,
+      recitations: recitations,
+      surahs: const <Way2QuranSearchSurah>[],
     );
   }
 
   Future<Way2QuranReciter> getReciter(String slug,
-      {bool increaseViews = true}) async {
+      {bool increaseViews = false}) async {
     final uri = Uri.parse(
             '$baseUrl/reciters/reciter-profile/${Uri.encodeComponent(slug)}')
         .replace(queryParameters: {'increaseViews': '$increaseViews'});
@@ -197,12 +234,23 @@ class Way2QuranRepository {
   static bool isPdfPayload(List<int> bytes) =>
       bytes.length >= 5 && String.fromCharCodes(bytes.take(5)) == '%PDF-';
 
-  Future<List<int>> downloadBytes(String url) async {
-    if (url.isEmpty) throw Exception('Empty download URL');
-    final uri = Uri.tryParse(url);
-    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
-      throw FormatException('Invalid audio download URL');
+  /// Accept absolute links and API-provided relative file paths.
+  static Uri resolveDownloadUri(String url) {
+    final value = url.trim();
+    if (value.isEmpty) throw const FormatException('Empty download URL');
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) throw const FormatException('Invalid download URL');
+    final uri = parsed.hasScheme
+        ? parsed
+        : Uri.parse(baseUrl).resolveUri(parsed);
+    if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      throw const FormatException('Invalid download URL');
     }
+    return uri;
+  }
+
+  Future<List<int>> downloadBytes(String url) async {
+    final uri = resolveDownloadUri(url);
     final response = await _client
         .get(uri)
         .timeout(const Duration(minutes: 2));

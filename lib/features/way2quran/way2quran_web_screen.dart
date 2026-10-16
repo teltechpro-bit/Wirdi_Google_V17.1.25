@@ -25,10 +25,15 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
+    _controller = WebViewController();
+    _initializeWebView();
+  }
+
+  Future<void> _initializeWebView() async {
+    try {
+      await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await _controller.setBackgroundColor(const Color(0x00000000));
+      await _controller.setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
             if (mounted) {
@@ -44,16 +49,36 @@ class _Way2QuranWebScreenState extends State<Way2QuranWebScreen> {
             }
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+      await _loadUrl();
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
+  }
+
+  Future<void> _loadUrl() async {
+    try {
+      final uri = Uri.parse(widget.url);
+      if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+        throw const FormatException('Invalid embedded page URL');
+      }
+      await _controller.loadRequest(uri);
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   Future<void> _reload() async {
+    if (!mounted) return;
     setState(() {
       _loadFailed = false;
       _progress = 0;
     });
-    await _controller.reload();
+    try {
+      await _controller.reload();
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   @override

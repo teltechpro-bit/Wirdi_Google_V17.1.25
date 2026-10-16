@@ -184,6 +184,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _play(SurahModel surah) async {
+    try {
     final audio = _audioFor(surah);
     final dir = await getApplicationDocumentsDirectory();
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
@@ -203,10 +204,29 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     }
     await quranAudio.setSpeed(speed);
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
-    if (localExists || legacyExists) { await quranAudio.playExternalFile(playableFile.path, title: title); } else { await quranAudio.playExternalUrl(url, title: title); }
+    if (localExists || legacyExists) {
+      await quranAudio.playExternalFile(
+        playableFile.path,
+        title: title,
+      );
+    } else {
+      await quranAudio.playExternalUrl(
+        url,
+        title: title,
+      );
+    }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر تشغيل التلاوة. تحقق من اتصالك أو أعد تنزيل الملف.'
+            : 'Could not play this recitation. Check your connection or download it again.'),
+      ));
+    }
   }
 
   Future<void> _playSelectedAyahRange(SurahModel surah) async {
+    try {
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
     if (!qiraat.selectedReaderHasAyahAudio()) {
@@ -237,6 +257,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
         content: Text(arSafe()
             ? 'تعذر تشغيل نطاق الآيات المحدد.'
             : 'Could not play the selected ayah range.'),
+      ));
+    }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(arSafe()
+            ? 'تعذر التحقق من توقيت الآيات أو تشغيل النطاق المحدد.'
+            : 'Could not verify ayah timings or play the selected range.'),
       ));
     }
   }

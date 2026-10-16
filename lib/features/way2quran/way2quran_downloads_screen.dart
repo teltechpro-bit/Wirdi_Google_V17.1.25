@@ -228,10 +228,20 @@ class _Way2QuranDownloadsScreenState extends State<Way2QuranDownloadsScreen> {
                                     onTap: () => _play(file),
                                     trailing: PopupMenuButton<String>(
                                       tooltip: _ar ? 'خيارات الملف' : 'File options',
-                                      onSelected: (value) {
-                                        if (value == 'play') _play(file);
-                                        if (value == 'playlist') Way2QuranPlaylistStore.addFileToPlaylist(context, file.path);
-                                        if (value == 'delete') _delete(file);
+                                      onSelected: (value) async {
+                                        if (value == 'play') await _play(file);
+                                        if (value == 'playlist') {
+                                          try {
+                                            await Way2QuranPlaylistStore.addFileToPlaylist(context, file.path);
+                                          } catch (_) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                content: Text(_ar ? 'تعذرت إضافة الملف إلى قائمة التشغيل.' : 'Could not add this file to a playlist.'),
+                                              ));
+                                            }
+                                          }
+                                        }
+                                        if (value == 'delete') await _delete(file);
                                       },
                                       itemBuilder: (_) => [
                                         PopupMenuItem(value: 'play', child: Text(_ar ? 'تشغيل' : 'Play')),
