@@ -325,7 +325,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
                 Text(_availabilityMessage(l10n, _availabilityError!),
                     textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: AppColors.mutedText)),
                 const SizedBox(height: 20),
-                ElevatedButton(onPressed: _load, child: Text(l10n.prayerRetry)),
+                ElevatedButton(onPressed: _useGpsLocation, child: Text(l10n.prayerRetry)),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: _pickCityManually,
