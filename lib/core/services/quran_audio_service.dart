@@ -409,8 +409,11 @@ class QuranAudioService extends ChangeNotifier {
     bool keepRepeat = false,
   }) async {
     await PlaybackCoordinator.stopRadioForQuran();
-    _rangeStartAyah = null;
-    _rangeEndAyah = null;
+    // Keep the selected ayah as the stop boundary when a riwayah provides
+    // only a full-surah stream, so playback cannot drift into the next ayah.
+    _rangeStartAyah = ayahNumber;
+    _rangeEndAyah = ayahNumber;
+    _rangeStopTriggered = false;
     _loadSurahContext(surah, allSurahs);
 
     playingWholeSurah = false;
