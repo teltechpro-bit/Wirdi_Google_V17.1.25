@@ -104,32 +104,26 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       final ok = await _speech.initialize(
         onError: (error) {
           if (!mounted) return;
-          final message = error.errorMsg.trim();
-          final permissionOrServiceIssue = message.toLowerCase().contains('permission') ||
-              message.toLowerCase().contains('denied') ||
-              message.toLowerCase().contains('not available') ||
-              message.toLowerCase().contains('client');
+          final message = error.errorMsg;
+          final normalized = message.toLowerCase();
+          final permissionIssue = normalized.contains('permission') ||
+              normalized.contains('not authorized') ||
+              normalized.contains('microphone') ||
+              normalized.contains('audio');
           setState(() {
-            _lastError = message.isEmpty
-                ? bi(context, 'تعذّر تشغيل خدمة التعرّف على الصوت.', 'Speech recognition could not start.')
-                : message;
-            if (permissionOrServiceIssue) _speechUnavailable = true;
+            _lastError = message;
+            if (permissionIssue) {
+              _speechUnavailable = true;
+              _session = false;
+              _listening = false;
+            }
           });
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
       );
       if (!ok) {
-        if (mounted) {
-          setState(() {
-            _speechUnavailable = true;
-            _lastError = bi(
-              context,
-              'لم تبدأ خدمة التعرّف على الصوت. تأكد من السماح باستخدام الميكروفون وتثبيت/تفعيل خدمة التعرّف على الصوت على الهاتف، ثم حاول مرة أخرى.',
-              'Speech recognition did not initialize. Check microphone permission and that a speech recognition service is installed and enabled, then try again.',
-            );
-          });
-        }
+        if (mounted) setState(() => _speechUnavailable = true);
         return false;
       }
       final locales = await _speech.locales();
@@ -162,15 +156,13 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         });
       }
       return true;
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         setState(() {
           _speechUnavailable = true;
-          _lastError = bi(
-            context,
-            'تعذّر تهيئة الميكروفون أو خدمة التعرّف على الصوت: $e',
-            'Could not initialize the microphone or speech recognition service: $e',
-          );
+          _lastError = error.toString();
+          _session = false;
+          _listening = false;
         });
       }
       return false;
@@ -223,7 +215,12 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _lastError = e.toString());
+      if (!mounted) return;
+      setState(() {
+        _lastError = e.toString();
+        _session = false;
+        _listening = false;
+      });
     }
   }
 
@@ -248,7 +245,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     }
     if (!mounted) return;
     if (_finalWords.isEmpty) {
-      setState(() => _lastError = 'لم يصل نص من خدمة التعرف على الصوت. حاول التلاوة مرة أخرى.');
+      setState(() {
+        _lastError = 'لم يصل نص من خدمة التعرف على الصوت. تأكد من السماح بالميكروفون وتثبيت/تفعيل خدمة Google للتعرف على الكلام وحزمة اللغة العربية، ثم حاول مرة أخرى.';
+        _speechUnavailable = true;
+        _listening = false;
+      });
       return;
     }
     _align(finalizing: true);
@@ -383,13 +384,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                         ),
                         style: TextStyle(color: Colors.red.shade700),
                       ),
-                    if (_lastError != null)
+                    if (_lastError != null && !_speechUnavailable)
                       Text(
-                        bi(context, 'تفاصيل المشكلة: $_lastError', 'Diagnostic details: $_lastError'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _speechUnavailable ? Colors.red.shade700 : Colors.grey,
-                        ),
+                        bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(

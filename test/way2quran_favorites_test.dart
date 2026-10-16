@@ -28,7 +28,7 @@ void main() {
       expect(cached?.nameAr, 'قارئ تجريبي');
       expect(cached?.nameEn, 'Test Reciter');
       expect(cached?.photo, 'https://example.com/reader.jpg');
-      expect(cached?.totalViews, 42);
+      expect(cached?.totalViews, 0);
       expect(cached?.recitations, isEmpty);
     });
 
@@ -36,6 +36,14 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('way2quran.favorite_reciter_summary.v1.reader-a', '{');
       expect(await Way2QuranFavorites.cachedReciter('reader-a'), isNull);
+    });
+
+    test('counts profile views locally and independently per reciter', () async {
+      expect(await Way2QuranFavorites.localViews('reader-a'), 0);
+      expect(await Way2QuranFavorites.recordLocalView('reader-a'), 1);
+      expect(await Way2QuranFavorites.recordLocalView('reader-a'), 2);
+      expect(await Way2QuranFavorites.recordLocalView('reader-b'), 1);
+      expect(await Way2QuranFavorites.localViews('reader-a'), 2);
     });
 
     test('starts empty', () async {

@@ -162,6 +162,7 @@ class Way2QuranPlaylistsScreen extends StatefulWidget {
 class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   Map<String, List<String>> _playlists = {};
   bool _loading = true;
+  String? _loadError;
   bool get _ar => Localizations.localeOf(context).languageCode == 'ar';
 
   @override
@@ -172,26 +173,17 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() { _loading = true; _loadError = null; });
     try {
       final value = await Way2QuranPlaylistStore.all();
+      if (mounted) setState(() { _playlists = value; _loading = false; });
+    } catch (error) {
       if (mounted) {
         setState(() {
-          _playlists = value;
+          _loadError = error.toString();
           _loading = false;
         });
       }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _playlists = {};
-        _loading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_ar
-            ? 'تعذر تحميل قوائم التشغيل. حاول مرة أخرى.'
-            : 'Could not load playlists. Please try again.'),
-      ));
     }
   }
 
@@ -224,12 +216,10 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
             : (_ar ? 'يوجد بالفعل قائمة بهذا الاسم.' : 'A playlist with that name already exists.'))));
       }
       if (mounted) await _load();
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_ar
-              ? 'تعذر إنشاء القائمة بسبب مشكلة في التخزين.'
-              : 'Could not create the playlist because storage failed.'),
+          content: Text(_ar ? 'تعذر إنشاء القائمة. تحقق من مساحة التخزين ثم أعد المحاولة.' : 'Could not create the playlist. Check device storage and try again.'),
         ));
       }
     }
@@ -313,18 +303,8 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
       ),
     );
     if (confirmed != true) return;
-    try {
-      await Way2QuranPlaylistStore.delete(name);
-      if (mounted) await _load();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_ar
-              ? 'تعذر حذف قائمة التشغيل.'
-              : 'Could not delete this playlist.'),
-        ));
-      }
-    }
+    await Way2QuranPlaylistStore.delete(name);
+    if (mounted) await _load();
   }
 
   @override
@@ -337,7 +317,23 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _playlists.isEmpty
+          : _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, size: 48),
+                        const SizedBox(height: 12),
+                        Text(_ar ? 'تعذر تحميل قوائم التشغيل' : 'Could not load playlists', textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(onPressed: _load, icon: const Icon(Icons.refresh_rounded), label: Text(_ar ? 'إعادة المحاولة' : 'Retry')),
+                      ],
+                    ),
+                  ),
+                )
+              : _playlists.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(28),

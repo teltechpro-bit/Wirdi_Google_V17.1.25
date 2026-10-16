@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -95,24 +94,61 @@ class Way2QuranRepository {
       return const Way2QuranSearchResults(
           reciters: [], recitations: [], surahs: []);
     }
-    final response =
-        await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
-    final payload = unwrapApiData(response);
-    List<dynamic> list(String key) =>
-        _listPayload(payload, key, fallback: response);
+
+    // Prefer the API's combined search endpoint. If it returns an empty
+    // payload (some deployments do not expose every search index) or fails,
+    // fall back to the reciter search endpoint and the recitation directory.
+    try {
+      final response =
+          await _getJson(Uri.parse('$baseUrl/search').replace(queryParameters: {'q': q}));
+      final payload = unwrapApiData(response);
+      List<dynamic> list(String key) =>
+          _listPayload(payload, key, fallback: response);
+      final results = Way2QuranSearchResults(
+        reciters: list('reciters')
+            .whereType<Map>()
+            .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        recitations: list('recitations')
+            .whereType<Map>()
+            .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+        surahs: list('surahs')
+            .whereType<Map>()
+            .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+      if (results.reciters.isNotEmpty ||
+          results.recitations.isNotEmpty ||
+          results.surahs.isNotEmpty) {
+        return results;
+      }
+    } catch (_) {
+      // Continue to the narrower, independently supported endpoints below.
+    }
+
+    List<Way2QuranReciter> reciters = <Way2QuranReciter>[];
+    List<Way2QuranRecitation> recitations = <Way2QuranRecitation>[];
+    try {
+      reciters = await getReciters(search: q, pageSize: 50);
+    } catch (_) {
+      // Keep any results from the other endpoint.
+    }
+    try {
+      final allRecitations = await getRecitations();
+      final needle = q.toLowerCase();
+      recitations = allRecitations.where((item) =>
+          item.nameAr.toLowerCase().contains(needle) ||
+          item.nameEn.toLowerCase().contains(needle) ||
+          item.slug.toLowerCase().contains(needle)).toList();
+    } catch (_) {
+      // An unavailable recitation index should not erase reciter results.
+    }
+
     return Way2QuranSearchResults(
-      reciters: list('reciters')
-          .whereType<Map>()
-          .map((e) => Way2QuranReciter.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      recitations: list('recitations')
-          .whereType<Map>()
-          .map((e) => Way2QuranRecitation.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      surahs: list('surahs')
-          .whereType<Map>()
-          .map((e) => Way2QuranSearchSurah.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      reciters: reciters,
+      recitations: recitations,
+      surahs: const <Way2QuranSearchSurah>[],
     );
   }
 
@@ -198,69 +234,28 @@ class Way2QuranRepository {
   static bool isPdfPayload(List<int> bytes) =>
       bytes.length >= 5 && String.fromCharCodes(bytes.take(5)) == '%PDF-';
 
-  /// Streams an HTTPS download to a temporary file, validates the response,
-  /// then atomically replaces the destination so interrupted downloads do not
-  /// leave a partial file that looks complete.
-  Future<File> downloadToFile(String url, String destinationPath) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null ||
-        !uri.isAbsolute ||
-        uri.scheme.toLowerCase() != 'https' ||
-        uri.host.isEmpty ||
-        uri.host.contains(RegExp(r'\s')) ||
-        uri.userInfo.isNotEmpty) {
-      throw const FormatException('A valid HTTPS download URL is required');
+  /// Accept absolute links and API-provided relative file paths.
+  static Uri resolveDownloadUri(String url) {
+    final value = url.trim();
+    if (value.isEmpty) throw const FormatException('Empty download URL');
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) throw const FormatException('Invalid download URL');
+    final uri = parsed.hasScheme
+        ? parsed
+        : Uri.parse(baseUrl).resolveUri(parsed);
+    if ((uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      throw const FormatException('Invalid download URL');
     }
-
-    final destination = File(destinationPath);
-    await destination.parent.create(recursive: true);
-    final temporary = File('$destinationPath.part');
-    if (await temporary.exists()) await temporary.delete();
-
-    try {
-      final request = http.Request('GET', uri);
-      final response = await _client.send(request).timeout(const Duration(minutes: 2));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException('Download failed: ${response.statusCode}', uri: uri);
-      }
-
-      final sink = temporary.openWrite();
-      try {
-        await response.stream.timeout(const Duration(minutes: 2)).pipe(sink);
-      } finally {
-        await sink.close();
-      }
-
-      final header = await temporary.openRead(0, 5).fold<List<int>>(
-        <int>[],
-        (bytes, chunk) => bytes..addAll(chunk),
-      );
-      if (header.isEmpty) {
-        throw const FormatException('Download returned an empty response');
-      }
-      await destination.delete().catchError((_) => destination);
-      return await temporary.rename(destinationPath);
-    } catch (_) {
-      if (await temporary.exists()) await temporary.delete();
-      rethrow;
-    }
+    return uri;
   }
 
-  /// Compatibility helper for small payloads. Remote downloads should prefer
-  /// downloadToFile to avoid holding the complete response in memory.
   Future<List<int>> downloadBytes(String url) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null ||
-        !uri.isAbsolute ||
-        uri.scheme.toLowerCase() != 'https' ||
-        uri.host.isEmpty ||
-        uri.host.contains(RegExp(r'\s')) ||
-        uri.userInfo.isNotEmpty) {
-      throw const FormatException('A valid HTTPS download URL is required');
-    }
-    final response = await _client.get(uri).timeout(const Duration(minutes: 2));
+    final uri = resolveDownloadUri(url);
+    final response = await _client
+        .get(uri)
+        .timeout(const Duration(minutes: 2));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException('Download failed: ${response.statusCode}', uri: uri);
+      throw Exception('Download failed: ${response.statusCode}');
     }
     if (response.bodyBytes.isEmpty) {
       throw const FormatException('Download returned an empty response');
