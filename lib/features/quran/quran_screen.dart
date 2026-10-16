@@ -1104,6 +1104,17 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
       ayahNumber: ayahNumber,
     ));
     await quranAudio.playAyah(widget.surah, widget.allSurahs, ayahNumber, keepRepeat: keepRepeat);
+    if (!mounted) return;
+    // Do not silently guess a seek offset when the selected riwayah only has
+    // full-surah audio and no verified timing for this ayah.
+    if (quranAudio.playingAyah == null && !quranAudio.isBuffering) {
+      final ar = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ar
+            ? 'لا يتوفر توقيت موثوق لهذه الآية في مصدر الصوت المحدد.'
+            : 'Verified timing is unavailable for this ayah in the selected audio source.'),
+      ));
+    }
   }
 
   /// "Play whole surah" — rather than depending on a separate
