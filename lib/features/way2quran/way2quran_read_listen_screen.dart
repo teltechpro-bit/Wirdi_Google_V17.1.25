@@ -203,7 +203,6 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       return;
     }
     await quranAudio.setSpeed(speed);
-    final allSurahs = await surahsFuture;
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
     if (localExists || legacyExists) {
       await quranAudio.playExternalFile(
