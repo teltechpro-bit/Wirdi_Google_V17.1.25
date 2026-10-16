@@ -17,7 +17,7 @@ void main() {
   });
 
   group('Requested Quran radio catalogue', () {
-    test('contains only the nine endpoints that passed live stream probes', () {
+    test('contains the twelve consistently verified HTTPS Quran radio endpoints', () {
       expect(kRequestedQuranRadioStations, hasLength(12));
       expect(
         kRequestedQuranRadioStations.map((station) => station.id).toSet(),
