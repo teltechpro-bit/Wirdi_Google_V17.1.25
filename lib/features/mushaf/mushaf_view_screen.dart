@@ -32,10 +32,18 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   static const _backgroundPreferenceKey = 'wirdi_mushaf_page_background_v1';
   // Light paper tones preserve readability and Tajweed colors in both views.
   static const _pageBackgrounds = <Color>[
-    Color(0xFFF8F4E8), // classic paper
+    Color(0xFFF8F4E8), // default paper
     Color(0xFFF1E2C2), // Madinah-inspired parchment
     Color(0xFFF1F4E8), // soft sage
     Color(0xFFEAF1F6), // cool paper
+    Color(0xFFFFFFFF), // classic white
+    Color(0xFFF4E4C1), // warm parchment
+    Color(0xFFF0F7E9), // light green
+    Color(0xFFF8F0E0), // warm sand
+    Color(0xFFFFF1F2), // soft rose
+    Color(0xFFF5F1FC), // light lavender
+    Color(0xFFEFF9F3), // soft mint
+    Color(0xFFF5F5F5), // light grey
   ];
   int _backgroundStyle = 0;
 
@@ -51,8 +59,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   Future<void> _chooseBackground() async {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final labels = isArabic
-        ? const ['الورق الافتراضي', 'ورق بلون مصحف المدينة', 'أخضر هادئ', 'أزرق فاتح']
-        : const ['Default paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper'];
+        ? const ['الورق الافتراضي', 'ورق بلون مصحف المدينة', 'أخضر هادئ', 'أزرق فاتح', 'أبيض كلاسيكي', 'ورق معتّق دافئ', 'أخضر فاتح', 'رملي دافئ', 'وردي هادئ', 'لافندر فاتح', 'نعناعي فاتح', 'رمادي فاتح']
+        : const ['Default paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper', 'Classic white', 'Warm parchment', 'Light green', 'Warm sand', 'Soft rose', 'Light lavender', 'Soft mint', 'Light grey'];
     final selected = await showModalBottomSheet<int>(
       context: context,
       builder: (sheetContext) => SafeArea(
