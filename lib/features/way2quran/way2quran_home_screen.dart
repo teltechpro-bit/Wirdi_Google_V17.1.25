@@ -639,8 +639,7 @@ class _Way2QuranAllRecitersScreenState extends State<Way2QuranAllRecitersScreen>
         DropdownButton<String>(value: sort, underline: const SizedBox.shrink(), items: [
           DropdownMenuItem(value: 'arabicName', child: Text(ar ? 'أبجدي' : 'A–Z')),
           DropdownMenuItem(value: 'mostListened', child: Text(ar ? 'الأكثر استماعًا' : 'Most listened')),
-          DropdownMenuItem(value: 'views', child: Text(ar ? 'الأكثر مشاهدة' : 'Most viewed')),
-        ], onChanged: (v) { if (v != null) {
+                  ], onChanged: (v) { if (v != null) {
           sort = v;
           _load(nextPage: 1);
         } }),
