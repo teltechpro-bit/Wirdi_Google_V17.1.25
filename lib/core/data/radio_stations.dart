@@ -175,6 +175,9 @@ const List<RadioStation> kRequestedQuranRadioStations = [
   RadioStation(id: 'external_radio_bahrain', nameAr: 'إذاعة القرآن الكريم من البحرين', nameEn: 'Bahrain Quran Radio', streamUrl: 'https://5c7b683162943.streamlock.net/live/ngrp:radio-106-1_all/playlist.m3u8', country: 'Bahrain', countryCode: 'BH', category: 'quran', isOfficial: true),
   RadioStation(id: 'external_radio_jordan', nameAr: 'إذاعة القرآن الكريم من الأردن', nameEn: 'Jordan Quran Radio', streamUrl: 'https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8', country: 'Jordan', countryCode: 'JO', category: 'quran', isOfficial: true),
   RadioStation(id: 'external_radio_oman', nameAr: 'إذاعة القرآن الكريم من سلطنة عُمان', nameEn: 'Oman Quran Radio', streamUrl: 'https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8', country: 'Oman', countryCode: 'OM', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_beautiful', nameAr: 'روائع التلاوات', nameEn: 'Beautiful Quran Recitations', streamUrl: 'https://way2quran.com/api/external-radio/stream/beautiful-recitations', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_serenity', nameAr: 'آيات السكينة', nameEn: 'Verses of Serenity', streamUrl: 'https://way2quran.com/api/external-radio/stream/verses-of-serenity', country: 'International', countryCode: 'INT', category: 'quran', isOfficial: true),
+  RadioStation(id: 'w2q_radio_tafsir_summary', nameAr: 'ملخص تفسير القرآن الكريم', nameEn: 'Quran Interpretation Summary', streamUrl: 'https://way2quran.com/api/external-radio/stream/a-summary-of-the-interpretation-of-the-holy-quran', country: 'International', countryCode: 'INT', category: 'lectures', isOfficial: true),
 ];
 
 /// Category labels in all 7 supported languages
