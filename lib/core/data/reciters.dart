@@ -29,10 +29,13 @@ class Reciters {
     ReciterOption('ar.shaatree', 'أبو بكر الشاطري', 'Abu Bakr Ash-Shaatree'),
     ReciterOption('ar.ahmedajamy', 'أحمد بن علي العجمي', 'Ahmed Al-Ajamy'),
     ReciterOption('ar.muhammadjibreel', 'محمد جبريل', 'Muhammad Jibreel'),
+    // Additional ayah-by-ayah edition verified against the live audio catalog.
+    ReciterOption('ar.muhammadayyoub', 'محمد أيوب', 'Muhammad Ayyoub'),
     ReciterOption('ar.yasseraddossari', 'ياسر الدوسري', 'Yasser Al-Dossari'),
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
+
   ];
 
   static ReciterOption byId(String id) =>
