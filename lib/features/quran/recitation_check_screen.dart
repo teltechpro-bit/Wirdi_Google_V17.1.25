@@ -104,13 +104,32 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       final ok = await _speech.initialize(
         onError: (error) {
           if (!mounted) return;
-          setState(() => _lastError = error.errorMsg);
+          final message = error.errorMsg.trim();
+          final permissionOrServiceIssue = message.toLowerCase().contains('permission') ||
+              message.toLowerCase().contains('denied') ||
+              message.toLowerCase().contains('not available') ||
+              message.toLowerCase().contains('client');
+          setState(() {
+            _lastError = message.isEmpty
+                ? bi(context, 'تعذّر تشغيل خدمة التعرّف على الصوت.', 'Speech recognition could not start.')
+                : message;
+            if (permissionOrServiceIssue) _speechUnavailable = true;
+          });
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
       );
       if (!ok) {
-        if (mounted) setState(() => _speechUnavailable = true);
+        if (mounted) {
+          setState(() {
+            _speechUnavailable = true;
+            _lastError = bi(
+              context,
+              'لم تبدأ خدمة التعرّف على الصوت. تأكد من السماح باستخدام الميكروفون وتثبيت/تفعيل خدمة التعرّف على الصوت على الهاتف، ثم حاول مرة أخرى.',
+              'Speech recognition did not initialize. Check microphone permission and that a speech recognition service is installed and enabled, then try again.',
+            );
+          });
+        }
         return false;
       }
       final locales = await _speech.locales();
@@ -143,8 +162,17 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         });
       }
       return true;
-    } catch (_) {
-      if (mounted) setState(() => _speechUnavailable = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _speechUnavailable = true;
+          _lastError = bi(
+            context,
+            'تعذّر تهيئة الميكروفون أو خدمة التعرّف على الصوت: $e',
+            'Could not initialize the microphone or speech recognition service: $e',
+          );
+        });
+      }
       return false;
     }
   }
@@ -355,10 +383,13 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                         ),
                         style: TextStyle(color: Colors.red.shade700),
                       ),
-                    if (_lastError != null && !_speechUnavailable)
+                    if (_lastError != null)
                       Text(
-                        bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        bi(context, 'تفاصيل المشكلة: $_lastError', 'Diagnostic details: $_lastError'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _speechUnavailable ? Colors.red.shade700 : Colors.grey,
+                        ),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(
