@@ -17,8 +17,8 @@ void main() {
   });
 
   group('Requested Quran radio catalogue', () {
-    test('contains only the ten endpoints that passed live stream probes', () {
-      expect(kRequestedQuranRadioStations, hasLength(10));
+    test('contains only the nine endpoints that passed live stream probes', () {
+      expect(kRequestedQuranRadioStations, hasLength(9));
       expect(
         kRequestedQuranRadioStations.map((station) => station.id).toSet(),
         hasLength(10),
@@ -36,7 +36,6 @@ void main() {
           'w2q_radio_pakistan',
           'w2q_radio_palestine',
           'w2q_radio_sharjah',
-          'w2q_radio_tafsir_summary',
           'external_radio_bahrain',
           'external_radio_jordan',
           'external_radio_oman',
