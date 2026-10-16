@@ -172,8 +172,20 @@ class AppSources {
 
   /// [globalAyahNumber] is the ayah's position across the whole Quran
   /// (1-6236), not its position within its surah.
-  static String ayahAudioUrl(int globalAyahNumber, {String reciter = 'ar.alafasy'}) =>
-      'https://cdn.islamic.network/quran/audio/$_audioBitrate/$reciter/$globalAyahNumber.mp3';
+  /// Editions with verified audio files use their published bitrate; existing
+  /// reciters retain the original 128 kbps URL for backward compatibility.
+  static const Map<String, String> _ayahAudioBitrateByReciter = {
+    'ar.abdullahbasfar': '64',
+    'ar.abdulsamad': '64',
+    'ar.ibrahimakhbar': '32',
+    'ar.muhammadayyoub': '128',
+    'ar.parhizgar': '48',
+  };
+
+  static String ayahAudioUrl(int globalAyahNumber, {String reciter = 'ar.alafasy'}) {
+    final bitrate = _ayahAudioBitrateByReciter[reciter] ?? _audioBitrate;
+    return 'https://cdn.islamic.network/quran/audio/$bitrate/$reciter/$globalAyahNumber.mp3';
+  }
 
   static String sourcesAndLicensesFor(String languageCode) {
     final main = _sourcesAndLicensesByLocale[languageCode] ?? _sourcesAndLicensesByLocale['en']!;
