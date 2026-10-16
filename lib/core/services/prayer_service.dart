@@ -250,13 +250,12 @@ class PrayerService {
     }
   }
 
-  /// Restores the last-used mode (GPS or manual city) on app start,
-  /// falling back to cache if a fresh fetch isn't possible right now.
-  static const _locationPromptAttemptedKey = 'prayer_location_prompt_attempted_v1';
+  static const _automaticLocationPromptAttemptedKey =
+      'prayer_automatic_location_prompt_attempted_v1';
 
-  /// Loads prayer times without prompting for GPS on ordinary home refreshes.
-  /// Once a location has been chosen, the saved location/cache is the default;
-  /// GPS is only explicitly refreshed by the user from the prayer settings.
+  /// Restores the saved prayer location without asking for a fresh GPS fix.
+  /// Automatic home refreshes reuse the last coordinates; only an explicit
+  /// user action should call [fetchPrayerTimes] to refresh the device location.
   static Future<PrayerTimesResult> fetchUsingSavedPreference() async {
     final mode = await savedMode();
     if (mode == 'manual') {
@@ -273,20 +272,22 @@ class PrayerService {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final latitude = prefs.getDouble(_cacheLatKey);
-    final longitude = prefs.getDouble(_cacheLonKey);
-    if (latitude != null && longitude != null) {
-      // Refresh the timetable for the saved coordinates without asking for
-      // the device's current location. The user controls when GPS is updated.
+    final lat = prefs.getDouble(_cacheLatKey);
+    final lon = prefs.getDouble(_cacheLonKey);
+    if (lat != null && lon != null) {
       try {
         final url = AppSources.prayerTimesUrl(
-          latitude: latitude,
-          longitude: longitude,
+          latitude: lat,
+          longitude: lon,
           method: appSettings.prayerCalcMethod,
           school: await _schoolFromMathhab(),
         );
-        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
-        if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
+        final response = await http
+            .get(Uri.parse(url), headers: {'User-Agent': AppSources.httpUserAgent})
+            .timeout(const Duration(seconds: 15));
+        if (response.statusCode != 200) {
+          throw Exception('HTTP ${response.statusCode}');
+        }
         final decoded = jsonDecode(utf8.decode(response.bodyBytes));
         final timings = decoded['data']['timings'] as Map<String, dynamic>;
         final tzName = _tzNameFrom(decoded);
@@ -296,28 +297,34 @@ class PrayerService {
           locationLabel: label,
           mode: 'gps',
           manualCity: null,
-          latitude: latitude,
-          longitude: longitude,
+          latitude: lat,
+          longitude: lon,
           tzName: tzName,
         );
-        return _buildResult(timings, isFromCache: false, cachedAt: DateTime.now(), locationLabel: label, tzName: tzName);
+        return _buildResult(
+          timings,
+          isFromCache: false,
+          cachedAt: DateTime.now(),
+          locationLabel: label,
+          tzName: tzName,
+        );
       } catch (e, st) {
-        AppLogger.error('Saved-location prayer refresh failed; using cache', error: e, stackTrace: st);
+        AppLogger.error('Saved prayer location refresh failed; using cache', error: e, stackTrace: st);
         final cached = await _tryLoadCache();
         if (cached != null) return cached;
-        throw PrayerAvailability.networkErrorNoCache;
+        rethrow;
       }
     }
 
-    final cached = await _tryLoadCache();
-    if (cached != null) return cached;
-
-    // No location has ever been saved. Ask at most once from automatic
-    // startup/home refresh; a declined request must not be repeated on refresh.
-    if (prefs.getBool(_locationPromptAttemptedKey) == true) {
+    // No saved location exists yet. Request permission at most once during
+    // automatic startup; a denied request must not be repeated on every
+    // rebuild/refresh of the home dashboard.
+    if (prefs.getBool(_automaticLocationPromptAttemptedKey) == true) {
+      final cached = await _tryLoadCache();
+      if (cached != null) return cached;
       throw PrayerAvailability.permissionDenied;
     }
-    await prefs.setBool(_locationPromptAttemptedKey, true);
+    await prefs.setBool(_automaticLocationPromptAttemptedKey, true);
     return fetchPrayerTimes();
   }
 
