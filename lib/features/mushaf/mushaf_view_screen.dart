@@ -47,8 +47,9 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   ];
   int _backgroundStyle = 0;
 
-  Color _pageBackground(BuildContext context) =>
-      _backgroundStyle == 0 ? Theme.of(context).cardColor : _pageBackgrounds[_backgroundStyle];
+  // Keep the Mushaf paper light in both app themes so Arabic glyphs and
+  // Tajweed colours remain readable in dark mode as well.
+  Color _pageBackground(BuildContext context) => _pageBackgrounds[_backgroundStyle];
 
   Future<void> _loadBackgroundPreference() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,25 +64,37 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
         : const ['Default paper', 'Madinah-inspired parchment', 'Soft sage', 'Cool paper', 'Classic white', 'Warm parchment', 'Light green', 'Warm sand', 'Soft rose', 'Light lavender', 'Soft mint', 'Light grey'];
     final selected = await showModalBottomSheet<int>(
       context: context,
-      builder: (sheetContext) => SafeArea(
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SizedBox(
+        height: MediaQuery.sizeOf(sheetContext).height * 0.72,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(isArabic ? 'خلفية صفحات المصحف' : 'Mushaf page background',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            for (var i = 0; i < labels.length; i++)
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: i == 0 ? Theme.of(context).cardColor : _pageBackgrounds[i],
-                  child: i == _backgroundStyle ? const Icon(Icons.check, color: Colors.black54) : null,
-                ),
-                title: Text(labels[i]),
-                trailing: i == _backgroundStyle ? const Icon(Icons.radio_button_checked) : const Icon(Icons.radio_button_off),
-                onTap: () => Navigator.pop(sheetContext, i),
+              child: Text(
+                isArabic ? 'خلفية صفحات المصحف' : 'Mushaf page background',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: labels.length,
+                itemBuilder: (context, index) => ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: index == 0 ? _pageBackgrounds[0] : _pageBackgrounds[index],
+                    child: index == _backgroundStyle
+                        ? const Icon(Icons.check, color: Colors.black54)
+                        : null,
+                  ),
+                  title: Text(labels[index]),
+                  trailing: index == _backgroundStyle
+                      ? const Icon(Icons.radio_button_checked)
+                      : const Icon(Icons.radio_button_off),
+                  onTap: () => Navigator.pop(sheetContext, index),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -806,6 +819,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.justify,
       style: TextStyle(
+        color: Colors.black87,
         fontFamily: appSettings.quranFontFamily == 'default'
             ? 'AmiriQuran'
             : appSettings.quranFontFamily,
