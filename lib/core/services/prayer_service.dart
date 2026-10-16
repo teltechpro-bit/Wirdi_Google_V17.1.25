@@ -252,6 +252,11 @@ class PrayerService {
 
   /// Restores the last-used mode (GPS or manual city) on app start,
   /// falling back to cache if a fresh fetch isn't possible right now.
+  static const _locationPromptAttemptedKey = 'prayer_location_prompt_attempted_v1';
+
+  /// Loads prayer times without prompting for GPS on ordinary home refreshes.
+  /// Once a location has been chosen, the saved location/cache is the default;
+  /// GPS is only explicitly refreshed by the user from the prayer settings.
   static Future<PrayerTimesResult> fetchUsingSavedPreference() async {
     final mode = await savedMode();
     if (mode == 'manual') {
@@ -266,6 +271,53 @@ class PrayerService {
         }
       }
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    final latitude = prefs.getDouble(_cacheLatKey);
+    final longitude = prefs.getDouble(_cacheLonKey);
+    if (latitude != null && longitude != null) {
+      // Refresh the timetable for the saved coordinates without asking for
+      // the device's current location. The user controls when GPS is updated.
+      try {
+        final url = AppSources.prayerTimesUrl(
+          latitude: latitude,
+          longitude: longitude,
+          method: appSettings.prayerCalcMethod,
+          school: await _schoolFromMathhab(),
+        );
+        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+        if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        final timings = decoded['data']['timings'] as Map<String, dynamic>;
+        final tzName = _tzNameFrom(decoded);
+        final label = prefs.getString(_cacheLocationLabelKey);
+        await _saveCache(
+          timings: timings,
+          locationLabel: label,
+          mode: 'gps',
+          manualCity: null,
+          latitude: latitude,
+          longitude: longitude,
+          tzName: tzName,
+        );
+        return _buildResult(timings, isFromCache: false, cachedAt: DateTime.now(), locationLabel: label, tzName: tzName);
+      } catch (e, st) {
+        AppLogger.error('Saved-location prayer refresh failed; using cache', error: e, stackTrace: st);
+        final cached = await _tryLoadCache();
+        if (cached != null) return cached;
+        throw PrayerAvailability.networkErrorNoCache;
+      }
+    }
+
+    final cached = await _tryLoadCache();
+    if (cached != null) return cached;
+
+    // No location has ever been saved. Ask at most once from automatic
+    // startup/home refresh; a declined request must not be repeated on refresh.
+    if (prefs.getBool(_locationPromptAttemptedKey) == true) {
+      throw PrayerAvailability.permissionDenied;
+    }
+    await prefs.setBool(_locationPromptAttemptedKey, true);
     return fetchPrayerTimes();
   }
 
