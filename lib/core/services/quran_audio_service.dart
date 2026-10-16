@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../data/app_sources.dart';
 import 'qiraat_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
@@ -100,6 +101,9 @@ class QuranAudioService extends ChangeNotifier {
   int get totalAyahsInSurah => _totalAyahsInSurah;
   int? get currentSurahNumber => _surahNumber;
   String? get currentSurahName => _surahName;
+
+  /// External recitations use the same player but have no Quran ayah index.
+  bool get isExternalPlayback => externalUrl != null;
 
   bool isPlayingFor(int surahNumber, int ayahNumber) =>
       _surahNumber == surahNumber && playingAyah == ayahNumber;
@@ -486,8 +490,11 @@ class QuranAudioService extends ChangeNotifier {
 
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
+
+    // Preserve Wirdi's established Hafs reader and original audio URL mapping.
+    final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
     final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
-    final fullSurahOnly = !hasAyahAudio;
+    final fullSurahOnly = !useOriginalHafs && !hasAyahAudio;
 
 
     _fullSurahOnly = fullSurahOnly;
@@ -509,7 +516,7 @@ class QuranAudioService extends ChangeNotifier {
       (index) => startAyah + index,
     );
 
-    final localPaths = hasAyahAudio && qiraat.selectedRiwayahId == 'hafs'
+    final localPaths = useOriginalHafs
         ? await Future.wait(
             ayahs.map(
               (ayah) => AudioDownloadService.localPathFor(
@@ -532,16 +539,23 @@ class QuranAudioService extends ChangeNotifier {
       for (var i = 0; i < ayahs.length; i++) {
         final globalNumber = _surahAyahOffset + ayahs[i];
         final localPath = localPaths[i];
+        if (localPath != null) {
+          sources.add(ja.AudioSource.file(localPath));
+          continue;
+        }
+        if (useOriginalHafs) {
+          sources.add(ja.AudioSource.uri(Uri.parse(
+            AppSources.ayahAudioUrl(globalNumber, reciter: appSettings.reciterId),
+          )));
+          continue;
+        }
         final url = qiraat.ayahAudioUrl(
           _surahNumber ?? 1,
           ayahs[i],
           globalNumber,
           hafsEdition: appSettings.reciterId,
         );
-
-        if (localPath != null) {
-          sources.add(ja.AudioSource.file(localPath));
-        } else if (url != null) {
+        if (url != null) {
           sources.add(ja.AudioSource.uri(Uri.parse(url)));
         } else {
           AppLogger.error(
@@ -695,7 +709,7 @@ class QuranAudioService extends ChangeNotifier {
 
   Future<void> playExternalFile(String path, {String? title}) async {
     if (path.isEmpty) return;
-    _externalPlaylistMode = false;
+    _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
     _rangeStartAyah = null;
     _rangeEndAyah = null;
@@ -753,7 +767,7 @@ class QuranAudioService extends ChangeNotifier {
       return;
     }
 
-    _externalPlaylistMode = false;
+    _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
     await PlaybackCoordinator.stopRadioForQuran();
     final token = ++_playToken;
