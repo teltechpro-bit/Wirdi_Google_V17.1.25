@@ -608,15 +608,24 @@ class QuranAudioService extends ChangeNotifier {
           final timing = _fullSurahTimings[startAyah];
           if (timing != null) {
             target = Duration(milliseconds: timing.startMs);
-          } else if (total > Duration.zero) {
-            var weightBefore = 0.0;
-            final totalWeight = _progress.totalWeight;
-            for (var a = 1; a < startAyah; a++) {
-              weightBefore += _progress.weightOf(a);
-            }
-            final ratio = totalWeight > 0 ? weightBefore / totalWeight : 0.0;
-            target = Duration(milliseconds: (total.inMilliseconds * ratio).round());
+          } else if (startAyah == endAyah || startAyah > 1 || endAyah < _totalAyahsInSurah) {
+            // Never guess a single-ayah/range boundary from text length: that
+            // can land in the following ayah and makes the highlight misleading.
+            isBuffering = false;
+            playingAyah = null;
+            playingWholeSurah = false;
+            AppLogger.error('Verified ayah timing is unavailable for the requested audio range.');
+            notifyListeners();
+            return;
           }
+        }
+        if (endAyah < _totalAyahsInSurah && _fullSurahTimings[endAyah] == null) {
+          isBuffering = false;
+          playingAyah = null;
+          playingWholeSurah = false;
+          AppLogger.error('Verified end timing is unavailable for the requested audio range.');
+          notifyListeners();
+          return;
         }
         if (initialPosition > Duration.zero) {
           target += initialPosition;
