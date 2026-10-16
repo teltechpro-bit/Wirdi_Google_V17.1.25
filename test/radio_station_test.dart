@@ -21,7 +21,7 @@ void main() {
       expect(kRequestedQuranRadioStations, hasLength(9));
       expect(
         kRequestedQuranRadioStations.map((station) => station.id).toSet(),
-        hasLength(10),
+        hasLength(9),
       );
       expect(
         kRequestedQuranRadioStations.every((station) => RadioStation.isSecureUrl(station.streamUrl)),
