@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'way2quran_models.dart';
@@ -105,7 +106,24 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
     final note = values[2].isEmpty ? '' : '\n\n${values[2]}';
     final message = '$title$note\n\n${values[1]}\n\n'
         '${_ar ? 'مشاركة من وردي' : 'Shared from Wirdi'}';
-    await Share.share(message, subject: title);
+    try {
+      await Share.share(message, subject: title);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_ar
+              ? 'تعذرت مشاركة التلاوة من هذا الجهاز. يمكنك نسخ الرابط ومشاركته يدويًا.'
+              : 'Sharing is unavailable on this device. You can copy and share the link manually.'),
+          action: SnackBarAction(
+            label: _ar ? 'نسخ الرابط' : 'Copy link',
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: values[1]));
+            },
+          ),
+        ),
+      );
+    }
   }
 
   void _openReciter(Way2QuranReciter reciter) {
