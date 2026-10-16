@@ -35,7 +35,11 @@ class Reciters {
     ReciterOption('ar.aymanswoid', 'أيمن سويد', 'Ayman Sowaid'),
     ReciterOption('ar.hanirifai', 'هاني الرفاعي', 'Hani Ar-Rifai'),
     ReciterOption('ar.nasserqatami', 'ناصر القطامي', 'Nasser Al-Qatami'),
-
+    // Verified ayah-by-ayah editions using Wirdi's original Hafs playback path.
+    ReciterOption('ar.abdullahbasfar', 'عبد الله بصفر', 'Abdullah Basfar'),
+    ReciterOption('ar.abdulsamad', 'عبد الباسط عبد الصمد', 'Abdul Samad'),
+    ReciterOption('ar.ibrahimakhbar', 'إبراهيم الأخضر', 'Ibrahim Akhdar'),
+    ReciterOption('ar.parhizgar', 'محمود خليل بارهيزكار', 'Mahmoud Khalil Parhizgar'),
   ];
 
   static ReciterOption byId(String id) =>
