@@ -17,11 +17,11 @@ void main() {
   });
 
   group('Requested Quran radio catalogue', () {
-    test('contains only the nine endpoints that passed live stream probes', () {
-      expect(kRequestedQuranRadioStations, hasLength(9));
+    test('contains the twelve consistently verified HTTPS Quran radio endpoints', () {
+      expect(kRequestedQuranRadioStations, hasLength(12));
       expect(
         kRequestedQuranRadioStations.map((station) => station.id).toSet(),
-        hasLength(9),
+        hasLength(12),
       );
       expect(
         kRequestedQuranRadioStations.every((station) => RadioStation.isSecureUrl(station.streamUrl)),
@@ -39,6 +39,9 @@ void main() {
           'external_radio_bahrain',
           'external_radio_jordan',
           'external_radio_oman',
+          'w2q_radio_beautiful',
+          'w2q_radio_serenity',
+          'w2q_radio_tafsir_summary',
         ]),
       );
     });
@@ -46,9 +49,7 @@ void main() {
     test('does not enable endpoints that returned non-audio HTTP 502 responses', () {
       final ids = kRequestedQuranRadioStations.map((station) => station.id).toSet();
       expect(ids, isNot(contains('w2q_radio_main')));
-      expect(ids, isNot(contains('w2q_radio_beautiful')));
       expect(ids, isNot(contains('w2q_radio_short')));
-      expect(ids, isNot(contains('w2q_radio_serenity')));
       expect(ids, isNot(contains('w2q_radio_tafsir_tabari')));
       expect(ids, isNot(contains('w2q_radio_mp3quran')));
     });
