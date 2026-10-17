@@ -208,7 +208,24 @@ class _LibraryTile extends StatelessWidget {
     child: ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      leading: CircleAvatar(radius: 26, backgroundImage: reciter.photo.isEmpty ? null : NetworkImage(reciter.photo), child: reciter.photo.isEmpty ? const Icon(Icons.person_rounded) : null),
+      leading: CircleAvatar(
+        radius: 26,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundImage: reciter.photo.trim().isEmpty || reciter.photo.toLowerCase().contains('logo')
+            ? null
+            : NetworkImage(reciter.photo),
+        child: reciter.photo.trim().isEmpty || reciter.photo.toLowerCase().contains('logo')
+            ? Text(
+                'وِرْدِي',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            : null,
+      ),
       title: Text(reciter.name(ar), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: FutureBuilder<int>(future: Way2QuranViewCounter.get(reciter.slug), builder: (context, snapshot) => Text('${snapshot.data ?? 0} ${ar ? 'مشاهدة داخل وِرْدِي' : 'Wirdi views'}')),
       trailing: const Icon(Icons.chevron_right_rounded),
