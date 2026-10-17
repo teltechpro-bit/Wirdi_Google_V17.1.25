@@ -905,10 +905,14 @@ class QuranAudioService extends ChangeNotifier {
     required List<SurahModel> allSurahs,
   }) async {
     // Recitations Library tracks use this same player but intentionally have
-    // no Quran ayah index. Selecting the already-saved Wirdi reader must still
-    // stop an external track instead of leaving the external reader active.
+    // no Quran ayah index. When the user changes Wirdi's reader while one of
+    // those tracks is active, switch back to the current surah using Wirdi's
+    // selected reader instead of leaving the external track playing.
+    final wasExternal = isExternalPlayback;
     if (reciterId == appSettings.reciterId) {
-      if (isExternalPlayback) await stop();
+      if (wasExternal) {
+        await playWholeSurah(surah, allSurahs);
+      }
       return;
     }
 
@@ -926,6 +930,10 @@ class QuranAudioService extends ChangeNotifier {
     await stop();
     await appSettings.setReciterId(reciterId);
 
+    if (wasExternal) {
+      await playWholeSurah(surah, allSurahs);
+      return;
+    }
     if (!wasPlaying || savedAyah == null) return;
 
     _rangeStartAyah = savedRangeStart;
