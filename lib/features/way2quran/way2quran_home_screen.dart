@@ -255,8 +255,7 @@ class _ExploreCard extends StatelessWidget {
 }
 
 class _WirdiReciterPlaceholder extends StatelessWidget {
-  final bool ar;
-  const _WirdiReciterPlaceholder({required this.ar});
+  const _WirdiReciterPlaceholder();
 
   @override
   Widget build(BuildContext context) {
@@ -321,12 +320,12 @@ class _ReciterCard extends StatelessWidget {
                 Expanded(
                   child: reciter.photo.trim().isEmpty ||
                           reciter.photo.toLowerCase().contains('logo')
-                      ? _WirdiReciterPlaceholder(ar: ar)
+                      ? const _WirdiReciterPlaceholder()
                       : Image.network(
                           reciter.photo,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              _WirdiReciterPlaceholder(ar: ar),
+                              const _WirdiReciterPlaceholder(),
                         ),
                 ),
                 Padding(
