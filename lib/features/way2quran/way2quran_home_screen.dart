@@ -237,6 +237,46 @@ class _ExploreCard extends StatelessWidget {
   );
 }
 
+class _WirdiReciterPlaceholder extends StatelessWidget {
+  final bool ar;
+  const _WirdiReciterPlaceholder({required this.ar});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      color: scheme.primaryContainer,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.menu_book_rounded, size: 42, color: scheme.onPrimaryContainer),
+          const SizedBox(height: 6),
+          Text(
+            'وِرْدِي',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: scheme.onPrimaryContainer,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
+          ),
+          Text(
+            'Wirdi',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReciterCard extends StatelessWidget {
   final Way2QuranReciter reciter;
   final bool ar;
@@ -262,13 +302,14 @@ class _ReciterCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: reciter.photo.isEmpty
-                      ? const Icon(Icons.person, size: 56)
+                  child: reciter.photo.trim().isEmpty ||
+                          reciter.photo.toLowerCase().contains('logo')
+                      ? _WirdiReciterPlaceholder(ar: ar)
                       : Image.network(
                           reciter.photo,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.person, size: 56),
+                              _WirdiReciterPlaceholder(ar: ar),
                         ),
                 ),
                 Padding(
