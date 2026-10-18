@@ -144,26 +144,32 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
 
   Future<void> _previewReader(RiwayahReader reader) async {
     final messenger = ScaffoldMessenger.of(context);
+    String? url;
+    String? previousRiwayah;
     try {
       await service.load();
-      final previouslyActiveRiwayah = service.selectedRiwayahId;
+      previousRiwayah = service.selectedRiwayahId;
       await service.setReader(widget.riwayahId, reader.id);
-      // Resolve this preview against the requested riwayah, then restore
-      // Wirdi's active Quran riwayah before starting the independent preview.
       await service.setRiwayah(widget.riwayahId);
-      final url = await service.surahAudioUrl(1);
-      await service.setRiwayah(previouslyActiveRiwayah);
-      if (url == null || url.isEmpty) {
-        if (mounted) {
-          messenger.showSnackBar(SnackBar(
-            content: Text(Localizations.localeOf(context).languageCode == 'ar'
-                ? 'تعذر العثور على مصدر صوت صالح لهذا القارئ'
-                : 'No playable audio source was found for this reader'),
-          ));
-        }
-        return;
+      url = await service.surahAudioUrl(1);
+    } catch (_) {
+      // Preview failure must not change Wirdi's active Quran selection.
+    } finally {
+      if (previousRiwayah != null) {
+        await service.setRiwayah(previousRiwayah);
       }
-      final language = Localizations.localeOf(context).languageCode;
+    }
+    if (!mounted) return;
+    if (url == null || url.isEmpty) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(Localizations.localeOf(context).languageCode == 'ar'
+            ? 'تعذر العثور على مصدر صوت صالح لهذا القارئ'
+            : 'No playable audio source was found for this reader'),
+      ));
+      return;
+    }
+    final language = Localizations.localeOf(context).languageCode;
+    try {
       await QuranAudioService.instance.playExternalUrl(
         url,
         title: reader.nameFor(language) + (language == 'ar' ? ' — الفاتحة' : ' — Al-Fatiha'),
