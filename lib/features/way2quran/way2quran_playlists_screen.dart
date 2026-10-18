@@ -103,7 +103,7 @@ class Way2QuranPlaylistStore {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(added
             ? (ar ? 'تمت الإضافة إلى القائمة.' : 'Added to playlist.')
-            : (ar ? 'تعذرت إضافة الملف إلى القائمة.' : 'Could not add this file to the playlist.'),
+            : (ar ? 'تعذرت إضافة الملف إلى القائمة.' : 'Could not add this file to the playlist.')),
       ));
     }
     return added;
