@@ -80,7 +80,7 @@ class Way2QuranPlaylistStore {
   static Future<bool> addFileToPlaylist(BuildContext context, String path) async {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     final playlists = await all();
-    final controller = TextEditingController();
+    var typedName = '';
     String? selected = playlists.keys.isEmpty ? null : playlists.keys.first;
     final result = await showDialog<String>(
       context: context,
@@ -103,7 +103,7 @@ class Way2QuranPlaylistStore {
               ],
               const SizedBox(height: 12),
               TextField(
-                controller: controller,
+                onChanged: (value) => typedName = value,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   labelText: ar ? 'أو اكتب اسم قائمة جديدة' : 'Or create a new playlist',
@@ -119,7 +119,7 @@ class Way2QuranPlaylistStore {
             ),
             FilledButton(
               onPressed: () {
-                final typed = controller.text.trim();
+                final typed = typedName.trim();
                 Navigator.pop(dialogContext, typed.isNotEmpty ? typed : selected);
               },
               child: Text(ar ? 'إضافة' : 'Add'),
@@ -128,7 +128,6 @@ class Way2QuranPlaylistStore {
         ),
       ),
     );
-    controller.dispose();
     if (result == null || result.trim().isEmpty) return false;
     var target = result.trim();
     if (!playlists.containsKey(target)) {
@@ -188,25 +187,24 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   }
 
   Future<void> _create() async {
-    final controller = TextEditingController();
+    var typedName = '';
     final name = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_ar ? 'قائمة تشغيل جديدة' : 'New playlist'),
         content: TextField(
-          controller: controller,
           autofocus: true,
+          onChanged: (value) => typedName = value,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(labelText: _ar ? 'اسم القائمة' : 'Playlist name', border: const OutlineInputBorder()),
           onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(_ar ? 'إلغاء' : 'Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: Text(_ar ? 'إنشاء' : 'Create')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, typedName.trim()), child: Text(_ar ? 'إنشاء' : 'Create')),
         ],
       ),
     );
-    controller.dispose();
     if (name == null || name.trim().isEmpty) return;
     try {
       final created = await Way2QuranPlaylistStore.create(name);
