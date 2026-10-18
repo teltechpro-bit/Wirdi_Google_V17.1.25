@@ -175,7 +175,8 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
   }
 
   Future<void> _useReader(RiwayahReader reader) async {
-    await service.setRiwayah(widget.riwayahId);
+    // Save this reader for its riwayah only. Browsing/choosing a directory reader
+    // must not switch the active riwayah used by Wirdi's Quran player.
     await service.setReader(widget.riwayahId, reader.id);
     if (!mounted) return;
     final ar = Localizations.localeOf(context).languageCode == 'ar';
