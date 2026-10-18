@@ -145,9 +145,14 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
   Future<void> _previewReader(RiwayahReader reader) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await service.setRiwayah(widget.riwayahId);
+      await service.load();
+      final previouslyActiveRiwayah = service.selectedRiwayahId;
       await service.setReader(widget.riwayahId, reader.id);
+      // Resolve this preview against the requested riwayah, then restore
+      // Wirdi's active Quran riwayah before starting the independent preview.
+      await service.setRiwayah(widget.riwayahId);
       final url = await service.surahAudioUrl(1);
+      await service.setRiwayah(previouslyActiveRiwayah);
       if (url == null || url.isEmpty) {
         if (mounted) {
           messenger.showSnackBar(SnackBar(
