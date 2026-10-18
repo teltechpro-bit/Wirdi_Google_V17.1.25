@@ -80,67 +80,25 @@ class Way2QuranPlaylistStore {
   static Future<bool> addFileToPlaylist(BuildContext context, String path) async {
     final ar = Localizations.localeOf(context).languageCode == 'ar';
     final playlists = await all();
-    final controller = TextEditingController();
-    String? selected = playlists.keys.isEmpty ? null : playlists.keys.first;
-    final result = await showDialog<String>(
+    if (!context.mounted) return false;
+    final target = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(ar ? 'إضافة إلى قائمة تشغيل' : 'Add to playlist'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (playlists.isNotEmpty) ...[
-                Text(ar ? 'اختر قائمة موجودة' : 'Choose an existing playlist'),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selected,
-                  isExpanded: true,
-                  items: playlists.keys.map((name) => DropdownMenuItem(value: name, child: Text(name, overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (value) => setDialogState(() => selected = value),
-                ),
-              ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: ar ? 'أو اكتب اسم قائمة جديدة' : 'Or create a new playlist',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(ar ? 'إلغاء' : 'Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final typed = controller.text.trim();
-                Navigator.pop(dialogContext, typed.isNotEmpty ? typed : selected);
-              },
-              child: Text(ar ? 'إضافة' : 'Add'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _AddTrackToPlaylistDialog(playlists: playlists, arabic: ar),
     );
-    controller.dispose();
-    if (result == null || result.trim().isEmpty) return false;
-    var target = result.trim();
-    if (!playlists.containsKey(target)) {
-      final created = await create(target);
+    if (!context.mounted || target == null || target.trim().isEmpty) return false;
+    final normalized = target.trim();
+    if (!playlists.containsKey(normalized)) {
+      final created = await create(normalized);
       if (!created) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ar ? 'يوجد بالفعل قائمة بهذا الاسم.' : 'A playlist with that name already exists.')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ar ? 'يوجد بالفعل قائمة بهذا الاسم.' : 'A playlist with that name already exists.'),
+          ));
         }
         return false;
       }
     }
-    final added = await addTrack(target, path);
+    final added = await addTrack(normalized, path);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(added
@@ -150,6 +108,137 @@ class Way2QuranPlaylistStore {
     }
     return added;
   }
+}
+
+
+/// Each dialog owns its controller until Flutter disposes the dialog widget.
+class _PlaylistNameDialog extends StatefulWidget {
+  final bool arabic;
+  const _PlaylistNameDialog({required this.arabic});
+
+  @override
+  State<_PlaylistNameDialog> createState() => _PlaylistNameDialogState();
+}
+
+class _PlaylistNameDialogState extends State<_PlaylistNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.pop(context, _controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.arabic ? 'قائمة تشغيل جديدة' : 'New playlist'),
+        content: TextField(
+          controller: _controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: widget.arabic ? 'اسم القائمة' : 'Playlist name',
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _submit(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(widget.arabic ? 'إلغاء' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: _submit,
+            child: Text(widget.arabic ? 'إنشاء' : 'Create'),
+          ),
+        ],
+      );
+}
+
+class _AddTrackToPlaylistDialog extends StatefulWidget {
+  final Map<String, List<String>> playlists;
+  final bool arabic;
+  const _AddTrackToPlaylistDialog({required this.playlists, required this.arabic});
+
+  @override
+  State<_AddTrackToPlaylistDialog> createState() => _AddTrackToPlaylistDialogState();
+}
+
+class _AddTrackToPlaylistDialogState extends State<_AddTrackToPlaylistDialog> {
+  late final TextEditingController _controller;
+  String? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _selected = widget.playlists.isEmpty ? null : widget.playlists.keys.first;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final typed = _controller.text.trim();
+    Navigator.pop(context, typed.isNotEmpty ? typed : _selected);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.arabic ? 'إضافة إلى قائمة تشغيل' : 'Add to playlist'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.playlists.isNotEmpty) ...[
+              Text(widget.arabic ? 'اختر قائمة موجودة' : 'Choose an existing playlist'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selected,
+                isExpanded: true,
+                items: widget.playlists.keys
+                    .map((name) => DropdownMenuItem(
+                          value: name,
+                          child: Text(name, overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (value) => setState(() => _selected = value),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: widget.arabic ? 'أو اكتب اسم قائمة جديدة' : 'Or create a new playlist',
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(widget.arabic ? 'إلغاء' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: _submit,
+            child: Text(widget.arabic ? 'إضافة' : 'Add'),
+          ),
+        ],
+      );
 }
 
 class Way2QuranPlaylistsScreen extends StatefulWidget {
@@ -188,26 +277,11 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
   }
 
   Future<void> _create() async {
-    final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(_ar ? 'قائمة تشغيل جديدة' : 'New playlist'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(labelText: _ar ? 'اسم القائمة' : 'Playlist name', border: const OutlineInputBorder()),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(_ar ? 'إلغاء' : 'Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: Text(_ar ? 'إنشاء' : 'Create')),
-        ],
-      ),
+      builder: (_) => _PlaylistNameDialog(arabic: _ar),
     );
-    controller.dispose();
-    if (name == null || name.trim().isEmpty) return;
+    if (!mounted || name == null || name.trim().isEmpty) return;
     try {
       final created = await Way2QuranPlaylistStore.create(name);
       if (mounted) {
@@ -216,7 +290,7 @@ class _Way2QuranPlaylistsScreenState extends State<Way2QuranPlaylistsScreen> {
             : (_ar ? 'يوجد بالفعل قائمة بهذا الاسم.' : 'A playlist with that name already exists.'))));
       }
       if (mounted) await _load();
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_ar ? 'تعذر إنشاء القائمة. تحقق من مساحة التخزين ثم أعد المحاولة.' : 'Could not create the playlist. Check device storage and try again.'),
