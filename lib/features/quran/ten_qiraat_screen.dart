@@ -104,7 +104,7 @@ class TenQiraatScreen extends StatelessWidget {
                                             : 'No runtime reader sources yet')
                                         : readerCount.toString() +
                                             (ar
-                                                ? ' مصدر قارئ في وردي'
+                                                ? ' مصدر قارئ في وِرْدِي'
                                                 : ' reader sources in Wirdi'),
                                     style: TextStyle(
                                       fontSize: 12,
