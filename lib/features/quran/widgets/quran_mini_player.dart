@@ -20,15 +20,23 @@ class QuranMiniPlayer extends StatelessWidget {
       listenable: quranAudio,
       builder: (_, __) {
         final ayah = quranAudio.playingAyah;
-        if (ayah == null) return const SizedBox.shrink();
+        final isExternal = quranAudio.externalUrl != null;
+        if (ayah == null && !isExternal) return const SizedBox.shrink();
         final surahNumber = quranAudio.currentSurahNumber;
-        final label = _t(context, 'سورة ${surahNumber ?? '-'} - آية $ayah', 'Surah ${surahNumber ?? '-'} - Ayah $ayah');
+        final externalTitle = quranAudio.externalTitle?.trim();
+        final label = isExternal
+            ? (externalTitle != null && externalTitle.isNotEmpty
+                ? externalTitle
+                : _t(context, 'تلاوة من مكتبة التلاوات', 'Recitation Library audio'))
+            : _t(context, 'سورة ${surahNumber ?? '-'} - آية $ayah', 'Surah ${surahNumber ?? '-'} - Ayah $ayah');
 
         return GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MushafReaderScreen()),
-          ),
+          onTap: isExternal
+              ? null
+              : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MushafReaderScreen()),
+                  ),
           child: Container(
             height: 60,
             margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
@@ -93,7 +101,13 @@ class QuranMiniPlayer extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
-                    value: quranAudio.surahProgress,
+                    value: isExternal
+                        ? (quranAudio.duration > Duration.zero
+                            ? (quranAudio.position.inMilliseconds /
+                                    quranAudio.duration.inMilliseconds)
+                                .clamp(0.0, 1.0)
+                            : null)
+                        : quranAudio.surahProgress,
                     minHeight: 3,
                     backgroundColor: Colors.white24,
                     valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldAccent),

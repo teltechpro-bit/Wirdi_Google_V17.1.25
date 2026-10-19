@@ -497,10 +497,6 @@ class QuranAudioService extends ChangeNotifier {
 
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
-    // A newer tap/reader change may have superseded this request while the
-    // reader catalog was loading. Do not let an older request overwrite the
-    // active ayah/riwayah state.
-    if (token != _playToken) return;
 
     // Preserve Wirdi's established Hafs reader and original audio URL mapping.
     final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
@@ -512,10 +508,7 @@ class QuranAudioService extends ChangeNotifier {
     _playlistStartAyah = fullSurahOnly ? 1 : startAyah;
     _playlistEndAyah = fullSurahOnly ? _totalAyahsInSurah : endAyah;
     _fullSurahTimings = fullSurahOnly ? await qiraat.ayahTimings(_surahNumber ?? 1) : const <int, ({int startMs, int endMs})>{};
-    // Timing lookup is another asynchronous boundary. Re-check before
-    // publishing fields so stale timing data cannot replace a newer request.
-    if (token != _playToken) return;
-    playingAyah = startAyah;
+    playingAyah = fullSurahOnly ? startAyah : startAyah;
     isBuffering = true;
     position = initialPosition;
     duration = Duration.zero;
@@ -912,10 +905,14 @@ class QuranAudioService extends ChangeNotifier {
     required List<SurahModel> allSurahs,
   }) async {
     // Recitations Library tracks use this same player but intentionally have
-    // no Quran ayah index. Selecting the already-saved Wirdi reader must still
-    // stop an external track instead of leaving the external reader active.
+    // no Quran ayah index. When the user changes Wirdi's reader while one of
+    // those tracks is active, switch back to the current surah using Wirdi's
+    // selected reader instead of leaving the external track playing.
+    final wasExternal = isExternalPlayback;
     if (reciterId == appSettings.reciterId) {
-      if (isExternalPlayback) await stop();
+      if (wasExternal) {
+        await playWholeSurah(surah, allSurahs);
+      }
       return;
     }
 
@@ -933,6 +930,10 @@ class QuranAudioService extends ChangeNotifier {
     await stop();
     await appSettings.setReciterId(reciterId);
 
+    if (wasExternal) {
+      await playWholeSurah(surah, allSurahs);
+      return;
+    }
     if (!wasPlaying || savedAyah == null) return;
 
     _rangeStartAyah = savedRangeStart;

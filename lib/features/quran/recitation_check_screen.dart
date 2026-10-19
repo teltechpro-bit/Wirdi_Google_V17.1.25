@@ -123,7 +123,13 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         finalTimeout: const Duration(seconds: 5),
       );
       if (!ok) {
-        if (mounted) setState(() => _speechUnavailable = true);
+        if (mounted) {
+          setState(() {
+            _speechUnavailable = true;
+            _lastError =
+                'The device speech-recognition service could not initialize. Check the installed speech service and Arabic language pack; this does not by itself mean microphone permission is denied.';
+          });
+        }
         return false;
       }
       final locales = await _speech.locales();
@@ -384,7 +390,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                         ),
                         style: TextStyle(color: Colors.red.shade700),
                       ),
-                    if (_lastError != null && !_speechUnavailable)
+                    if (_lastError != null)
                       Text(
                         bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
