@@ -144,21 +144,32 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
 
   Future<void> _previewReader(RiwayahReader reader) async {
     final messenger = ScaffoldMessenger.of(context);
+    String? url;
+    String? previousRiwayah;
     try {
-      await service.setRiwayah(widget.riwayahId);
+      await service.load();
+      previousRiwayah = service.selectedRiwayahId;
       await service.setReader(widget.riwayahId, reader.id);
-      final url = await service.surahAudioUrl(1);
-      if (url == null || url.isEmpty) {
-        if (mounted) {
-          messenger.showSnackBar(SnackBar(
-            content: Text(Localizations.localeOf(context).languageCode == 'ar'
-                ? 'تعذر العثور على مصدر صوت صالح لهذا القارئ'
-                : 'No playable audio source was found for this reader'),
-          ));
-        }
-        return;
+      await service.setRiwayah(widget.riwayahId);
+      url = await service.surahAudioUrl(1);
+    } catch (_) {
+      // Preview failure must not change Wirdi's active Quran selection.
+    } finally {
+      if (previousRiwayah != null) {
+        await service.setRiwayah(previousRiwayah);
       }
-      final language = Localizations.localeOf(context).languageCode;
+    }
+    if (!mounted) return;
+    if (url == null || url.isEmpty) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(Localizations.localeOf(context).languageCode == 'ar'
+            ? 'تعذر العثور على مصدر صوت صالح لهذا القارئ'
+            : 'No playable audio source was found for this reader'),
+      ));
+      return;
+    }
+    final language = Localizations.localeOf(context).languageCode;
+    try {
       await QuranAudioService.instance.playExternalUrl(
         url,
         title: reader.nameFor(language) + (language == 'ar' ? ' — الفاتحة' : ' — Al-Fatiha'),
@@ -175,7 +186,8 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
   }
 
   Future<void> _useReader(RiwayahReader reader) async {
-    await service.setRiwayah(widget.riwayahId);
+    // Save this reader for its riwayah only. Browsing/choosing a directory reader
+    // must not switch the active riwayah used by Wirdi's Quran player.
     await service.setReader(widget.riwayahId, reader.id);
     if (!mounted) return;
     final ar = Localizations.localeOf(context).languageCode == 'ar';

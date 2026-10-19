@@ -55,27 +55,15 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
   }
 
   Future<void> _createDialog() async {
-    final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(bi(ctx, 'ختمة جماعية جديدة', 'New group khatma')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(hintText: bi(ctx, 'اسم الختمة (مثال: عائلتي)', 'Name (e.g. My family)')),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(bi(ctx, 'إلغاء', 'Cancel'))),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text(bi(ctx, 'إنشاء', 'Create')),
-          ),
-        ],
+      builder: (ctx) => _KhatmaTextEntryDialog(
+        title: bi(ctx, 'ختمة جماعية جديدة', 'New group khatma'),
+        hint: bi(ctx, 'اسم الختمة (مثال: عائلتي)', 'Name (e.g. My family)'),
+        submitLabel: bi(ctx, 'إنشاء', 'Create'),
       ),
     );
-    controller.dispose();
-    if (name == null || name.isEmpty) return;
+    if (!mounted || name == null || name.isEmpty) return;
     setState(() => _busy = true);
     try {
       final code = await _service.create(name);
@@ -90,28 +78,16 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
   }
 
   Future<void> _joinDialog() async {
-    final controller = TextEditingController();
     final code = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(bi(ctx, 'الانضمام برمز', 'Join with a code')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          decoration: InputDecoration(hintText: bi(ctx, 'الرمز (6 خانات)', 'Code (6 characters)')),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(bi(ctx, 'إلغاء', 'Cancel'))),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text(bi(ctx, 'انضمام', 'Join')),
-          ),
-        ],
+      builder: (ctx) => _KhatmaTextEntryDialog(
+        title: bi(ctx, 'الانضمام برمز', 'Join with a code'),
+        hint: bi(ctx, 'الرمز (6 خانات)', 'Code (6 characters)'),
+        submitLabel: bi(ctx, 'انضمام', 'Join'),
+        uppercase: true,
       ),
     );
-    controller.dispose();
-    if (code == null || code.isEmpty) return;
+    if (!mounted || code == null || code.isEmpty) return;
     setState(() => _busy = true);
     try {
       await _service.join(code);
@@ -244,6 +220,67 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+
+/// Owns its text controller for exactly the lifetime of the dialog widget.
+/// This avoids disposing a controller while the dialog route is still animating out.
+class _KhatmaTextEntryDialog extends StatefulWidget {
+  final String title;
+  final String hint;
+  final String submitLabel;
+  final bool uppercase;
+
+  const _KhatmaTextEntryDialog({
+    required this.title,
+    required this.hint,
+    required this.submitLabel,
+    this.uppercase = false,
+  });
+
+  @override
+  State<_KhatmaTextEntryDialog> createState() => _KhatmaTextEntryDialogState();
+}
+
+class _KhatmaTextEntryDialogState extends State<_KhatmaTextEntryDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: widget.uppercase
+            ? TextCapitalization.characters
+            : TextCapitalization.none,
+        decoration: InputDecoration(hintText: widget.hint),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(bi(context, 'إلغاء', 'Cancel')),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: Text(widget.submitLabel),
+        ),
+      ],
     );
   }
 }
