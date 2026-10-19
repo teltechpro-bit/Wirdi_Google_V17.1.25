@@ -497,6 +497,8 @@ class QuranAudioService extends ChangeNotifier {
 
     final qiraat = QiraatService.instance;
     await qiraat.loadReaders();
+    // A newer tap/reader change may have started while readers were loading.
+    if (token != _playToken) return;
 
     // Preserve Wirdi's established Hafs reader and original audio URL mapping.
     final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
@@ -508,7 +510,10 @@ class QuranAudioService extends ChangeNotifier {
     _playlistStartAyah = fullSurahOnly ? 1 : startAyah;
     _playlistEndAyah = fullSurahOnly ? _totalAyahsInSurah : endAyah;
     _fullSurahTimings = fullSurahOnly ? await qiraat.ayahTimings(_surahNumber ?? 1) : const <int, ({int startMs, int endMs})>{};
-    playingAyah = fullSurahOnly ? startAyah : startAyah;
+    // Timing lookup is asynchronous too; never let an older request overwrite
+    // state belonging to a more recent ayah tap or reader selection.
+    if (token != _playToken) return;
+    playingAyah = startAyah;
     isBuffering = true;
     position = initialPosition;
     duration = Duration.zero;
