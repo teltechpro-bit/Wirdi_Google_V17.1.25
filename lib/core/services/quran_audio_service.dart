@@ -935,6 +935,12 @@ class QuranAudioService extends ChangeNotifier {
     await stop();
     await appSettings.setReciterId(reciterId);
 
+    // The Quran-screen reader picker is Wirdi's native reciter preference.
+    // A one-off Recitation Library preview must not remain the active Quran source.
+    final qiraatService = QiraatService.instance;
+    await qiraatService.load();
+    await qiraatService.setRiwayah('hafs');
+
     if (wasExternal) {
       await playWholeSurah(surah, allSurahs);
       return;
