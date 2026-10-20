@@ -860,7 +860,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
                     Bismillah.text,
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.rtl,
-                    style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal),
+                    style: TextStyle(color: Colors.black87, fontFamily: 'AmiriQuran', fontSize: 24 * widget.fontScale, fontWeight: FontWeight.normal),
                   ),
                 ],
                 const SizedBox(height: 16),

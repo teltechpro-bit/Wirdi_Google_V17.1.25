@@ -64,7 +64,7 @@ class _RiwayahDetailScreenState extends State<RiwayahDetailScreen> {
                       const SizedBox(height: 12),
                       Text(
                         ar
-                            ? 'القراء المعروضون هنا هم مصادر الصوت التي اكتشفها وردي لهذه الرواية تحديدًا. لا يتم نقل قارئ من رواية أخرى.'
+                            ? 'القراء المعروضون هنا هم مصادر الصوت التي اكتشفها وِرْدِي لهذه الرواية تحديدًا. لا يتم نقل قارئ من رواية أخرى.'
                             : 'Readers shown here are the audio sources discovered by Wirdi for this exact riwayah. No reader is copied from another riwayah.',
                         style: const TextStyle(height: 1.65),
                       ),
@@ -220,7 +220,7 @@ class _CountCard extends StatelessWidget {
           children: [
             Text(count.toString(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
-            Text(ar ? 'قارئ/مصدر متاح في وردي' : 'reader sources available in Wirdi'),
+            Text(ar ? 'قارئ/مصدر متاح في وِرْدِي' : 'reader sources available in Wirdi'),
           ],
         ),
       ),

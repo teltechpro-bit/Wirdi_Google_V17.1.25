@@ -309,7 +309,7 @@ class _RiwayahCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 5),
           child: Text(
             available
-                ? (ar ? '${readers.length} قارئ متاح في وردي' : '${readers.length} reader sources in Wirdi')
+                ? (ar ? '${readers.length} قارئ متاح في وِرْدِي' : '${readers.length} reader sources in Wirdi')
                 : (ar ? 'لا يوجد مصدر قارئ مكتشف حاليًا' : 'No runtime reader source discovered yet'),
           ),
         ),

@@ -71,7 +71,7 @@ class _HadeethHubScreenState extends State<HadeethHubScreen> {
                   child: ListTile(
                     leading: Icon(Icons.looks_one_outlined, color: AppColors.primaryEmerald),
                     title: Text(_t(context, 'الأربعين النووية', 'The Forty Hadith of an-Nawawi')),
-                    subtitle: Text(_t(context, 'المجموعة المختصرة الأصلية في وردي', "Wirdi's original compact collection")),
+                    subtitle: Text(_t(context, 'المجموعة المختصرة الأصلية في وِرْدِي', "Wirdi's original compact collection")),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HadithCollectionScreen())),
                   ),

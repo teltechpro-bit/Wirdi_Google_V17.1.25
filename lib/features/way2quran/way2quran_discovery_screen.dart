@@ -33,71 +33,10 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
   }
 
   Future<void> _shareRecitation() async {
-    final titleController = TextEditingController();
-    final urlController = TextEditingController();
-    final descriptionController = TextEditingController();
     final values = await showDialog<List<String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(_ar ? 'شارك تلاوة مع الآخرين' : 'Share a recitation'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: titleController,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: _ar ? 'اسم التلاوة أو القارئ' : 'Recitation or reciter name',
-              ),
-            ),
-            TextField(
-              controller: urlController,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(
-                labelText: _ar ? 'رابط التلاوة (مطلوب)' : 'Recitation URL (required)',
-                hintText: 'https://…',
-              ),
-            ),
-            TextField(
-              controller: descriptionController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: _ar ? 'ملاحظة (اختياري)' : 'Note (optional)',
-              ),
-            ),
-          ]),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(_ar ? 'إلغاء' : 'Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final uri = Uri.tryParse(urlController.text.trim());
-              if (uri == null ||
-                  (uri.scheme != 'https' && uri.scheme != 'http') ||
-                  uri.host.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(_ar
-                      ? 'أدخل رابطًا صحيحًا يبدأ بـ https:// أو http://'
-                      : 'Enter a valid http:// or https:// URL.'),
-                ));
-                return;
-              }
-              Navigator.pop(dialogContext, [
-                titleController.text.trim(),
-                uri.toString(),
-                descriptionController.text.trim(),
-              ]);
-            },
-            child: Text(_ar ? 'متابعة المشاركة' : 'Continue to share'),
-          ),
-        ],
-      ),
+      builder: (_) => _ShareRecitationDialog(arabic: _ar),
     );
-    titleController.dispose();
-    urlController.dispose();
-    descriptionController.dispose();
     if (!mounted || values == null) return;
 
     final title = values[0].isEmpty
@@ -105,7 +44,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
         : values[0];
     final note = values[2].isEmpty ? '' : '\n\n${values[2]}';
     final message = '$title$note\n\n${values[1]}\n\n'
-        '${_ar ? 'مشاركة من وردي' : 'Shared from Wirdi'}';
+        '${_ar ? 'مشاركة من وِرْدِي' : 'Shared from Wirdi'}';
     try {
       await Share.share(message, subject: title);
     } catch (e) {
@@ -202,7 +141,7 @@ class _Way2QuranDiscoveryScreenState extends State<Way2QuranDiscoveryScreen> {
               const SizedBox(height: 20),
               _ShelfHeader(
                 title: _ar ? 'اختيار اليوم' : 'Today’s spotlight',
-                subtitle: _ar ? 'قارئ مختار من مكتبة وردي' : 'A daily pick from Wirdi’s reciter library',
+                subtitle: _ar ? 'قارئ مختار من مكتبة وِرْدِي' : 'A daily pick from Wirdi’s reciter library',
               ),
               const SizedBox(height: 8),
               _DiscoveryReciterTile(
@@ -302,4 +241,91 @@ class _DiscoveryReciterTile extends StatelessWidget {
               : Chip(label: Text(badge!)),
         ),
       );
+}
+
+ 
+/// Owns text controllers for the lifetime of the dialog route.
+class _ShareRecitationDialog extends StatefulWidget {
+  final bool arabic;
+  const _ShareRecitationDialog({required this.arabic});
+
+  @override
+  State<_ShareRecitationDialog> createState() => _ShareRecitationDialogState();
+}
+
+class _ShareRecitationDialogState extends State<_ShareRecitationDialog> {
+  final _titleController = TextEditingController();
+  final _urlController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _urlController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final uri = Uri.tryParse(_urlController.text.trim());
+    if (uri == null ||
+        (uri.scheme != 'https' && uri.scheme != 'http') ||
+        uri.host.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(widget.arabic
+            ? 'أدخل رابطًا صحيحًا يبدأ بـ https:// أو http://'
+            : 'Enter a valid http:// or https:// URL.'),
+      ));
+      return;
+    }
+    Navigator.pop(context, [
+      _titleController.text.trim(),
+      uri.toString(),
+      _descriptionController.text.trim(),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ar = widget.arabic;
+    return AlertDialog(
+      title: Text(ar ? 'شارك تلاوة مع الآخرين' : 'Share a recitation'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+            controller: _titleController,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              labelText: ar ? 'اسم التلاوة أو القارئ' : 'Recitation or reciter name',
+            ),
+          ),
+          TextField(
+            controller: _urlController,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              labelText: ar ? 'رابط التلاوة (مطلوب)' : 'Recitation URL (required)',
+              hintText: 'https://…',
+            ),
+          ),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: ar ? 'ملاحظة (اختياري)' : 'Note (optional)',
+            ),
+          ),
+        ]),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(ar ? 'إلغاء' : 'Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(ar ? 'متابعة المشاركة' : 'Continue to share'),
+        ),
+      ],
+    );
+  }
 }
