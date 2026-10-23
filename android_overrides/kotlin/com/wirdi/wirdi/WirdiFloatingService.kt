@@ -49,8 +49,8 @@ class WirdiFloatingService : Service() {
         val initialContent = prefs.getString("overlay_content", "tasbeeh") ?: "tasbeeh"
         v.text = when (initialContent) {
             "dhikr" -> "اذكر الله"
-            "quran" -> "وِرْدِي\\nالقرآن"
-            else -> "سُبْحَانَ الله\\n" + prefs.getInt(COUNT, 0)
+            "quran" -> "وِرْدِي\nالقرآن"
+            else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
         }
         v.textSize = 12f; v.gravity = Gravity.CENTER; v.setTextColor(Color.WHITE); v.setBackgroundColor(Color.rgb(15,118,110)); v.setPadding(8,8,8,8)
         var sx = 0f; var sy = 0f; var px = 0; var py = 0
@@ -70,7 +70,7 @@ class WirdiFloatingService : Service() {
                             }
                             else -> {
                                 val n=prefs.getInt(COUNT,0)+1; prefs.edit().putInt(COUNT,n).apply()
-                                (view as TextView).text="سُبْحَانَ الله\\n$n"
+                                (view as TextView).text="سُبْحَانَ الله\n$n"
                                 val ids=AppWidgetManager.getInstance(this).getAppWidgetIds(ComponentName(this,WirdiTasbeehWidgetProvider::class.java))
                                 sendBroadcast(Intent(this,WirdiTasbeehWidgetProvider::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids))
                             }
