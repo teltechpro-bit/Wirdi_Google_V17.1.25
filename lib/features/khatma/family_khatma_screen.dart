@@ -17,6 +17,12 @@ String _errorText(BuildContext context, Object error) {
       return bi(context, 'هذا الجزء أخذه شخص آخر', 'Someone else already took this juz');
     case 'notOwner':
       return bi(context, 'هذا الإجراء لمنشئ الختمة فقط', 'Only the creator can do this');
+    case 'ownerCannotLeaveWithMembers':
+      return bi(
+        context,
+        'لا يمكن لمنشئ الختمة مغادرتها ما دام بها أعضاء آخرون. اطلب من الأعضاء المغادرة أولًا؛ ستُحذف الختمة عندما لا يبقى أحد.',
+        'The creator cannot leave while other members remain. Ask members to leave first; the group is deleted when no members remain.',
+      );
     case 'permission':
       return bi(
         context,
@@ -64,9 +70,18 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
       ),
     );
     if (!mounted || name == null || name.isEmpty) return;
+    final displayName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _KhatmaTextEntryDialog(
+        title: bi(ctx, 'اسمك داخل الختمة', 'Your name in the group'),
+        hint: bi(ctx, 'الاسم الظاهر للأعضاء', 'Display name visible to members'),
+        submitLabel: bi(ctx, 'متابعة', 'Continue'),
+      ),
+    );
+    if (!mounted || displayName == null || displayName.trim().isEmpty) return;
     setState(() => _busy = true);
     try {
-      final code = await _service.create(name);
+      final code = await _service.create(name, displayName: displayName);
       if (!mounted) return;
       Navigator.push(context, MaterialPageRoute<void>(builder: (_) => FamilyKhatmaGroupScreen(code: code)));
     } catch (e) {
@@ -88,9 +103,18 @@ class _FamilyKhatmaScreenState extends State<FamilyKhatmaScreen> {
       ),
     );
     if (!mounted || code == null || code.isEmpty) return;
+    final displayName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _KhatmaTextEntryDialog(
+        title: bi(ctx, 'اسمك داخل الختمة', 'Your name in the group'),
+        hint: bi(ctx, 'الاسم الظاهر للأعضاء', 'Display name visible to members'),
+        submitLabel: bi(ctx, 'انضمام', 'Join'),
+      ),
+    );
+    if (!mounted || displayName == null || displayName.trim().isEmpty) return;
     setState(() => _busy = true);
     try {
-      await _service.join(code);
+      await _service.join(code, displayName: displayName);
       if (!mounted) return;
       Navigator.push(
         context,
