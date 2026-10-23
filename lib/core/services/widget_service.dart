@@ -30,6 +30,7 @@ class WidgetService {
     try {
       await HomeWidget.saveWidgetData<String>('next_prayer_name', next.name);
       await HomeWidget.saveWidgetData<String>('next_prayer_time', next.timeText);
+      await HomeWidget.saveWidgetData<int>('next_prayer_timestamp_ms', next.dateTime.millisecondsSinceEpoch);
       final minutesLeft = next.dateTime.difference(DateTime.now()).inMinutes.clamp(0, 24 * 60);
       final hours = minutesLeft ~/ 60;
       final minutes = minutesLeft % 60;
