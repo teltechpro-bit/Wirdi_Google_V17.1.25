@@ -153,6 +153,19 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     quranAudio.addListener(_onAudioChanged);
   }
 
+  bool _onContinuousScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification || notification is ScrollEndNotification) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_continuousScroll) return;
+        for (final key in _pageKeys) {
+          final state = key.currentState;
+          if (state is _MushafPageViewState) state._saveVisibleAyahPosition();
+        }
+      });
+    }
+    return false;
+  }
+
   Future<(List<MushafPage>, List<SurahModel>)> _loadAll() async {
     final results = await Future.wait([MushafRepository.load(), QuranRepository.load()]);
     final pages = results[0] as List<MushafPage>;
@@ -535,7 +548,9 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
           if (_continuousScroll) {
             return Directionality(
               textDirection: TextDirection.rtl,
-              child: ListView.builder(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onContinuousScrollNotification,
+                child: ListView.builder(
                 controller: _continuousScrollController,
                 // BUGFIX: this physics line existed on PageView.builder below
                 // (mirrors it) but was simply never added here, so a 2-finger
@@ -566,6 +581,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     backgroundColor: _pageBackground(context),
                   );
                 },
+              ),
               ),
             );
           }
@@ -675,8 +691,6 @@ class _MushafPageViewState extends State<_MushafPageView> {
     if (restoreSurah != null && restoreAyah != null) {
       _restoringInitialPosition = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _restoreToAyah(restoreSurah, restoreAyah));
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _saveVisibleAyahPosition());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToPlayingAyahIfNeeded());
   }
