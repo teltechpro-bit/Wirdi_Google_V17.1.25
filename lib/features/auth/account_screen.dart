@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/auth_service.dart';
 import 'login_screen.dart';
 import '../../core/services/sync_service.dart';
+import '../../core/utils/bi.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/generated/app_localizations.dart';
 
@@ -20,6 +21,56 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await SyncService.instance.syncNow();
       setState(() { _ok = true; _msg = l.authSyncSuccess; });
+    } on SyncAccountMismatchException {
+      if (!mounted) return;
+      final choice = await showDialog<SyncAccountMismatchChoice>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Different account detected'),
+          content: const Text(
+            'The data currently stored on this device may belong to another account. '
+            'To prevent mixing private Quran progress, favorites, prayer history, and other data, '
+            'nothing was synced. Choose explicitly how to continue.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(
+                dialogContext, SyncAccountMismatchChoice.uploadLocalToAccount),
+              child: const Text('Upload this device data'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext, SyncAccountMismatchChoice.replaceLocalWithCloud),
+              child: const Text('Replace local data'),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) {
+        setState(() {
+          _ok = false;
+          _msg = 'Sync cancelled. Local data was not changed.';
+        });
+      } else {
+        try {
+          await SyncService.instance.resolveAccountMismatch(choice);
+          if (!mounted) return;
+          setState(() {
+            _ok = true;
+            _msg = choice == SyncAccountMismatchChoice.replaceLocalWithCloud
+                ? 'Local synced data replaced from this account.'
+                : 'This device data uploaded to this account.';
+          });
+        } catch (resolveError) {
+          if (!mounted) return;
+          setState(() { _ok = false; _msg = 'Account-specific sync failed: $resolveError'; });
+        }
+      }
     } on FirestoreRulesNotPublishedException catch (e) {
       // The single most actionable failure message this screen can
       // show -- see FirestoreRulesNotPublishedException's doc comment.
@@ -47,6 +98,7 @@ class _AccountScreenState extends State<AccountScreen> {
       title: Text(l.authSignOutTitle), content: Text(l.authSignOutMessage),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.authSignOut))]));
     if (ok != true) return;
+    await SyncService.instance.prepareForSignOut();
     await AuthService.instance.signOut();
     if (mounted) Navigator.pushReplacementNamed(context, '/login');
   }
@@ -199,6 +251,15 @@ class _AccountScreenState extends State<AccountScreen> {
           SizedBox(width: double.infinity, child: FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: AppColors.primaryEmerald), onPressed: _syncing ? null : _sync,
             icon: _syncing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.cloud_sync_rounded),
             label: Text(_syncing ? l.authSyncing : l.authSyncNow))),
+          const SizedBox(height: 8),
+          Text(
+            bi(
+              context,
+              'تنبيه: المزامنة الحالية تجمع بعض القوائم والتقدم بين الأجهزة؛ حذف عنصر على جهاز قد لا يحذفه من الأجهزة الأخرى وقد يعود عند المزامنة.',
+              'Note: sync currently combines some lists and progress across devices. Deleting an item on one device may not delete it on other devices, and it may reappear after syncing.',
+            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
         ]))),
         const SizedBox(height: 16),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

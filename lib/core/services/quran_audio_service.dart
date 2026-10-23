@@ -144,15 +144,25 @@ class QuranAudioService extends ChangeNotifier {
 
   int ayahAtSurahProgress(double fraction) => _progress.isEmpty ? (playingAyah ?? 1) : _progress.locate(fraction).ayah;
 
+  @visibleForTesting
+  static int ayahForPositionFromTimings(
+    Map<int, ({int startMs, int endMs})> timings,
+    Duration value,
+  ) {
+    if (timings.isEmpty) return 1;
+    final ms = value.inMilliseconds;
+    final ordered = timings.entries.toList()
+      ..sort((a, b) => a.value.startMs.compareTo(b.value.startMs));
+    for (final entry in ordered) {
+      if (ms >= entry.value.startMs && ms < entry.value.endMs) return entry.key;
+    }
+    if (ms >= ordered.last.value.endMs) return ordered.last.key;
+    return ordered.first.key;
+  }
+
   int _ayahForFullSurahPosition(Duration value) {
     if (_fullSurahTimings.isNotEmpty) {
-      final ms = value.inMilliseconds;
-      final ordered = _fullSurahTimings.entries.toList()..sort((a, b) => a.value.startMs.compareTo(b.value.startMs));
-      for (final entry in ordered) {
-        if (ms >= entry.value.startMs && ms < entry.value.endMs) return entry.key;
-      }
-      if (ms >= ordered.last.value.endMs) return ordered.last.key;
-      return ordered.first.key;
+      return ayahForPositionFromTimings(_fullSurahTimings, value);
     }
     if (duration <= Duration.zero || _progress.isEmpty) return playingAyah ?? 1;
     return _progress.locate((value.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)).ayah;
@@ -360,7 +370,13 @@ class QuranAudioService extends ChangeNotifier {
         'Quran audio player error',
         error: error,
       );
+      if (_stopping) return;
       isBuffering = false;
+      isPaused = true;
+      if (isExternalPlayback) {
+        externalError = 'Audio playback failed. Check the file or link and try again.';
+      }
+      unawaited(_setQuranWakelock(false));
       notifyListeners();
     });
   }
@@ -496,13 +512,18 @@ class QuranAudioService extends ChangeNotifier {
     _stopping = false;
 
     final qiraat = QiraatService.instance;
-    await qiraat.loadReaders();
-    // A newer tap/reader change may have started while readers were loading.
-    if (token != _playToken) return;
 
-    // Preserve Wirdi's established Hafs reader and original audio URL mapping.
+    // Hafs uses Wirdi's original, known per-ayah URL mapping. Do not block
+    // the first tap on the network catalog for other riwayat.
     final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
-    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
+    if (!useOriginalHafs) {
+      await qiraat.loadReaders();
+      // A newer tap/reader change may have started while readers were loading.
+      if (token != _playToken) return;
+    }
+
+    final hasAyahAudio =
+        useOriginalHafs || qiraat.selectedReaderHasAyahAudio();
     final fullSurahOnly = !useOriginalHafs && !hasAyahAudio;
 
 
@@ -688,6 +709,7 @@ class QuranAudioService extends ChangeNotifier {
     _stopping = false;
     _externalPlaylistMode = true;
     _externalPlaylistTitles = List<String>.unmodifiable(titles);
+    externalError = null;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
     _fullSurahOnly = false;
@@ -721,8 +743,8 @@ class QuranAudioService extends ChangeNotifier {
       _externalPlaylistMode = false;
       _externalPlaylistTitles = const <String>[];
       isBuffering = false;
-      externalUrl = null;
-      externalTitle = null;
+      isPaused = true;
+      externalError = 'Unable to play this downloaded audio queue. Try downloading the files again.';
       AppLogger.error('Failed to start local audio queue', error: e, stackTrace: st);
       notifyListeners();
     }
@@ -732,6 +754,7 @@ class QuranAudioService extends ChangeNotifier {
     if (path.isEmpty) return;
     _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
+    externalError = null;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
     _fullSurahOnly = false;
@@ -759,8 +782,8 @@ class QuranAudioService extends ChangeNotifier {
       notifyListeners();
     } catch (e, st) {
       isBuffering = false;
-      externalUrl = null;
-      externalTitle = null;
+      isPaused = true;
+      externalError = 'Unable to play this downloaded audio. Try downloading it again.';
       AppLogger.error('Failed to start local Way2Quran audio', error: e, stackTrace: st);
       notifyListeners();
     }
@@ -914,7 +937,10 @@ class QuranAudioService extends ChangeNotifier {
     // those tracks is active, switch back to the current surah using Wirdi's
     // selected reader instead of leaving the external track playing.
     final wasExternal = isExternalPlayback;
-    if (reciterId == appSettings.reciterId) {
+    final qiraatService = QiraatService.instance;
+    await qiraatService.load();
+    final mustRestoreHafs = qiraatService.selectedRiwayahId != 'hafs';
+    if (reciterId == appSettings.reciterId && !mustRestoreHafs) {
       if (wasExternal) {
         await playWholeSurah(surah, allSurahs);
       }
@@ -933,12 +959,13 @@ class QuranAudioService extends ChangeNotifier {
     final savedRangeEnd = _rangeEndAyah;
 
     await stop();
-    await appSettings.setReciterId(reciterId);
+    if (reciterId != appSettings.reciterId) {
+      await appSettings.setReciterId(reciterId);
+    }
 
     // The Quran-screen reader picker is Wirdi's native reciter preference.
-    // A one-off Recitation Library preview must not remain the active Quran source.
-    final qiraatService = QiraatService.instance;
-    await qiraatService.load();
+    // Selecting the already-selected reader while another riwayah is active
+    // must still restore Wirdi's original Hafs playback path.
     await qiraatService.setRiwayah('hafs');
 
     if (wasExternal) {

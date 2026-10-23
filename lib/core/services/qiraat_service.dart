@@ -68,26 +68,42 @@ class QiraatService {
   }
 
   Future<void> loadReaders() async {
-    if (_readers != null) return;
+    // A non-empty catalog can be reused. An empty/failed first fetch is not
+    // cached permanently: the next screen open or explicit retry may recover.
+    if (_readers != null &&
+        _readers!.values.any((readers) => readers.isNotEmpty)) {
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    _selectedReaderIds = <String, String>{};
+    _selectedReaderIds ??= <String, String>{};
     for (final r in QiraatCatalog.allRiwayat) {
       final id = prefs.getString('qiraat_reader_${r.id}');
       if (id != null) _selectedReaderIds![r.id] = id;
     }
-    final future = _readersFuture ??= _fetchReaders();
-    _readers = await future;
-    _readersFuture = null;
 
-    // Establish an explicit initial reader for each discovered riwayah. This is
-    // the initial pairing, not a playback fallback: once a user changes it,
-    // playback must use that exact reader only.
-    for (final entry in _readers!.entries) {
-      if (entry.value.isEmpty) continue;
-      final current = _selectedReaderIds![entry.key];
-      if (current == null || !entry.value.any((reader) => reader.id == current)) {
-        _selectedReaderIds![entry.key] = entry.value.first.id;
+    final future = _readersFuture ??= _fetchReaders();
+    late final Map<String, List<RiwayahReader>> loaded;
+    try {
+      loaded = await future;
+    } finally {
+      _readersFuture = null;
+    }
+
+    if (loaded.values.any((readers) => readers.isNotEmpty)) {
+      _readers = loaded;
+      // Establish an explicit initial reader for each discovered riwayah. This
+      // is initial pairing, not playback fallback: selected readers stay exact.
+      for (final entry in loaded.entries) {
+        if (entry.value.isEmpty) continue;
+        final current = _selectedReaderIds![entry.key];
+        if (current == null ||
+            !entry.value.any((reader) => reader.id == current)) {
+          _selectedReaderIds![entry.key] = entry.value.first.id;
+        }
       }
+    } else {
+      _readers = null;
     }
   }
 

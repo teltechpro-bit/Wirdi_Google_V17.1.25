@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:home_widget/home_widget.dart';
+import '../../core/services/widget_service.dart';
 
 import '../../core/services/user_progress_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -40,7 +42,7 @@ class TasbeehScreen extends StatefulWidget {
   State<TasbeehScreen> createState() => _TasbeehScreenState();
 }
 
-class _TasbeehScreenState extends State<TasbeehScreen> {
+class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserver {
   List<_TasbeehPhrase> _customPhrases = [];
   late _TasbeehPhrase _selected = _builtInPhrases.first;
   int _today = 0;
@@ -58,7 +60,19 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCustomPhrases().then((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   Future<void> _loadCustomPhrases() async {
@@ -85,6 +99,37 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // One-time migration for widget taps recorded by older app versions.
+    // After migration, app taps never advance this legacy sync watermark.
+    if (!(prefs.getBool('tasbeeh_widget_migrated_v2') ?? false)) {
+      var widgetCount = 0;
+      try {
+        widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
+      } catch (_) { /* Launcher widgets may be unavailable on this platform. */ }
+      final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
+      final legacyPending = (widgetCount - syncedCount).clamp(0, 100000).toInt();
+      if (legacyPending > 0) await _applyImportedWidgetTaps(prefs, _selected, legacyPending);
+      await prefs.setInt('tasbeeh_widget_synced_count', widgetCount);
+      await prefs.setBool('tasbeeh_widget_migrated_v2', true);
+    }
+
+    // Separate monotonic counters preserve which dhikr was selected at tap time.
+    for (final phrase in _allPhrases) {
+      var widgetTaps = 0;
+      try {
+        widgetTaps = await HomeWidget.getWidgetData<int>('tasbeeh_widget_taps_${phrase.id}', defaultValue: 0) ?? 0;
+      } catch (_) { continue; }
+      final syncKey = 'tasbeeh_widget_synced_taps_${phrase.id}';
+      final syncedTaps = prefs.getInt(syncKey) ?? 0;
+      final pending = (widgetTaps - syncedTaps).clamp(0, 100000).toInt();
+      if (pending > 0) {
+        await _applyImportedWidgetTaps(prefs, phrase, pending);
+        await prefs.setInt(syncKey, widgetTaps);
+      } else if (widgetTaps > syncedTaps) {
+        await prefs.setInt(syncKey, widgetTaps);
+      }
+    }
     final storedDay = prefs.getString('tasbeeh_day_${_selected.id}');
     final todayCount = storedDay == _todayKey() ? (prefs.getInt('tasbeeh_today_${_selected.id}') ?? 0) : 0;
     final storedCycle = storedDay == _todayKey() ? (prefs.getInt('tasbeeh_cycle_${_selected.id}') ?? (todayCount % _selected.target)) : 0;
@@ -101,12 +146,29 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
     // increases when I switch phrases" bug. Removed: just read the real
     // persisted value, with no silent rewriting.
     final total = prefs.getInt('tasbeeh_total_${_selected.id}') ?? 0;
+    if (!mounted) return;
     setState(() {
       _today = todayCount;
       _cycleCount = storedCycle;
       _total = total;
     });
     await _loadGrandTotal();
+    await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount);
+  }
+
+  Future<void> _applyImportedWidgetTaps(SharedPreferences prefs, _TasbeehPhrase phrase, int count) async {
+    final dayKey = 'tasbeeh_day_${phrase.id}';
+    final todayKey = 'tasbeeh_today_${phrase.id}';
+    final cycleKey = 'tasbeeh_cycle_${phrase.id}';
+    final totalKey = 'tasbeeh_total_${phrase.id}';
+    final sameDay = prefs.getString(dayKey) == _todayKey();
+    final today = sameDay ? (prefs.getInt(todayKey) ?? 0) : 0;
+    final cycle = sameDay ? (prefs.getInt(cycleKey) ?? (today % phrase.target)) : 0;
+    await prefs.setInt(todayKey, today + count);
+    await prefs.setInt(cycleKey, (cycle + count) % phrase.target);
+    await prefs.setInt(totalKey, (prefs.getInt(totalKey) ?? 0) + count);
+    await prefs.setString(dayKey, _todayKey());
+    await UserProgressService.incrementTasbeehDailyTotalBy(count);
   }
 
   /// Combined total across every phrase (built-in + custom), separate
@@ -123,10 +185,11 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
   Future<void> _increment() async {
     HapticFeedback.mediumImpact();
 
+    final phrase = _selected;
     final nextDaily = _today + 1;
     final nextCycle = _cycleCount + 1;
     final nextTotal = _total + 1;
-    final completedCycle = nextCycle >= _selected.target;
+    final completedCycle = nextCycle >= phrase.target;
 
     // The daily total NEVER resets. Only the visual tasbeeh cycle resets
     // after the selected target, so the ring starts a fresh round while
@@ -138,18 +201,27 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
       _grandTotal += 1;
     });
 
-    unawaited(_persistIncrement(nextDaily, nextTotal, completedCycle: completedCycle));
+    unawaited(_persistIncrement(phrase, nextDaily, nextTotal, completedCycle: completedCycle));
+    unawaited(_syncHomeWidgetAfterAppTap(phrase.id, completedCycle ? 0 : nextCycle));
 
     if (completedCycle) {
       HapticFeedback.heavyImpact();
     }
   }
-  Future<void> _persistIncrement(int next, int nextTotal, {bool completedCycle = false}) async {
+  Future<void> _syncHomeWidgetAfterAppTap(String phraseId, int displayCount) async {
+    try {
+      await WidgetService.updateTasbeehSelection(phraseId, displayCount);
+    } catch (_) {
+      // The in-app counter remains usable if a launcher widget is unavailable.
+    }
+  }
+
+  Future<void> _persistIncrement(_TasbeehPhrase phrase, int next, int nextTotal, {bool completedCycle = false}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('tasbeeh_today_${_selected.id}', next);
-    await prefs.setInt('tasbeeh_cycle_${_selected.id}', completedCycle ? 0 : (next % _selected.target));
-    await prefs.setString('tasbeeh_day_${_selected.id}', _todayKey());
-    await prefs.setInt('tasbeeh_total_${_selected.id}', nextTotal);
+    await prefs.setInt('tasbeeh_today_${phrase.id}', next);
+    await prefs.setInt('tasbeeh_cycle_${phrase.id}', completedCycle ? 0 : (next % phrase.target));
+    await prefs.setString('tasbeeh_day_${phrase.id}', _todayKey());
+    await prefs.setInt('tasbeeh_total_${phrase.id}', nextTotal);
     await UserProgressService.incrementTasbeehDailyTotal();
   }
 

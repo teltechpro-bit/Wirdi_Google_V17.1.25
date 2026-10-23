@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/tasbeeh_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="8dp" android:background="#ECFDF5">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="السبحة السريعة" android:textColor="#0F766E" android:textStyle="bold" android:textSize="13sp"/>
+    <TextView android:id="@+id/tasbeeh_count" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center" android:text="0" android:textColor="#064E3B" android:textSize="30sp" android:textStyle="bold"/>
+    <TextView android:id="@+id/tasbeeh_increment" android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center" android:text="＋ تسبيح" android:textColor="#FFFFFF" android:background="#0F766E" android:textStyle="bold"/>
+    <TextView android:id="@+id/tasbeeh_open" android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center" android:text="فتح التطبيق" android:textColor="#0F766E" android:textSize="11sp"/>
+</LinearLayout>

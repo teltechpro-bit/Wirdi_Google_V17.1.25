@@ -66,6 +66,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   }
 
   Future<void> _loadAll() async {
+    final languageCode = Localizations.localeOf(context).languageCode;
     try {
       List<SurahModel> surahs = [];
       List<HadithModel> hadiths = [];
@@ -78,7 +79,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       }
       
       try {
-        hadiths = await HadithRepository.load(languageCode: Localizations.localeOf(context).languageCode);
+        hadiths = await HadithRepository.load(languageCode: languageCode);
       } catch (e) {
         AppLogger.error('Failed to load Hadith', error: e);
       }

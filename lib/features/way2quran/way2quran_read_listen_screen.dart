@@ -184,9 +184,11 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _play(SurahModel surah) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     try {
     final audio = _audioFor(surah);
     final dir = await getApplicationDocumentsDirectory();
+    if (!mounted) return;
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
     final recitationSlug = selectedRecitation ?? 'recitation';
     final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
@@ -198,12 +200,14 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final legacyExists = !localExists && await legacyFile.exists();
     final playableFile = localExists ? localFile : legacyFile;
     final url = audio?.url.isNotEmpty == true ? audio!.url : audio?.downloadUrl ?? '';
+    if (!mounted) return;
     if (!localExists && url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة لهذه السورة عند هذا القارئ')));
       return;
     }
     await quranAudio.setSpeed(speed);
-    final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
+    if (!mounted) return;
+    final title = surah.name + ' — ' + selectedReciter!.name(isArabic);
     if (localExists || legacyExists) {
       await quranAudio.playExternalFile(
         playableFile.path,
@@ -213,6 +217,16 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       await quranAudio.playExternalUrl(
         url,
         title: title,
+      );
+    }
+    if (!mounted) return;
+    if (quranAudio.externalError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isArabic
+              ? 'تعذر تشغيل التلاوة. أعد تنزيل الملف أو تحقق من اتصالك بالإنترنت.'
+              : 'Could not play this recitation. Re-download the file or check your connection.'),
+        ),
       );
     }
     } catch (_) {

@@ -1,9 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_logger.dart';
+
+enum SyncAccountMismatchChoice {
+  replaceLocalWithCloud,
+  uploadLocalToAccount,
+}
+
+/// Thrown before reconciliation when the device's local sync data belongs to
+/// another account, or when a legacy timestamp has no known owner.
+class SyncAccountMismatchException implements Exception {
+  final String? storedOwnerUid;
+  final String currentUid;
+  SyncAccountMismatchException({required this.storedOwnerUid, required this.currentUid});
+  @override
+  String toString() => 'Local sync data belongs to a different or unknown account.';
+}
 
 /// Thrown by SyncService methods when there is no signed-in user to
 /// sync for -- previously uploadAll()/downloadAll() just silently
@@ -93,6 +109,58 @@ class SyncService {
     }
   }
 
+  static dynamic _canonicalize(dynamic value) {
+    if (value is Map) {
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
+      return <String, dynamic>{
+        for (final key in keys) key: _canonicalize(value[key]),
+      };
+    }
+    if (value is List) return value.map(_canonicalize).toList();
+    return value;
+  }
+
+  static String _stableFingerprint(Map<String, dynamic> payload) {
+    final bytes = utf8.encode(jsonEncode(_canonicalize(payload)));
+    var hashA = 0x811c9dc5;
+    var hashB = 0x9e3779b9;
+    for (final byte in bytes) {
+      hashA = ((hashA ^ byte) * 0x01000193) & 0xffffffff;
+      hashB = ((hashB ^ (byte + hashA)) * 0x85ebca6b) & 0xffffffff;
+    }
+    return hashA.toRadixString(16).padLeft(8, '0') +
+        hashB.toRadixString(16).padLeft(8, '0');
+  }
+
+  @visibleForTesting
+  static String fingerprintForTesting(Map<String, dynamic> payload) =>
+      _stableFingerprint(payload);
+
+  String _fingerprintKey(String uid, String section) =>
+      'sync_upload_fingerprint_${uid}_$section';
+
+  Future<bool> _setSectionIfChanged({
+    required SharedPreferences prefs,
+    required String section,
+    required Map<String, dynamic> payload,
+    required FieldValue now,
+    required Set<String> changedSections,
+    Map<String, dynamic>? fingerprintPayload,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
+    final fingerprint = _stableFingerprint(fingerprintPayload ?? payload);
+    final key = _fingerprintKey(uid, section);
+    if (prefs.getString(key) == fingerprint) return false;
+    await _doc(section).set(
+      <String, dynamic>{...payload, 'updatedAt': now},
+      SetOptions(merge: true),
+    );
+    changedSections.add(section);
+    await prefs.setString(key, fingerprint);
+    return true;
+  }
+
   /// ROOT CAUSE FIX: every section below except "tasbeeh" was reading
   /// SharedPreferences keys that DO NOT MATCH what the real owning
   /// service actually uses -- e.g. this used to read
@@ -127,26 +195,37 @@ class SyncService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final now = FieldValue.serverTimestamp();
+      final changedSections = <String>{};
 
       await _runIsolated('settings', () async {
-        await _doc('settings').set({
-          'themeMode': prefs.getString('settings_theme_mode') ?? 'system',
-          'colorTheme': prefs.getString('settings_color_theme') ?? 'emerald',
-          'locale': prefs.getString('settings_locale') ?? 'ar',
-          'fontScale': prefs.getDouble('settings_font_scale') ?? 1.0,
-          'wirdTarget': prefs.getInt('wird_target_pages') ?? 5,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'settings',
+          payload: <String, dynamic>{
+            'themeMode': prefs.getString('settings_theme_mode') ?? 'system',
+            'colorTheme': prefs.getString('settings_color_theme') ?? 'emerald',
+            'locale': prefs.getString('settings_locale') ?? 'ar',
+            'fontScale': prefs.getDouble('settings_font_scale') ?? 1.0,
+            'wirdTarget': prefs.getInt('wird_target_pages') ?? 5,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('quran_progress', () async {
-        await _doc('quran_progress').set({
-          'lastSurahNumber': prefs.getInt('last_surah_number'),
-          'lastSurahName': prefs.getString('last_surah_name'),
-          'lastAyahNumber': prefs.getInt('last_ayah_number'),
-          'lifetimePagesTotal': prefs.getInt('wird_lifetime_pages_total') ?? 0,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'quran_progress',
+          payload: <String, dynamic>{
+            'lastSurahNumber': prefs.getInt('last_surah_number'),
+            'lastSurahName': prefs.getString('last_surah_name'),
+            'lastAyahNumber': prefs.getInt('last_ayah_number'),
+            'lifetimePagesTotal': prefs.getInt('wird_lifetime_pages_total') ?? 0,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('tasbeeh', () async {
@@ -160,31 +239,51 @@ class SyncService {
             grandTotal += val;
           }
         }
-        await _doc('tasbeeh').set({'phrases': tasbeehData, 'grandTotal': grandTotal, 'updatedAt': now}, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'tasbeeh',
+          payload: <String, dynamic>{'phrases': tasbeehData, 'grandTotal': grandTotal},
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('profile', () async {
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          await _doc('profile').set({'displayName': user.displayName ?? '', 'email': user.email ?? '', 'photoUrl': user.photoURL ?? '', 'lastSyncAt': now}, SetOptions(merge: true));
+          await _setSectionIfChanged(
+            prefs: prefs,
+            section: 'profile',
+            payload: <String, dynamic>{
+              'displayName': user.displayName ?? '',
+              'email': user.email ?? '',
+              'photoUrl': user.photoURL ?? '',
+              'lastSyncAt': now,
+            },
+            fingerprintPayload: <String, dynamic>{
+              'displayName': user.displayName ?? '',
+              'email': user.email ?? '',
+              'photoUrl': user.photoURL ?? '',
+            },
+            now: now,
+            changedSections: changedSections,
+          );
         }
       }, failures);
 
       await _runIsolated('favorites', () async {
-        await _doc('favorites').set({
-          'ayahs': prefs.getStringList('favorite_ayahs_all') ?? [],
-          'azkar': prefs.getStringList('favorite_azkar_all') ?? [],
-          'hadiths': prefs.getStringList('favorite_hadiths_all') ?? [],
-          // NEW (v121): radio station favorites are a SEPARATE feature
-          // with their own storage (RadioService's 'radio_favorites'
-          // key, a Set<String> of station ids) -- not the same list as
-          // Quran ayah / Azkar / Hadith favorites above. Found by
-          // auditing every screen the user mentioned (Quran, Azkar,
-          // Dua, Radio) individually rather than assuming "favorites"
-          // is one single feature across the app.
-          'radioStations': prefs.getStringList('radio_favorites') ?? [],
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'favorites',
+          payload: <String, dynamic>{
+            'ayahs': prefs.getStringList('favorite_ayahs_all') ?? [],
+            'azkar': prefs.getStringList('favorite_azkar_all') ?? [],
+            'hadiths': prefs.getStringList('favorite_hadiths_all') ?? [],
+            'radioStations': prefs.getStringList('radio_favorites') ?? [],
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('prayer_log', () async {
@@ -194,7 +293,13 @@ class SyncService {
             byDate[key.replaceFirst('prayed_', '')] = prefs.getStringList(key) ?? [];
           }
         }
-        await _doc('prayer_log').set({'byDate': byDate, 'updatedAt': now}, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'prayer_log',
+          payload: <String, dynamic>{'byDate': byDate},
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       // NEW (v120): every lifetime/streak/daily-history stat tracked by
@@ -227,40 +332,78 @@ class SyncService {
             duaReadByDate[key.replaceFirst('dua_read_', '')] = prefs.getBool(key) ?? false;
           }
         }
-        await _doc('progress_stats').set({
-          'azkarLifetimeTotal': prefs.getInt('azkar_lifetime_total') ?? 0,
-          'tasbeehLifetimeTotal': prefs.getInt('tasbeeh_lifetime_total') ?? 0,
-          'prayersLifetimeTotal': prefs.getInt('prayers_lifetime_total') ?? 0,
-          'khatmasCompletedCount': prefs.getInt('khatmas_completed_count') ?? 0,
-          'khatmasCompletedIds': prefs.getStringList('khatmas_completed_ids') ?? [],
-          'completedSurahsAll': prefs.getStringList('completed_surahs_all') ?? [],
-          'wirdProgressPages': prefs.getInt('wird_progress_pages') ?? 0,
-          'wirdProgressDay': prefs.getString('wird_progress_day'),
-          'wirdStreak': prefs.getInt('wird_streak') ?? 0,
-          'wirdStreakLastDay': prefs.getString('wird_streak_last_day'),
-          'wirdLongestStreak': prefs.getInt('wird_longest_streak') ?? 0,
-          'congregationLifetimeTotal': prefs.getInt('congregation_lifetime_total') ?? 0,
-          'wirdPagesByDate': wirdPagesByDate,
-          'azkarCompletedByDate': azkarCompletedByDate,
-          'tasbeehDailyByDate': tasbeehDailyByDate,
-          'fastingByDate': fastingByDate,
-          'duaReadByDate': duaReadByDate,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'progress_stats',
+          payload: <String, dynamic>{
+            'azkarLifetimeTotal': prefs.getInt('azkar_lifetime_total') ?? 0,
+            'tasbeehLifetimeTotal': prefs.getInt('tasbeeh_lifetime_total') ?? 0,
+            'prayersLifetimeTotal': prefs.getInt('prayers_lifetime_total') ?? 0,
+            'khatmasCompletedCount': prefs.getInt('khatmas_completed_count') ?? 0,
+            'khatmasCompletedIds': prefs.getStringList('khatmas_completed_ids') ?? [],
+            'completedSurahsAll': prefs.getStringList('completed_surahs_all') ?? [],
+            'wirdProgressPages': prefs.getInt('wird_progress_pages') ?? 0,
+            'wirdProgressDay': prefs.getString('wird_progress_day'),
+            'wirdStreak': prefs.getInt('wird_streak') ?? 0,
+            'wirdStreakLastDay': prefs.getString('wird_streak_last_day'),
+            'wirdLongestStreak': prefs.getInt('wird_longest_streak') ?? 0,
+            'congregationLifetimeTotal': prefs.getInt('congregation_lifetime_total') ?? 0,
+            'wirdPagesByDate': wirdPagesByDate,
+            'azkarCompletedByDate': azkarCompletedByDate,
+            'tasbeehDailyByDate': tasbeehDailyByDate,
+            'fastingByDate': fastingByDate,
+            'duaReadByDate': duaReadByDate,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       for (final e in {'bookmarks': 'advanced_bookmarks_v1', 'khatma': 'khatma_plans_v2_json', 'tasbeeh_custom': 'tasbeeh_custom_phrases_v1', 'my_duas': 'my_duas_v1', 'custom_azkar': 'custom_azkar_items_v1', 'sadaqah': 'sadaqah_entries_v1', 'qada': 'qada_counts_v1'}.entries) {
         await _runIsolated(e.key, () async {
           final val = prefs.getString(e.value);
-          if (val != null) await _doc(e.key).set({'data': val, 'updatedAt': now}, SetOptions(merge: true));
+          if (val != null) {
+            await _setSectionIfChanged(
+              prefs: prefs,
+              section: e.key,
+              payload: <String, dynamic>{'data': val},
+              now: now,
+              changedSections: changedSections,
+            );
+          }
         }, failures);
       }
 
       for (final e in {'muhasabah': 'muhasabah_entries_v1', 'recitation_mistakes': 'recitation_mistakes_v1'}.entries) {
         await _runIsolated(e.key, () async {
           final val = prefs.getStringList(e.value);
-          if (val != null) await _doc(e.key).set({'data': val, 'updatedAt': now}, SetOptions(merge: true));
+          if (val != null) {
+            await _setSectionIfChanged(
+              prefs: prefs,
+              section: e.key,
+              payload: <String, dynamic>{'data': val},
+              now: now,
+              changedSections: changedSections,
+            );
+          }
         }, failures);
+      }
+
+      if (changedSections.isNotEmpty && !changedSections.contains('settings')) {
+        await _runIsolated('settings_marker', () async {
+          await _doc('settings').set(
+            <String, dynamic>{'updatedAt': now},
+            SetOptions(merge: true),
+          );
+        }, failures);
+        if (failures.contains('settings_marker')) {
+          final uid = _uid;
+          if (uid != null) {
+            for (final section in changedSections) {
+              await prefs.remove(_fingerprintKey(uid, section));
+            }
+          }
+        }
       }
 
       _lastSyncAt = DateTime.now();
@@ -438,6 +581,86 @@ class SyncService {
   }
 
   static const String _localLastSyncedKey = 'sync_local_last_synced_at_ms';
+  static const String _localSyncOwnerUidKey = 'sync_local_owner_uid';
+
+  /// Pure guard used before any local/cloud reconciliation. Older installs
+  /// with a timestamp but no owner UID are treated as ambiguous and must
+  /// ask the user rather than assume the currently signed-in account owns it.
+  @visibleForTesting
+  static bool requiresAccountResolution({
+    required String currentUid,
+    String? storedOwnerUid,
+    int? localLastSyncedMs,
+  }) {
+    if (storedOwnerUid != null) return storedOwnerUid != currentUid;
+    return localLastSyncedMs != null;
+  }
+
+  /// The local data is deliberately kept on sign-out, but its sync timestamp
+  /// is invalidated. Keep the owner UID so a different account is detected.
+  Future<void> prepareForSignOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedOwnerUid = prefs.getString(_localSyncOwnerUidKey);
+    final hadLegacySyncMarker = prefs.getInt(_localLastSyncedKey) != null;
+    // Preserve ambiguity for upgraded installs that have a prior sync marker
+    // but predate UID ownership. Removing the timestamp alone would make the
+    // next account look like a first sync and could upload the previous user's
+    // local data without asking.
+    if (storedOwnerUid == null && hadLegacySyncMarker) {
+      await prefs.setString(_localSyncOwnerUidKey, '__legacy_unknown_owner__');
+    }
+    await prefs.remove(_localLastSyncedKey);
+  }
+
+  /// Resolve a detected account mismatch only after an explicit user choice.
+  /// Replacing clears only keys that SyncService owns; unrelated app settings
+  /// and Quran display preferences are preserved.
+  Future<void> resolveAccountMismatch(SyncAccountMismatchChoice choice) async {
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
+    final prefs = await SharedPreferences.getInstance();
+
+    if (choice == SyncAccountMismatchChoice.replaceLocalWithCloud) {
+      final exactKeys = <String>[
+        'settings_theme_mode', 'settings_color_theme', 'settings_locale',
+        'settings_font_scale', 'wird_target_pages', 'last_surah_number',
+        'last_surah_name', 'last_ayah_number', 'wird_lifetime_pages_total',
+        'favorite_ayahs_all', 'favorite_azkar_all', 'favorite_hadiths_all',
+        'radio_favorites', 'azkar_lifetime_total', 'tasbeeh_lifetime_total',
+        'prayers_lifetime_total', 'khatmas_completed_count',
+        'khatmas_completed_ids', 'completed_surahs_all', 'wird_progress_pages',
+        'wird_progress_day', 'wird_streak', 'wird_streak_last_day',
+        'wird_longest_streak', 'congregation_lifetime_total',
+        'advanced_bookmarks_v1', 'khatma_plans_v2_json',
+        'tasbeeh_custom_phrases_v1', 'my_duas_v1', 'custom_azkar_items_v1',
+        'sadaqah_entries_v1', 'qada_counts_v1', 'muhasabah_entries_v1',
+        'recitation_mistakes_v1',
+      ];
+      for (final key in exactKeys) {
+        await prefs.remove(key);
+      }
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith('tasbeeh_total_') ||
+            key.startsWith('prayed_') ||
+            key.startsWith('wird_pages_') ||
+            key.startsWith('azkar_completed_') ||
+            key.startsWith('tasbeeh_daily_total_') ||
+            key.startsWith('fasting_') ||
+            key.startsWith('dua_read_')) {
+          await prefs.remove(key);
+        }
+      }
+      await prefs.remove(_localLastSyncedKey);
+      await downloadAll();
+    } else {
+      // This is an explicit choice to transfer this device's synced data to
+      // the currently signed-in account. It is never done automatically.
+      await uploadAll();
+    }
+
+    await prefs.setString(_localSyncOwnerUidKey, uid);
+    await _markLocalSynced();
+  }
 
   /// Reads the 'settings' document's server-written updatedAt as a proxy
   /// for cloud data freshness overall -- uploadAll() writes it in the
@@ -508,6 +731,8 @@ class SyncService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_localLastSyncedKey, confirmedCloudTime.millisecondsSinceEpoch);
+    final uid = _uid;
+    if (uid != null) await prefs.setString(_localSyncOwnerUidKey, uid);
   }
 
   /// ROOT CAUSE FIX (v96): this used to be the ONLY place that ever
@@ -567,10 +792,23 @@ class SyncService {
 
   Future<void> _reconcileImpl() async {
     lastReconcileHadPermissionError = false;
-    final cloudUpdatedAt = await _cloudLastUpdated();
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
     final prefs = await SharedPreferences.getInstance();
     final localLastSyncedMs = prefs.getInt(_localLastSyncedKey);
+    final storedOwnerUid = prefs.getString(_localSyncOwnerUidKey);
+    if (requiresAccountResolution(
+      currentUid: uid,
+      storedOwnerUid: storedOwnerUid,
+      localLastSyncedMs: localLastSyncedMs,
+    )) {
+      throw SyncAccountMismatchException(
+        storedOwnerUid: storedOwnerUid,
+        currentUid: uid,
+      );
+    }
 
+    final cloudUpdatedAt = await _cloudLastUpdated();
     final cloudIsNewer = cloudUpdatedAt != null &&
         (localLastSyncedMs == null || cloudUpdatedAt.millisecondsSinceEpoch > localLastSyncedMs);
 
@@ -595,13 +833,63 @@ class SyncService {
     await _markLocalSynced();
   }
 
-  Future<void> syncOnSignIn() async => _reconcile();
+  static const Duration automaticSyncMinimumInterval = Duration(minutes: 10);
+
+  @visibleForTesting
+  static bool shouldSkipAutomaticSync({
+    required int nowMs,
+    required int? lastAttemptMs,
+  }) {
+    if (lastAttemptMs == null || nowMs < lastAttemptMs) return false;
+    return nowMs - lastAttemptMs < automaticSyncMinimumInterval.inMilliseconds;
+  }
+
+  /// Lifecycle-triggered sync only. Manual Sync Now continues to call
+  /// [syncNow] directly and is never throttled by this cooldown.
+  Future<void> syncAutomatically() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sync_auto_last_attempt_at_ms_$uid';
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (shouldSkipAutomaticSync(
+      nowMs: nowMs,
+      lastAttemptMs: prefs.getInt(key),
+    )) {
+      return;
+    }
+    await prefs.setInt(key, nowMs);
+    try {
+      await syncNow();
+    } catch (_) {
+      await prefs.remove(key);
+      rethrow;
+    }
+  }
+
+  Future<void> _recordSuccessfulSyncForAutoCooldown() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      'sync_auto_last_attempt_at_ms_$uid',
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Future<void> syncOnSignIn() async {
+    await _reconcile();
+    await _recordSuccessfulSyncForAutoCooldown();
+  }
 
   /// Was previously `await uploadAll(); await _markLocalSynced();` --
   /// a blind, direction-less upload. See [_reconcile] doc above for why
   /// that silently broke cross-device sync. Now shares the exact same
   /// freshness-aware logic as syncOnSignIn().
-  Future<void> syncNow() async => _reconcile();
+  Future<void> syncNow() async {
+    await _reconcile();
+    await _recordSuccessfulSyncForAutoCooldown();
+  }
 
   /// Deletes all user data from Firestore (called before account deletion).
   Future<void> deleteAllCloudData() async {

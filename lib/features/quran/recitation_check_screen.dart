@@ -33,6 +33,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   bool _loadingData = true;
   bool _speechReady = false;
   bool _speechUnavailable = false;
+  bool _microphonePermissionIssue = false;
   String? _localeId;
 
   int _surahNumber = 1;
@@ -42,6 +43,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   bool _session = false; // the user pressed "start" and has not pressed "stop"
   bool _listening = false;
   bool _starting = false;
+  int _emptyRecognitionRestarts = 0;
+  bool _recognizedWordsThisCycle = false;
+  bool _cycleCounted = false;
+  bool _restartScheduled = false;
   String? _lastError;
   Completer<void>? _finalResultWaiter;
 
@@ -106,17 +111,22 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           if (!mounted) return;
           final message = error.errorMsg;
           final normalized = message.toLowerCase();
+          // Do not interpret every audio/recognizer error as a permission
+          // failure. Android can report audio/service errors even when the
+          // microphone permission is already granted.
           final permissionIssue = normalized.contains('permission') ||
               normalized.contains('not authorized') ||
-              normalized.contains('microphone') ||
-              normalized.contains('audio');
+              normalized.contains('not_authorized') ||
+              normalized.contains('not allowed') ||
+              normalized.contains('not_allowed') ||
+              normalized.contains('denied');
           setState(() {
             _lastError = message;
-            if (permissionIssue) {
-              _speechUnavailable = true;
-              _session = false;
-              _listening = false;
-            }
+            _microphonePermissionIssue = permissionIssue;
+            _speechUnavailable = true;
+            _speechReady = false;
+            _session = false;
+            _listening = false;
           });
         },
         onStatus: _onStatus,
@@ -126,8 +136,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         if (mounted) {
           setState(() {
             _speechUnavailable = true;
+            _microphonePermissionIssue = false;
             _lastError =
-                'The device speech-recognition service could not initialize. Check the installed speech service and Arabic language pack; this does not by itself mean microphone permission is denied.';
+                'Speech recognition could not initialize. This is not proof that microphone permission is disabled; check the phone speech service and its Arabic language support.';
           });
         }
         return false;
@@ -149,6 +160,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         if (mounted) {
           setState(() {
             _speechUnavailable = true;
+            _microphonePermissionIssue = false;
             _lastError = 'لم تتوفر لغة عربية لخدمة التعرف على الصوت على هذا الجهاز.';
           });
         }
@@ -158,6 +170,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         setState(() {
           _speechReady = true;
           _speechUnavailable = false;
+          _microphonePermissionIssue = false;
           _localeId = pick;
         });
       }
@@ -165,8 +178,17 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     } catch (error) {
       if (mounted) {
         setState(() {
+          final message = error.toString();
+          final normalized = message.toLowerCase();
+          _microphonePermissionIssue = normalized.contains('permission') ||
+              normalized.contains('not authorized') ||
+              normalized.contains('not_authorized') ||
+              normalized.contains('not allowed') ||
+              normalized.contains('not_allowed') ||
+              normalized.contains('denied');
           _speechUnavailable = true;
-          _lastError = error.toString();
+          _lastError = message;
+          _speechReady = false;
           _session = false;
           _listening = false;
         });
@@ -178,12 +200,44 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   void _onStatus(String status) {
     if (!mounted) return;
     final nowListening = status == 'listening';
+    if (nowListening) {
+      _recognizedWordsThisCycle = false;
+      _cycleCounted = false;
+      _restartScheduled = false;
+    }
     if (_listening != nowListening) setState(() => _listening = nowListening);
-    // Android ends a recognition session after a short silence; keep going
-    // until the user presses stop.
+
+    // Android may emit both "done" and "notListening" for one cycle. Count
+    // that cycle once, but allow the later status to restart if the first
+    // delayed check runs before the recognizer fully stops.
     if ((status == 'done' || status == 'notListening') && _session) {
+      if (!_cycleCounted) {
+        _cycleCounted = true;
+        if (_recognizedWordsThisCycle) {
+          _emptyRecognitionRestarts = 0;
+        } else {
+          _emptyRecognitionRestarts++;
+        }
+        if (_emptyRecognitionRestarts >= 3) {
+          setState(() {
+            _session = false;
+            _listening = false;
+            _speechUnavailable = false;
+            _lastError =
+                'لم يتم التقاط كلام بعد عدة محاولات. تحدث بوضوح قرب الميكروفون ثم ابدأ المحاولة مرة أخرى.';
+          });
+          return;
+        }
+      }
+      if (_restartScheduled) return;
+      _restartScheduled = true;
       Future<void>.delayed(const Duration(milliseconds: 250), () {
-        if (mounted && _session && !_speech.isListening) _listen();
+        if (!mounted || !_session) return;
+        if (_speech.isListening) {
+          _restartScheduled = false;
+          return;
+        }
+        _listen();
       });
     }
   }
@@ -197,6 +251,12 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       setState(() {
         _session = true;
         _lastError = null;
+        _speechUnavailable = false;
+        _microphonePermissionIssue = false;
+        _emptyRecognitionRestarts = 0;
+        _recognizedWordsThisCycle = false;
+        _cycleCounted = false;
+        _restartScheduled = false;
         _states = List<_WordState>.filled(_expected.length, _WordState.pending);
         _finalWords.clear();
         _partialWords = const <String>[];
@@ -251,9 +311,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     }
     if (!mounted) return;
     if (_finalWords.isEmpty) {
+      // Silence/no recognized words is not evidence that the speech service
+      // is unavailable or that microphone permission was denied.
       setState(() {
-        _lastError = 'لم يصل نص من خدمة التعرف على الصوت. تأكد من السماح بالميكروفون وتثبيت/تفعيل خدمة Google للتعرف على الكلام وحزمة اللغة العربية، ثم حاول مرة أخرى.';
-        _speechUnavailable = true;
+        _lastError = 'لم يتم التقاط كلام. جرّب التحدث بوضوح بالقرب من الميكروفون ثم أعد المحاولة.';
+        _speechUnavailable = false;
         _listening = false;
       });
       return;
@@ -263,6 +325,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
   void _onResult(stt.SpeechRecognitionResult result) {
     final words = ArabicWordMatch.tokens(result.recognizedWords).map((e) => e.value).toList();
+    if (words.isNotEmpty) {
+      _recognizedWordsThisCycle = true;
+      _emptyRecognitionRestarts = 0;
+    }
     if (result.finalResult) {
       _finalWords.addAll(words);
       _partialWords = const <String>[];
@@ -383,11 +449,17 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                     const SizedBox(height: 12),
                     if (_speechUnavailable)
                       Text(
-                        bi(
-                          context,
-                          'التعرّف على الصوت غير متاح على هذا الجهاز أو لم تُمنح صلاحية الميكروفون.',
-                          'Speech recognition is not available on this device, or microphone permission was not granted.',
-                        ),
+                        _microphonePermissionIssue
+                            ? bi(
+                                context,
+                                'تم رفض إذن الميكروفون. راجع إعدادات أندرويد > التطبيقات > وردي > الأذونات، وتأكد أيضًا أن مفتاح الوصول إلى الميكروفون العام في إعدادات الخصوصية مفعّل.',
+                                'Microphone permission was denied. Check Android Settings > Apps > Wirdi > Permissions, and make sure the device-wide Microphone access toggle is enabled.',
+                              )
+                            : bi(
+                                context,
+                                'خدمة التعرف على الكلام لم تبدأ بنجاح. هذا لا يعني بالضرورة أن إذن الميكروفون متوقف؛ تحقق من خدمة التعرف على الكلام على الهاتف وتوفر العربية، ثم أعد المحاولة.',
+                                'Speech recognition failed to start. This does not necessarily mean microphone permission is disabled; check the phone speech-recognition service and Arabic support, then retry.',
+                              ),
                         style: TextStyle(color: Colors.red.shade700),
                       ),
                     if (_lastError != null)

@@ -62,6 +62,7 @@ class _MosqueFinderScreenState extends State<MosqueFinderScreen> with SingleTick
   }
 
   Future<void> _load() async {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     setState(() {
       _loading = true;
       _error = null;
@@ -83,11 +84,11 @@ class _MosqueFinderScreenState extends State<MosqueFinderScreen> with SingleTick
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       ).timeout(const Duration(seconds: 15));
 
-      final isAr = Localizations.localeOf(context).languageCode == 'ar';
       final results = await Future.wait([
         NearbyPlacesService.findMosques(latitude: position.latitude, longitude: position.longitude, fallbackName: isAr ? 'مسجد' : 'Mosque'),
         NearbyPlacesService.findHalalRestaurants(latitude: position.latitude, longitude: position.longitude, fallbackName: isAr ? 'مطعم حلال' : 'Halal Restaurant'),
       ]);
+      if (!mounted) return;
 
       setState(() {
         _mosques = results[0];
@@ -95,6 +96,7 @@ class _MosqueFinderScreenState extends State<MosqueFinderScreen> with SingleTick
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString().contains('location_disabled')
             ? _MosqueError.locationDisabled

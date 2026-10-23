@@ -6,6 +6,7 @@ import '../../core/services/prayer_service.dart';
 import '../../core/services/prayer_notification_scheduler.dart';
 import '../../core/services/daily_reminder_scheduler.dart';
 import '../../core/services/settings_service.dart';
+import '../../core/utils/bi.dart';
 import '../../core/models/prayer_models.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -53,7 +54,11 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         showDialog(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Background notification setup failed'),
+            title: Text(bi(
+              dialogContext,
+              'تعذر إعداد إشعارات الخلفية',
+              'Background notifications could not be set up',
+            )),
             content: SingleChildScrollView(child: Text(audioServiceInitError!)),
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('OK')),
@@ -75,7 +80,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     // Auto-sync when app comes back to foreground
     if (state == AppLifecycleState.resumed &&
         AuthService.instance.isSignedIn) {
-      SyncService.instance.syncNow().catchError((_) {});
+      SyncService.instance.syncAutomatically().catchError((_) {});
     }
     // FIX: "Auto dark mode at Maghrib" is normally driven by a per-second
     // timer that only lives in HomeDashboardScreen -- while the phone's
