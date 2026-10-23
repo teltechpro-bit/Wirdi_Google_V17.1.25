@@ -140,6 +140,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   List<GlobalKey> _pageKeys = <GlobalKey>[];
   int _continuousScrollRequestId = 0;
   bool _suppressNextPageSave = false;
+  int? _restoreSurahNumber;
+  int? _restoreAyahNumber;
 
   @override
   void initState() {
@@ -170,6 +172,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
       targetSurah = last?['surahNumber'] as int?;
       targetAyah = last?['ayahNumber'] as int?;
     }
+    _restoreSurahNumber = targetSurah;
+    _restoreAyahNumber = targetAyah;
     if (targetSurah != null && targetAyah != null) {
       for (var i = 0; i < pages.length; i++) {
         if (pages[i].ayahs.any((a) => a.surahNumber == targetSurah && a.ayahNumber == targetAyah)) {
@@ -548,6 +552,12 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     key: _pageKeys[index],
                     page: page,
                     allSurahs: allSurahs,
+                    restoreSurahNumber: page.ayahs.any((a) => a.surahNumber == _restoreSurahNumber && a.ayahNumber == _restoreAyahNumber)
+                        ? _restoreSurahNumber
+                        : null,
+                    restoreAyahNumber: page.ayahs.any((a) => a.surahNumber == _restoreSurahNumber && a.ayahNumber == _restoreAyahNumber)
+                        ? _restoreAyahNumber
+                        : null,
                     targetHeight: MediaQuery.sizeOf(context).height * 0.92,
                     onMultiTouch: (active) {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
@@ -591,6 +601,12 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                   key: _pageKeys[index],
                   page: page,
                   allSurahs: allSurahs,
+                  restoreSurahNumber: page.ayahs.any((a) => a.surahNumber == _restoreSurahNumber && a.ayahNumber == _restoreAyahNumber)
+                      ? _restoreSurahNumber
+                      : null,
+                  restoreAyahNumber: page.ayahs.any((a) => a.surahNumber == _restoreSurahNumber && a.ayahNumber == _restoreAyahNumber)
+                      ? _restoreAyahNumber
+                      : null,
                   onMultiTouch: (active) {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
@@ -616,6 +632,8 @@ class _AyahTextAnchor {
 class _MushafPageView extends StatefulWidget {
   final MushafPage page;
   final List<SurahModel> allSurahs;
+  final int? restoreSurahNumber;
+  final int? restoreAyahNumber;
   final ValueChanged<bool>? onMultiTouch;
   // Explicit height for continuous-scroll mode -- see BUGFIX note in
   // _MushafPageViewState.build() below for why this is required instead
@@ -623,7 +641,7 @@ class _MushafPageView extends StatefulWidget {
   final double? targetHeight;
   final double fontScale;
   final Color backgroundColor;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.restoreSurahNumber, this.restoreAyahNumber, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -652,6 +670,14 @@ class _MushafPageViewState extends State<_MushafPageView> {
   void initState() {
     super.initState();
     quranAudio.addListener(_onAudioChanged);
+    final restoreSurah = widget.restoreSurahNumber;
+    final restoreAyah = widget.restoreAyahNumber;
+    if (restoreSurah != null && restoreAyah != null) {
+      _restoringInitialPosition = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreToAyah(restoreSurah, restoreAyah));
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _saveVisibleAyahPosition());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToPlayingAyahIfNeeded());
   }
 
@@ -836,7 +862,49 @@ class _MushafPageViewState extends State<_MushafPageView> {
   }
 
   bool _visibleAyahSavePending = false;
+  bool _restoringInitialPosition = false;
   String? _lastVisibleAyahSaved;
+
+  Future<void> _restoreToAyah(int surahNumber, int ayahNumber) async {
+    final id = '$surahNumber:$ayahNumber';
+    final anchor = _ayahTextAnchors[id];
+    final textContext = anchor?.key.currentContext;
+    final render = textContext?.findRenderObject();
+    final range = anchor?.range;
+    if (!mounted || render is! RenderParagraph || !render.attached || range == null) {
+      _restoringInitialPosition = false;
+      return;
+    }
+    final boxes = render.getBoxesForSelection(TextSelection(baseOffset: range.start, extentOffset: range.end));
+    final scrollable = Scrollable.maybeOf(textContext!);
+    final viewportObject = scrollable?.context.findRenderObject();
+    if (boxes.isEmpty || scrollable == null || viewportObject is! RenderBox || !viewportObject.attached) {
+      _restoringInitialPosition = false;
+      return;
+    }
+    final top = render.localToGlobal(Offset(0, boxes.first.top)).dy;
+    final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+    final desiredTop = viewportTop + viewportObject.size.height * 0.28;
+    final target = (scrollable.position.pixels + top - desiredTop).clamp(0.0, scrollable.position.maxScrollExtent);
+    if ((scrollable.position.pixels - target).abs() > 8.0) {
+      await scrollable.position.animateTo(
+        target,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+      );
+    }
+    if (!mounted) return;
+    _restoringInitialPosition = false;
+    _lastVisibleAyahSaved = id;
+    final surah = _surahFor(surahNumber);
+    if (surah != null) {
+      unawaited(UserProgressService.saveLastReading(
+        surahNumber: surahNumber,
+        surahName: surah.name,
+        ayahNumber: ayahNumber,
+      ));
+    }
+  }
 
   bool _onMushafScrollNotification(ScrollNotification notification) {
     if (_visibleAyahSavePending || notification is ScrollEndNotification && notification.depth > 2) return false;
@@ -850,6 +918,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
   }
 
   void _saveVisibleAyahPosition() {
+    if (_restoringInitialPosition) return;
     MushafAyahRef? closest;
     var bestDistance = double.infinity;
     for (final ayah in widget.page.ayahs) {
