@@ -26,7 +26,9 @@ private object WirdiWidgetUi {
             val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
             if (data.getString("daily_ayah_date", "") != today) {
                 val pool = readAyahPool(data)
-                data.edit().putInt("daily_ayah_index", 0).putString("daily_ayah_text", pool.first()).putString("daily_ayah_date", today).apply()
+                val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+                val next = (dayOfYear * 17) % pool.size
+                data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", pool[next]).putString("daily_ayah_date", today).apply()
             }
         }
         ids.forEach { id ->
@@ -97,7 +99,12 @@ private object WirdiWidgetUi {
     }
     fun increment(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putInt(COUNT, prefs.getInt(COUNT, 0) + 1).apply()
+        val phraseId = prefs.getString("tasbeeh_selected_phrase_id", "subhanallah") ?: "subhanallah"
+        val phraseTapKey = "tasbeeh_widget_taps_$phraseId"
+        prefs.edit()
+            .putInt(COUNT, prefs.getInt(COUNT, 0) + 1)
+            .putInt(phraseTapKey, prefs.getInt(phraseTapKey, 0) + 1)
+            .apply()
     }
     private fun readAyahPool(data: SharedPreferences): List<String> {
         val raw = data.getString("daily_ayah_pool_json", null)
@@ -113,8 +120,12 @@ private object WirdiWidgetUi {
 
     fun nextAyah(context: Context, data: SharedPreferences) {
         val pool = readAyahPool(data)
-        val next = (data.getInt("daily_ayah_index", 0) + 1) % pool.size
         val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        val next = if (data.getString("daily_ayah_date", "") != today) {
+            (java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) * 17) % pool.size
+        } else {
+            (data.getInt("daily_ayah_index", 0) + 1) % pool.size
+        }
         data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", pool[next]).putString("daily_ayah_date", today).apply()
     }
 }
