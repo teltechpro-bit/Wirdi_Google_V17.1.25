@@ -108,7 +108,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
         widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
       } catch (_) { /* Launcher widgets may be unavailable on this platform. */ }
       final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
-      final legacyPending = (widgetCount - syncedCount).clamp(0, 100000);
+      final legacyPending = (widgetCount - syncedCount).clamp(0, 100000).toInt();
       if (legacyPending > 0) await _applyImportedWidgetTaps(prefs, _selected, legacyPending);
       await prefs.setInt('tasbeeh_widget_synced_count', widgetCount);
       await prefs.setBool('tasbeeh_widget_migrated_v2', true);
@@ -122,7 +122,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
       } catch (_) { continue; }
       final syncKey = 'tasbeeh_widget_synced_taps_${phrase.id}';
       final syncedTaps = prefs.getInt(syncKey) ?? 0;
-      final pending = (widgetTaps - syncedTaps).clamp(0, 100000);
+      final pending = (widgetTaps - syncedTaps).clamp(0, 100000).toInt();
       if (pending > 0) {
         await _applyImportedWidgetTaps(prefs, phrase, pending);
         await prefs.setInt(syncKey, widgetTaps);
