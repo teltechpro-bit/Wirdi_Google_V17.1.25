@@ -62,7 +62,7 @@ class FamilyKhatma {
 }
 
 class FamilyKhatmaException implements Exception {
-  /// One of: notSignedIn, notFound, taken, notOwner, permission, failed
+  /// One of: notSignedIn, notFound, taken, notOwner, ownerCannotLeaveWithMembers, permission, failed
   final String kind;
   const FamilyKhatmaException(this.kind);
   @override
@@ -294,8 +294,9 @@ class FamilyKhatmaService {
           await ref.delete();
           return;
         }
-        // Ownership transfer must be explicit; never orphan an active group.
-        throw const FamilyKhatmaException('notOwner');
+        // Do not orphan an active group. Report this as a distinct, actionable
+        // state instead of the contradictory generic "not owner" error.
+        throw const FamilyKhatmaException('ownerCannotLeaveWithMembers');
       }
 
       // Release only unfinished work. Completed juz remain as history.
