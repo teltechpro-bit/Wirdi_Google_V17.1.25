@@ -314,18 +314,24 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     });
   }
 
+  String? _surahNameFor(int surahNumber) {
+    final surahs = _allSurahs;
+    if (surahs == null) return null;
+    for (final surah in surahs) {
+      if (surah.number == surahNumber) return surah.name;
+    }
+    return null;
+  }
+
   void _scheduleSaveLastReading(MushafAyahRef ayah) {
     _lastVisibleAyah = ayah;
     _readingSaveTimer?.cancel();
     _readingSaveTimer = Timer(const Duration(milliseconds: 250), () {
-      final surah = _allSurahs?.firstWhere(
-        (item) => item.number == ayah.surahNumber,
-        orElse: () => _allSurahs!.first,
-      );
-      if (surah == null) return;
+      final surahName = _surahNameFor(ayah.surahNumber);
+      if (surahName == null) return;
       unawaited(UserProgressService.saveLastReading(
         surahNumber: ayah.surahNumber,
-        surahName: surah.name,
+        surahName: surahName,
         ayahNumber: ayah.ayahNumber,
       ));
     });
@@ -353,11 +359,11 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
       }
       if (bestAyah != null) {
         _lastVisibleAyah = bestAyah;
-        final surah = _allSurahs?.where((s) => s.number == bestAyah!.surahNumber).firstOrNull;
-        if (surah != null) {
+        final surahName = _surahNameFor(bestAyah.surahNumber);
+        if (surahName != null) {
           unawaited(UserProgressService.saveLastReading(
             surahNumber: bestAyah.surahNumber,
-            surahName: surah.name,
+            surahName: surahName,
             ayahNumber: bestAyah.ayahNumber,
           ));
         }
@@ -386,11 +392,11 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     _readingSaveTimer?.cancel();
     final last = _lastVisibleAyah;
     if (last != null) {
-      final surah = _allSurahs?.where((s) => s.number == last.surahNumber).firstOrNull;
-      if (surah != null) {
+      final surahName = _surahNameFor(last.surahNumber);
+      if (surahName != null) {
         unawaited(UserProgressService.saveLastReading(
           surahNumber: last.surahNumber,
-          surahName: surah.name,
+          surahName: surahName,
           ayahNumber: last.ayahNumber,
         ));
       }
