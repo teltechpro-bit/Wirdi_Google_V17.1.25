@@ -130,22 +130,22 @@ void main() {
     try {
       await appSettings.load();
     } catch (e, st) {
-      debugPrint('[main] Settings load failed; using safe defaults: $e\\n$st');
+      debugPrint('[main] Settings load failed; using safe defaults: $e\n$st');
     }
     try {
       await QiraatService.instance.load();
     } catch (e, st) {
-      debugPrint('[main] Riwayah preference load failed; using Hafs defaults: $e\\n$st');
+      debugPrint('[main] Riwayah preference load failed; using Hafs defaults: $e\n$st');
     }
     try {
       await RadioService.instance.init();
     } catch (e, st) {
-      debugPrint('[main] Radio initialization failed: $e\\n$st');
+      debugPrint('[main] Radio initialization failed: $e\n$st');
     }
     try {
       await initializeDateFormatting();
     } catch (e, st) {
-      debugPrint('[main] Date formatting initialization failed: $e\\n$st');
+      debugPrint('[main] Date formatting initialization failed: $e\n$st');
     }
 
     // Always mount the app even when an optional startup initializer fails.
@@ -154,7 +154,7 @@ void main() {
     runApp(const WirdiApp());
     unawaited(QiraatService.instance.loadReaders().catchError(
       (Object error, StackTrace stack) {
-        debugPrint('[main] Background reader catalog load failed: $error\\n$stack');
+        debugPrint('[main] Background reader catalog load failed: $error\n$stack');
       },
     ));
   }, (Object error, StackTrace stack) {
