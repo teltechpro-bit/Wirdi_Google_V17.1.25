@@ -17,6 +17,12 @@ String _errorText(BuildContext context, Object error) {
       return bi(context, 'هذا الجزء أخذه شخص آخر', 'Someone else already took this juz');
     case 'notOwner':
       return bi(context, 'هذا الإجراء لمنشئ الختمة فقط', 'Only the creator can do this');
+    case 'ownerCannotLeaveWithMembers':
+      return bi(
+        context,
+        'لا يمكن لمنشئ الختمة مغادرتها ما دام بها أعضاء آخرون. اطلب من الأعضاء المغادرة أولًا؛ ستُحذف الختمة عندما لا يبقى أحد.',
+        'The creator cannot leave while other members remain. Ask members to leave first; the group is deleted when no members remain.',
+      );
     case 'permission':
       return bi(
         context,
