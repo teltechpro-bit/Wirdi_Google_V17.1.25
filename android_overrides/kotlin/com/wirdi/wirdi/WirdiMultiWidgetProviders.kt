@@ -45,7 +45,7 @@ private object WirdiWidgetUi {
             views.setInt(rootId, "setBackgroundColor", background)
             val foreground = if (data.getBoolean("widget_dark_mode", false)) Color.WHITE else Color.rgb(15, 118, 110)
             val textIds = when (kind) {
-                "daily" -> intArrayOf(R.id.daily_wird_progress, R.id.daily_azkar_remaining, R.id.daily_next_prayer, R.id.daily_refresh, R.id.daily_open)
+                "daily" -> intArrayOf(R.id.daily_wird_progress, R.id.daily_azkar_remaining, R.id.daily_next_prayer, R.id.daily_countdown, R.id.daily_refresh, R.id.daily_open)
                 "ayah" -> intArrayOf(R.id.ayah_text, R.id.ayah_next, R.id.ayah_open)
                 else -> intArrayOf(R.id.tasbeeh_count, R.id.tasbeeh_open)
             }
@@ -56,6 +56,7 @@ private object WirdiWidgetUi {
                     views.setTextViewText(R.id.daily_wird_progress, data.getString("wird_progress_text", "0 / 5 صفحات") ?: "0 / 5 صفحات")
                     views.setTextViewText(R.id.daily_azkar_remaining, data.getString("azkar_remaining_text", "الأذكار المتبقية: 0") ?: "الأذكار المتبقية: 0")
                     views.setTextViewText(R.id.daily_next_prayer, (data.getString("next_prayer_name", "الصلاة القادمة") ?: "الصلاة القادمة") + " • " + (data.getString("next_prayer_time", "--:--") ?: "--:--"))
+                    views.setTextViewText(R.id.daily_countdown, data.getString("next_prayer_countdown_text", "متبقي -- دقيقة"))
                     views.setOnClickPendingIntent(R.id.daily_refresh, broadcast(context, WirdiDailyWidgetProvider::class.java, 1001, AppWidgetManager.ACTION_APPWIDGET_UPDATE))
                     views.setOnClickPendingIntent(R.id.daily_open, launchApp(context, 1002))
                 }
