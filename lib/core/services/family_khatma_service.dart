@@ -93,11 +93,9 @@ class FamilyKhatmaService {
   String? get uid => _user?.uid;
 
   String get _displayName {
-    final u = _user;
-    final dn = u?.displayName;
+    final dn = _user?.displayName;
     if (dn != null && dn.trim().isNotEmpty) return dn.trim();
-    final email = u?.email;
-    if (email != null && email.contains('@')) return email.split('@').first;
+    // Never derive a shared group name from an email address or its prefix.
     return 'Member';
   }
 
@@ -134,8 +132,10 @@ class FamilyKhatmaService {
     return _col.doc(code).snapshots().map((doc) => doc.exists ? FamilyKhatma.fromDoc(doc) : null);
   }
 
-  Future<String> create(String name) async {
+  Future<String> create(String name, {required String displayName}) async {
     final user = _requireUser();
+    final memberName = displayName.trim();
+    if (memberName.isEmpty) throw const FamilyKhatmaException('displayNameRequired');
     try {
       for (var attempt = 0; attempt < 5; attempt++) {
         final code = _newCode();
@@ -146,7 +146,7 @@ class FamilyKhatmaService {
           'name': name.trim(),
           'ownerUid': user.uid,
           'memberUids': <String>[user.uid],
-          'members': <String, String>{user.uid: _displayName},
+          'members': <String, String>{user.uid: memberName},
           'claims': <String, dynamic>{},
           'rounds': 1,
           'createdAt': FieldValue.serverTimestamp(),
@@ -159,16 +159,25 @@ class FamilyKhatmaService {
     }
   }
 
-  Future<void> join(String rawCode) async {
+  Future<void> join(String rawCode, {required String displayName}) async {
     final user = _requireUser();
+    final memberName = displayName.trim();
+    if (memberName.isEmpty) throw const FamilyKhatmaException('displayNameRequired');
     final code = rawCode.trim().toUpperCase();
     try {
       final ref = _col.doc(code);
       final doc = await ref.get();
       if (!doc.exists) throw const FamilyKhatmaException('notFound');
+      final data = doc.data() ?? <String, dynamic>{};
+      final members = data['members'];
+      if (members is Map && members.containsKey(user.uid)) {
+        // Already a member: don't send an unnecessary update that rules may
+        // reject just because the supplied display name differs.
+        return;
+      }
       await ref.update(<String, dynamic>{
         'memberUids': FieldValue.arrayUnion(<String>[user.uid]),
-        'members.${user.uid}': _displayName,
+        'members.${user.uid}': memberName,
       });
     } catch (e) {
       _rethrow(e);
@@ -195,6 +204,11 @@ class FamilyKhatmaService {
           }
         }
         final existingMine = rawClaims is Map ? rawClaims[user.uid] : null;
+        final members = snap.data()?['members'];
+        final storedMemberName = members is Map ? members[user.uid]?.toString().trim() : null;
+        final claimName = storedMemberName != null && storedMemberName.isNotEmpty
+            ? storedMemberName
+            : _displayName;
         final mergedJuzs = <String, dynamic>{};
         if (existingMine is Map && existingMine['juzs'] is Map) {
           (existingMine['juzs'] as Map).forEach((key, value) {
@@ -204,7 +218,7 @@ class FamilyKhatmaService {
         mergedJuzs[juz.toString()] = false;
         tx.update(ref, <String, dynamic>{
           'claims.' + user.uid: <String, dynamic>{
-            'name': _displayName,
+            'name': claimName,
             'juzs': mergedJuzs,
           },
         });
