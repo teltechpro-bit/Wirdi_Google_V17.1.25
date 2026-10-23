@@ -77,7 +77,7 @@ class WirdiFloatingService : Service() {
                         }
                     } else if (kotlin.math.abs(e.rawX-sx)>=8 || kotlin.math.abs(e.rawY-sy)>=8) {
                         val screenWidth = resources.displayMetrics.widthPixels
-                        if (p.x <= dp(16) || p.x + dp(78) >= screenWidth - dp(16)) stopSelf()
+                        if (p.x <= dp(16) || p.x + dp(78) >= screenWidth - dp(16)) { getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); stopSelf() }
                     }
                     true
                 }
@@ -88,6 +88,6 @@ class WirdiFloatingService : Service() {
     }
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    override fun onDestroy() { bubble?.let { try { wm?.removeView(it) } catch (_: Exception) {} }; bubble=null; getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); super.onDestroy() }
+    override fun onDestroy() { bubble?.let { try { wm?.removeView(it) } catch (_: Exception) {} }; bubble=null; super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 }
