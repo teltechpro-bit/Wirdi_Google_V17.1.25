@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/data/bismillah.dart';
@@ -755,7 +756,20 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _visibleAyahUpdatePending = false;
       if (!mounted) return;
-      final screenCenter = MediaQuery.sizeOf(context).height * 0.5;
+      // Use the actual ListView viewport, not the full device screen.
+      // The app bar and bottom playback bar make those centers different.
+      double? viewportCenter;
+      for (final entry in _ayahKeys.entries) {
+        final ctx = entry.value.currentContext;
+        if (ctx == null) continue;
+        final scrollable = Scrollable.maybeOf(ctx);
+        final viewportObject = scrollable?.context.findRenderObject();
+        if (viewportObject is! RenderBox || !viewportObject.hasSize) continue;
+        final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+        viewportCenter = viewportTop + viewportObject.size.height / 2;
+        break;
+      }
+      final screenCenter = viewportCenter ?? MediaQuery.sizeOf(context).height * 0.5;
       int? closest;
       var bestDistance = double.infinity;
       for (final entry in _ayahKeys.entries) {
@@ -771,7 +785,17 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
           closest = entry.key;
         }
       }
-      if (closest != null) _currentVisibleAyah = closest;
+      if (closest != null && closest != _currentVisibleAyah) {
+        _currentVisibleAyah = closest;
+        // Persist manual reading progress unless audio playback owns progress.
+        if (_playingAyah == null) {
+          unawaited(UserProgressService.saveLastReading(
+            surahNumber: widget.surah.number,
+            surahName: widget.surah.name,
+            ayahNumber: closest,
+          ));
+        }
+      }
     });
   }
 
