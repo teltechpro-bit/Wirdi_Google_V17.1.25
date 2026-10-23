@@ -721,6 +721,35 @@ class SyncService {
     await _markLocalSynced();
   }
 
+  static const Duration automaticSyncMinimumInterval = Duration(minutes: 10);
+
+  @visibleForTesting
+  static bool shouldSkipAutomaticSync({
+    required int nowMs,
+    required int? lastAttemptMs,
+  }) {
+    if (lastAttemptMs == null || nowMs < lastAttemptMs) return false;
+    return nowMs - lastAttemptMs < automaticSyncMinimumInterval.inMilliseconds;
+  }
+
+  /// Lifecycle-triggered sync only. Manual Sync Now continues to call
+  /// [syncNow] directly and is never throttled by this cooldown.
+  Future<void> syncAutomatically() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sync_auto_last_attempt_at_ms_$uid';
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (shouldSkipAutomaticSync(
+      nowMs: nowMs,
+      lastAttemptMs: prefs.getInt(key),
+    )) {
+      return;
+    }
+    await prefs.setInt(key, nowMs);
+    await syncNow();
+  }
+
   Future<void> syncOnSignIn() async => _reconcile();
 
   /// Was previously `await uploadAll(); await _markLocalSynced();` --
