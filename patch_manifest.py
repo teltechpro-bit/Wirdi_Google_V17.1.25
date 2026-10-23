@@ -144,7 +144,7 @@ overlay_permissions = [
 ]
 for permission in overlay_permissions:
     if f'android:name="{permission}"' not in text:
-        text, n = re.subn(r'(<manifest\\b[^>]*>)', lambda m: m.group(1) + f'\\n    <uses-permission android:name="{permission}" />', text, count=1)
+        text, n = re.subn(r'(<manifest\b[^>]*>)', lambda m: m.group(1) + f'\n    <uses-permission android:name="{permission}" />', text, count=1)
         if n != 1:
             raise SystemExit(f'ERROR: could not add {permission}')
 
@@ -158,25 +158,25 @@ multi_widget_receivers = [
 for class_name, info_xml in multi_widget_receivers:
     if class_name not in text:
         block = (
-            f'\\n    <receiver android:name="{class_name}" android:exported="true">\\n'
-            '        <intent-filter>\\n'
-            '            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\\n'
-            '        </intent-filter>\\n'
-            f'        <meta-data android:name="android.appwidget.provider" android:resource="@xml/{info_xml}" />\\n'
-            '    </receiver>\\n'
+            f'\n    <receiver android:name="{class_name}" android:exported="true">\n'
+            '        <intent-filter>\n'
+            '            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n'
+            '        </intent-filter>\n'
+            f'        <meta-data android:name="android.appwidget.provider" android:resource="@xml/{info_xml}" />\n'
+            '    </receiver>\n'
         )
-        text = re.sub(r'(</application>)', block + r'\\1', text, count=1)
+        text = re.sub(r'(</application>)', block + r'\1', text, count=1)
 
 if 'com.wirdi.wirdi.WirdiFloatingService' not in text:
     overlay_service = (
-        '\\n    <service android:name="com.wirdi.wirdi.WirdiFloatingService" '
+        '\n    <service android:name="com.wirdi.wirdi.WirdiFloatingService" '
         'android:exported="false" android:stopWithTask="false" '
-        'android:foregroundServiceType="specialUse">\\n'
+        'android:foregroundServiceType="specialUse">\n'
         '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" '
-        'android:value="User-enabled persistent floating tasbeeh overlay" />\\n'
-        '    </service>\\n'
+        'android:value="User-enabled persistent floating tasbeeh overlay" />\n'
+        '    </service>\n'
     )
-    text = re.sub(r'(</application>)', overlay_service + r'\\1', text, count=1)
+    text = re.sub(r'(</application>)', overlay_service + r'\1', text, count=1)
 
 # Keep Android Auto Backup disabled; user data migration is handled by opt-in sync.
 if 'android:allowBackup' not in text:
