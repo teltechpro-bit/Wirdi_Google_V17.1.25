@@ -927,6 +927,64 @@ class _MushafPageViewState extends State<_MushafPageView> {
     return recognizer;
   }
 
+  void _handleAyahLongPress(
+    GlobalKey textKey,
+    List<MushafAyahRef> ayahs,
+    LongPressStartDetails details,
+  ) {
+    final renderObject = textKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderParagraph || !renderObject.attached) return;
+    final localPosition = renderObject.globalToLocal(details.globalPosition);
+    final textPosition = renderObject.getPositionForOffset(localPosition);
+    final offset = textPosition.offset;
+
+    for (final ayah in ayahs) {
+      final anchor = _ayahTextAnchors['${ayah.surahNumber}:${ayah.ayahNumber}'];
+      if (anchor == null) continue;
+      if (offset >= anchor.range.start && offset <= anchor.range.end) {
+        unawaited(_showAyahActions(ayah));
+        return;
+      }
+    }
+  }
+
+  Future<void> _showAyahActions(MushafAyahRef ayah) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.play_arrow_rounded),
+              title: const Text('تشغيل الآية'),
+              onTap: () => Navigator.of(sheetContext).pop('play'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined),
+              title: const Text('حفظ مكان آخر موضع قراءة هنا'),
+              subtitle: const Text('سيعود المصحف إلى هذه الآية عند فتحه مرة أخرى'),
+              onTap: () => Navigator.of(sheetContext).pop('save'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    if (action == 'play') {
+      _playAyah(ayah);
+    } else if (action == 'save') {
+      await _persistLastReading(ayah);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ موضع القراءة')),
+      );
+    }
+  }
+
   Widget _buildAyahText(List<MushafAyahRef> ayahs) {
     final textKey = GlobalKey();
     var textOffset = 0;
@@ -988,19 +1046,31 @@ class _MushafPageViewState extends State<_MushafPageView> {
       );
     }
 
-    return Text.rich(
-      TextSpan(children: spans),
-      key: textKey,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.justify,
-      style: TextStyle(
-        color: Colors.black87,
-        fontFamily: appSettings.quranFontFamily == 'default'
-            ? 'AmiriQuran'
-            : appSettings.quranFontFamily,
-        fontSize: 22 * widget.fontScale,
-        height: 2.4,
-        fontWeight: FontWeight.normal,
+    return RawGestureDetector(
+      gestures: <Type, GestureRecognizerFactory>{
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(debugOwner: this),
+          (recognizer) => recognizer
+            ..onLongPressStart = (details) =>
+                _handleAyahLongPress(textKey, ayahs, details),
+        ),
+      },
+      behavior: HitTestBehavior.translucent,
+      child: Text.rich(
+        TextSpan(children: spans),
+        key: textKey,
+        textDirection: TextDirection.rtl,
+        textAlign: TextAlign.justify,
+        style: TextStyle(
+          color: Colors.black87,
+          fontFamily: appSettings.quranFontFamily == 'default'
+              ? 'AmiriQuran'
+              : appSettings.quranFontFamily,
+          fontSize: 22 * widget.fontScale,
+          height: 2.4,
+          fontWeight: FontWeight.normal,
+        ),
       ),
     );
   }
