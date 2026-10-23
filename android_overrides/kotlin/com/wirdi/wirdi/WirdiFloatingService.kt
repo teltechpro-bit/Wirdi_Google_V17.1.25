@@ -86,6 +86,6 @@ class WirdiFloatingService : Service() {
         }
         try { wm?.addView(v,p); bubble=v } catch (_: Exception) { stopSelf() }
     }
-    override fun onDestroy() { bubble?.let { try { wm?.removeView(it) } catch (_: Exception) {} }; bubble=null; super.onDestroy() }
+    override fun onDestroy() { bubble?.let { try { wm?.removeView(it) } catch (_: Exception) {} }; bubble=null; getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 }
