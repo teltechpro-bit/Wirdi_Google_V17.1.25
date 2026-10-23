@@ -135,6 +135,49 @@ if 'SilentModeReceiver' not in text:
     )
     text = re.sub(r'(</application>)', silent_block + r'\1', text, count=1)
 
+
+# Optional floating overlay. SYSTEM_ALERT_WINDOW is a special app-op and must be
+# granted by the user from Android Settings; it is never silently enabled.
+overlay_permissions = [
+    'android.permission.SYSTEM_ALERT_WINDOW',
+    'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
+]
+for permission in overlay_permissions:
+    if f'android:name="{permission}"' not in text:
+        text, n = re.subn(r'(<manifest\\b[^>]*>)', lambda m: m.group(1) + f'\\n    <uses-permission android:name="{permission}" />', text, count=1)
+        if n != 1:
+            raise SystemExit(f'ERROR: could not add {permission}')
+
+# Three native home-screen widgets; each receiver has a matching Kotlin provider
+# and appwidget-provider XML in android_overrides/.
+multi_widget_receivers = [
+    ('com.wirdi.wirdi.WirdiDailyWidgetProvider', 'wirdi_daily_widget_info'),
+    ('com.wirdi.wirdi.WirdiAyahWidgetProvider', 'wirdi_ayah_widget_info'),
+    ('com.wirdi.wirdi.WirdiTasbeehWidgetProvider', 'wirdi_tasbeeh_widget_info'),
+]
+for class_name, info_xml in multi_widget_receivers:
+    if class_name not in text:
+        block = (
+            f'\\n    <receiver android:name="{class_name}" android:exported="true">\\n'
+            '        <intent-filter>\\n'
+            '            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\\n'
+            '        </intent-filter>\\n'
+            f'        <meta-data android:name="android.appwidget.provider" android:resource="@xml/{info_xml}" />\\n'
+            '    </receiver>\\n'
+        )
+        text = re.sub(r'(</application>)', block + r'\\1', text, count=1)
+
+if 'com.wirdi.wirdi.WirdiFloatingService' not in text:
+    overlay_service = (
+        '\\n    <service android:name="com.wirdi.wirdi.WirdiFloatingService" '
+        'android:exported="false" android:stopWithTask="false" '
+        'android:foregroundServiceType="specialUse">\\n'
+        '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" '
+        'android:value="User-enabled persistent floating tasbeeh overlay" />\\n'
+        '    </service>\\n'
+    )
+    text = re.sub(r'(</application>)', overlay_service + r'\\1', text, count=1)
+
 # Keep Android Auto Backup disabled; user data migration is handled by opt-in sync.
 if 'android:allowBackup' not in text:
     text, n_backup = re.subn(
