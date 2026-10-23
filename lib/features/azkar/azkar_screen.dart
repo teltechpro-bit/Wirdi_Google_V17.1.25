@@ -304,6 +304,21 @@ class _AzkarDetailsScreenState extends State<AzkarDetailsScreen> {
     unawaited(_updateAzkarWidgetRemaining(_completedToday));
   }
 
+  Future<void> _updateAzkarWidgetRemaining([Set<String>? completedOverride]) async {
+    try {
+      final completed = completedOverride ?? await UserProgressService.completedAzkarToday();
+      final categories = await AzkarRepository.load();
+      final totalItems = categories.fold<int>(0, (sum, category) => sum + category.items.length);
+      final completedItems = categories.fold<int>(
+        0,
+        (sum, category) => sum + category.items.where((item) => completed.contains(item.uid)).length,
+      );
+      await WidgetService.updateAzkarRemaining((totalItems - completedItems).clamp(0, totalItems));
+    } catch (_) {
+      // Azkar counter interactions must not depend on widget availability.
+    }
+  }
+
   Future<void> _toggleFavorite(AzkarItemModel item) async {
     await UserProgressService.toggleFavoriteAzkar(item.uid);
     final favs = await UserProgressService.favoriteAzkar();
