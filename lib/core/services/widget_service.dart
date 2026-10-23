@@ -116,7 +116,7 @@ class WidgetService {
     try {
       await HomeWidget.saveWidgetData<String>('tasbeeh_selected_phrase_id', phraseId);
       await HomeWidget.saveWidgetData<int>('tasbeeh_count', displayCount);
-      await _update();
+      await HomeWidget.updateWidget(androidName: 'WirdiTasbeehWidgetProvider');
     } catch (e, st) {
       AppLogger.error('Failed to sync selected tasbeeh phrase with widget', error: e, stackTrace: st);
     }
