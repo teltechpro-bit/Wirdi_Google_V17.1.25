@@ -496,13 +496,18 @@ class QuranAudioService extends ChangeNotifier {
     _stopping = false;
 
     final qiraat = QiraatService.instance;
-    await qiraat.loadReaders();
-    // A newer tap/reader change may have started while readers were loading.
-    if (token != _playToken) return;
 
-    // Preserve Wirdi's established Hafs reader and original audio URL mapping.
+    // Hafs uses Wirdi's original, known per-ayah URL mapping. Do not block
+    // the first tap on the network catalog for other riwayat.
     final useOriginalHafs = qiraat.selectedRiwayahId == 'hafs';
-    final hasAyahAudio = qiraat.selectedReaderHasAyahAudio();
+    if (!useOriginalHafs) {
+      await qiraat.loadReaders();
+      // A newer tap/reader change may have started while readers were loading.
+      if (token != _playToken) return;
+    }
+
+    final hasAyahAudio =
+        useOriginalHafs || qiraat.selectedReaderHasAyahAudio();
     final fullSurahOnly = !useOriginalHafs && !hasAyahAudio;
 
 
