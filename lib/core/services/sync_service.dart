@@ -255,20 +255,18 @@ class SyncService {
       }, failures);
 
       await _runIsolated('favorites', () async {
-        await _doc('favorites').set({
-          'ayahs': prefs.getStringList('favorite_ayahs_all') ?? [],
-          'azkar': prefs.getStringList('favorite_azkar_all') ?? [],
-          'hadiths': prefs.getStringList('favorite_hadiths_all') ?? [],
-          // NEW (v121): radio station favorites are a SEPARATE feature
-          // with their own storage (RadioService's 'radio_favorites'
-          // key, a Set<String> of station ids) -- not the same list as
-          // Quran ayah / Azkar / Hadith favorites above. Found by
-          // auditing every screen the user mentioned (Quran, Azkar,
-          // Dua, Radio) individually rather than assuming "favorites"
-          // is one single feature across the app.
-          'radioStations': prefs.getStringList('radio_favorites') ?? [],
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'favorites',
+          payload: <String, dynamic>{
+            'ayahs': prefs.getStringList('favorite_ayahs_all') ?? [],
+            'azkar': prefs.getStringList('favorite_azkar_all') ?? [],
+            'hadiths': prefs.getStringList('favorite_hadiths_all') ?? [],
+            'radioStations': prefs.getStringList('radio_favorites') ?? [],
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('prayer_log', () async {
@@ -278,7 +276,13 @@ class SyncService {
             byDate[key.replaceFirst('prayed_', '')] = prefs.getStringList(key) ?? [];
           }
         }
-        await _doc('prayer_log').set({'byDate': byDate, 'updatedAt': now}, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'prayer_log',
+          payload: <String, dynamic>{'byDate': byDate},
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       // NEW (v120): every lifetime/streak/daily-history stat tracked by
@@ -311,40 +315,78 @@ class SyncService {
             duaReadByDate[key.replaceFirst('dua_read_', '')] = prefs.getBool(key) ?? false;
           }
         }
-        await _doc('progress_stats').set({
-          'azkarLifetimeTotal': prefs.getInt('azkar_lifetime_total') ?? 0,
-          'tasbeehLifetimeTotal': prefs.getInt('tasbeeh_lifetime_total') ?? 0,
-          'prayersLifetimeTotal': prefs.getInt('prayers_lifetime_total') ?? 0,
-          'khatmasCompletedCount': prefs.getInt('khatmas_completed_count') ?? 0,
-          'khatmasCompletedIds': prefs.getStringList('khatmas_completed_ids') ?? [],
-          'completedSurahsAll': prefs.getStringList('completed_surahs_all') ?? [],
-          'wirdProgressPages': prefs.getInt('wird_progress_pages') ?? 0,
-          'wirdProgressDay': prefs.getString('wird_progress_day'),
-          'wirdStreak': prefs.getInt('wird_streak') ?? 0,
-          'wirdStreakLastDay': prefs.getString('wird_streak_last_day'),
-          'wirdLongestStreak': prefs.getInt('wird_longest_streak') ?? 0,
-          'congregationLifetimeTotal': prefs.getInt('congregation_lifetime_total') ?? 0,
-          'wirdPagesByDate': wirdPagesByDate,
-          'azkarCompletedByDate': azkarCompletedByDate,
-          'tasbeehDailyByDate': tasbeehDailyByDate,
-          'fastingByDate': fastingByDate,
-          'duaReadByDate': duaReadByDate,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'progress_stats',
+          payload: <String, dynamic>{
+            'azkarLifetimeTotal': prefs.getInt('azkar_lifetime_total') ?? 0,
+            'tasbeehLifetimeTotal': prefs.getInt('tasbeeh_lifetime_total') ?? 0,
+            'prayersLifetimeTotal': prefs.getInt('prayers_lifetime_total') ?? 0,
+            'khatmasCompletedCount': prefs.getInt('khatmas_completed_count') ?? 0,
+            'khatmasCompletedIds': prefs.getStringList('khatmas_completed_ids') ?? [],
+            'completedSurahsAll': prefs.getStringList('completed_surahs_all') ?? [],
+            'wirdProgressPages': prefs.getInt('wird_progress_pages') ?? 0,
+            'wirdProgressDay': prefs.getString('wird_progress_day'),
+            'wirdStreak': prefs.getInt('wird_streak') ?? 0,
+            'wirdStreakLastDay': prefs.getString('wird_streak_last_day'),
+            'wirdLongestStreak': prefs.getInt('wird_longest_streak') ?? 0,
+            'congregationLifetimeTotal': prefs.getInt('congregation_lifetime_total') ?? 0,
+            'wirdPagesByDate': wirdPagesByDate,
+            'azkarCompletedByDate': azkarCompletedByDate,
+            'tasbeehDailyByDate': tasbeehDailyByDate,
+            'fastingByDate': fastingByDate,
+            'duaReadByDate': duaReadByDate,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       for (final e in {'bookmarks': 'advanced_bookmarks_v1', 'khatma': 'khatma_plans_v2_json', 'tasbeeh_custom': 'tasbeeh_custom_phrases_v1', 'my_duas': 'my_duas_v1', 'custom_azkar': 'custom_azkar_items_v1', 'sadaqah': 'sadaqah_entries_v1', 'qada': 'qada_counts_v1'}.entries) {
         await _runIsolated(e.key, () async {
           final val = prefs.getString(e.value);
-          if (val != null) await _doc(e.key).set({'data': val, 'updatedAt': now}, SetOptions(merge: true));
+          if (val != null) {
+            await _setSectionIfChanged(
+              prefs: prefs,
+              section: e.key,
+              payload: <String, dynamic>{'data': val},
+              now: now,
+              changedSections: changedSections,
+            );
+          }
         }, failures);
       }
 
       for (final e in {'muhasabah': 'muhasabah_entries_v1', 'recitation_mistakes': 'recitation_mistakes_v1'}.entries) {
         await _runIsolated(e.key, () async {
           final val = prefs.getStringList(e.value);
-          if (val != null) await _doc(e.key).set({'data': val, 'updatedAt': now}, SetOptions(merge: true));
+          if (val != null) {
+            await _setSectionIfChanged(
+              prefs: prefs,
+              section: e.key,
+              payload: <String, dynamic>{'data': val},
+              now: now,
+              changedSections: changedSections,
+            );
+          }
         }, failures);
+      }
+
+      if (changedSections.isNotEmpty && !changedSections.contains('settings')) {
+        await _runIsolated('settings_marker', () async {
+          await _doc('settings').set(
+            <String, dynamic>{'updatedAt': now},
+            SetOptions(merge: true),
+          );
+        }, failures);
+        if (failures.contains('settings_marker')) {
+          final uid = _uid;
+          if (uid != null) {
+            for (final section in changedSections) {
+              await prefs.remove(_fingerprintKey(uid, section));
+            }
+          }
+        }
       }
 
       _lastSyncAt = DateTime.now();
