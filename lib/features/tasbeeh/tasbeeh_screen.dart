@@ -101,7 +101,8 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
     final prefs = await SharedPreferences.getInstance();
 
     // Import tasbeeh taps made directly from the Android launcher widget.
-    final widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
+    var widgetCount = 0;
+    try { widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0; } catch (_) { /* Launcher widgets may be unavailable on this platform. */ }
     final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
     final pendingTaps = widgetCount - syncedCount;
     if (pendingTaps > 0) {
@@ -130,6 +131,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
     // increases when I switch phrases" bug. Removed: just read the real
     // persisted value, with no silent rewriting.
     final total = prefs.getInt('tasbeeh_total_${_selected.id}') ?? 0;
+    if (!mounted) return;
     setState(() {
       _today = todayCount;
       _cycleCount = storedCycle;
