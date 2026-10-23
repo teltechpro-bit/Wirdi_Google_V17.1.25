@@ -120,8 +120,12 @@ private object WirdiWidgetUi {
 
     fun nextAyah(context: Context, data: SharedPreferences) {
         val pool = readAyahPool(data)
-        val next = (data.getInt("daily_ayah_index", 0) + 1) % pool.size
         val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        val next = if (data.getString("daily_ayah_date", "") != today) {
+            (java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) * 17) % pool.size
+        } else {
+            (data.getInt("daily_ayah_index", 0) + 1) % pool.size
+        }
         data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", pool[next]).putString("daily_ayah_date", today).apply()
     }
 }
