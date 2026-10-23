@@ -27,7 +27,8 @@ class RecitationCheckScreen extends StatefulWidget {
 }
 
 class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
-  final stt.SpeechToText _speech = stt.SpeechToText();
+  stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechInitializationAttempted = false;
 
   List<SurahModel> _surahs = const <SurahModel>[];
   bool _loadingData = true;
@@ -105,48 +106,77 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
   Future<bool> _ensureSpeech() async {
     if (_speechReady) return true;
+
+    // speech_to_text caches its first initialize() result for an instance.
+    // If the service/permission was unavailable on the first attempt, replace
+    // the failed instance before allowing a genuine retry.
+    if (_speechInitializationAttempted) {
+      try { await _speech.cancel(); } catch (_) {}
+      _speech = stt.SpeechToText();
+      _speechInitializationAttempted = false;
+    }
+    _speechInitializationAttempted = true;
+
     try {
       final ok = await _speech.initialize(
+        debugLogging: true,
         onError: (error) {
-          if (!mounted) return;
           final message = error.errorMsg;
           final normalized = message.toLowerCase();
-          // Do not interpret every audio/recognizer error as a permission
-          // failure. Android can report audio/service errors even when the
-          // microphone permission is already granted.
           final permissionIssue = normalized.contains('permission') ||
               normalized.contains('not authorized') ||
               normalized.contains('not_authorized') ||
               normalized.contains('not allowed') ||
               normalized.contains('not_allowed') ||
               normalized.contains('denied');
+          final noMatchOrTimeout = normalized.contains('no_match') ||
+              normalized.contains('no match') ||
+              normalized.contains('speech_timeout') ||
+              normalized.contains('speech timeout');
+          if (!mounted) return;
           setState(() {
             _lastError = message;
             _microphonePermissionIssue = permissionIssue;
-            _speechUnavailable = true;
-            _speechReady = false;
-            _session = false;
-            _listening = false;
+            _speechUnavailable = !noMatchOrTimeout;
+            if (!noMatchOrTimeout) {
+              _speechReady = false;
+              _session = false;
+              _listening = false;
+            }
           });
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
       );
+
       if (!ok) {
+        final permissionGranted = _speech.hasPermission;
         if (mounted) {
           setState(() {
+            _speechReady = false;
             _speechUnavailable = true;
-            _microphonePermissionIssue = false;
-            _lastError =
-                'Speech recognition could not initialize. This is not proof that microphone permission is disabled; check the phone speech service and its Arabic language support.';
+            _microphonePermissionIssue = !permissionGranted;
+            _lastError = !permissionGranted
+                ? 'لم يمنح النظام صلاحية الميكروفون للتطبيق. افتح إعدادات التطبيق وتأكد من السماح بالميكروفون.'
+                : 'خدمة التعرف على الكلام غير متاحة. تأكد من تثبيت/تفعيل تطبيق Google أو خدمة Speech Recognition وتحديثها.';
           });
         }
         return false;
       }
+
       final locales = await _speech.locales();
       String? pick;
+      // Prefer Egyptian Arabic for the user's Quran recitation, then Saudi,
+      // then any Arabic locale installed on the device.
       for (final l in locales) {
-        if (l.localeId.toLowerCase().replaceAll('-', '_') == 'ar_sa') pick = l.localeId;
+        final id = l.localeId.toLowerCase().replaceAll('-', '_');
+        if (id == 'ar_eg') { pick = l.localeId; break; }
+      }
+      if (pick == null) {
+        for (final l in locales) {
+          final id = l.localeId.toLowerCase().replaceAll('-', '_');
+          if (id == 'ar_sa') { pick = l.localeId; break; }
+        }
       }
       if (pick == null) {
         for (final l in locales) {
@@ -156,37 +186,35 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
-      if (pick == null) {
-        if (mounted) {
-          setState(() {
-            _speechUnavailable = true;
-            _microphonePermissionIssue = false;
-            _lastError = 'لم تتوفر لغة عربية لخدمة التعرف على الصوت على هذا الجهاز.';
-          });
-        }
-        return false;
-      }
+      // Some speech services don't enumerate downloaded locales reliably.
+      // Try Arabic Egypt explicitly rather than blocking the user at setup.
+      pick ??= 'ar-EG';
+
       if (mounted) {
         setState(() {
           _speechReady = true;
           _speechUnavailable = false;
           _microphonePermissionIssue = false;
           _localeId = pick;
+          _lastError = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'))
+              ? null
+              : 'لم تعرض الخدمة حزم العربية ضمن اللغات المثبتة؛ سنجرب العربية المصرية. إذا لم يظهر نص، ثبّت حزمة العربية من إعدادات خدمة Google الصوتية.';
         });
       }
       return true;
     } catch (error) {
+      final message = error.toString();
+      final normalized = message.toLowerCase();
+      final permissionIssue = normalized.contains('permission') ||
+          normalized.contains('not authorized') ||
+          normalized.contains('not_authorized') ||
+          normalized.contains('not allowed') ||
+          normalized.contains('not_allowed') ||
+          normalized.contains('denied');
       if (mounted) {
         setState(() {
-          final message = error.toString();
-          final normalized = message.toLowerCase();
-          _microphonePermissionIssue = normalized.contains('permission') ||
-              normalized.contains('not authorized') ||
-              normalized.contains('not_authorized') ||
-              normalized.contains('not allowed') ||
-              normalized.contains('not_allowed') ||
-              normalized.contains('denied');
           _speechUnavailable = true;
+          _microphonePermissionIssue = permissionIssue;
           _lastError = message;
           _speechReady = false;
           _session = false;
@@ -272,8 +300,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       await _speech.listen(
         onResult: _onResult,
         localeId: _localeId,
-        listenFor: const Duration(minutes: 3),
-        pauseFor: const Duration(seconds: 8),
+        // Android recognizers commonly stop near 45-60 seconds regardless
+        // of longer listenFor values; _onStatus restarts short sessions safely.
+        listenFor: const Duration(seconds: 45),
+        pauseFor: const Duration(seconds: 4),
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
