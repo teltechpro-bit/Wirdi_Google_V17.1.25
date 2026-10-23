@@ -20,7 +20,7 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await SyncService.instance.syncNow();
       setState(() { _ok = true; _msg = l.authSyncSuccess; });
-    } on SyncAccountMismatchException catch (e) {
+    } on SyncAccountMismatchException {
       if (!mounted) return;
       final choice = await showDialog<SyncAccountMismatchChoice>(
         context: context,
