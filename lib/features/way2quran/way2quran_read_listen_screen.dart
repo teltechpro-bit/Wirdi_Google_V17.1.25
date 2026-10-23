@@ -184,6 +184,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
   }
 
   Future<void> _play(SurahModel surah) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     try {
     final audio = _audioFor(surah);
     final dir = await getApplicationDocumentsDirectory();
@@ -206,7 +207,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     }
     await quranAudio.setSpeed(speed);
     if (!mounted) return;
-    final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
+    final title = surah.name + ' — ' + selectedReciter!.name(isArabic);
     if (localExists || legacyExists) {
       await quranAudio.playExternalFile(
         playableFile.path,
@@ -216,6 +217,16 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
       await quranAudio.playExternalUrl(
         url,
         title: title,
+      );
+    }
+    if (!mounted) return;
+    if (quranAudio.externalError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isArabic
+              ? 'تعذر تشغيل التلاوة. أعد تنزيل الملف أو تحقق من اتصالك بالإنترنت.'
+              : 'Could not play this recitation. Re-download the file or check your connection.'),
+        ),
       );
     }
     } catch (_) {
