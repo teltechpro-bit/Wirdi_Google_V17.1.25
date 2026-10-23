@@ -5,6 +5,21 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_logger.dart';
 
+enum SyncAccountMismatchChoice {
+  replaceLocalWithCloud,
+  uploadLocalToAccount,
+}
+
+/// Thrown before reconciliation when the device's local sync data belongs to
+/// another account, or when a legacy timestamp has no known owner.
+class SyncAccountMismatchException implements Exception {
+  final String? storedOwnerUid;
+  final String currentUid;
+  SyncAccountMismatchException({required this.storedOwnerUid, required this.currentUid});
+  @override
+  String toString() => 'Local sync data belongs to a different or unknown account.';
+}
+
 /// Thrown by SyncService methods when there is no signed-in user to
 /// sync for -- previously uploadAll()/downloadAll() just silently
 /// returned in that case, which the UI (account_screen._sync())
@@ -438,6 +453,86 @@ class SyncService {
   }
 
   static const String _localLastSyncedKey = 'sync_local_last_synced_at_ms';
+  static const String _localSyncOwnerUidKey = 'sync_local_owner_uid';
+
+  /// Pure guard used before any local/cloud reconciliation. Older installs
+  /// with a timestamp but no owner UID are treated as ambiguous and must
+  /// ask the user rather than assume the currently signed-in account owns it.
+  @visibleForTesting
+  static bool requiresAccountResolution({
+    required String currentUid,
+    String? storedOwnerUid,
+    int? localLastSyncedMs,
+  }) {
+    if (storedOwnerUid != null) return storedOwnerUid != currentUid;
+    return localLastSyncedMs != null;
+  }
+
+  /// The local data is deliberately kept on sign-out, but its sync timestamp
+  /// is invalidated. Keep the owner UID so a different account is detected.
+  Future<void> prepareForSignOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedOwnerUid = prefs.getString(_localSyncOwnerUidKey);
+    final hadLegacySyncMarker = prefs.getInt(_localLastSyncedKey) != null;
+    // Preserve ambiguity for upgraded installs that have a prior sync marker
+    // but predate UID ownership. Removing the timestamp alone would make the
+    // next account look like a first sync and could upload the previous user's
+    // local data without asking.
+    if (storedOwnerUid == null && hadLegacySyncMarker) {
+      await prefs.setString(_localSyncOwnerUidKey, '__legacy_unknown_owner__');
+    }
+    await prefs.remove(_localLastSyncedKey);
+  }
+
+  /// Resolve a detected account mismatch only after an explicit user choice.
+  /// Replacing clears only keys that SyncService owns; unrelated app settings
+  /// and Quran display preferences are preserved.
+  Future<void> resolveAccountMismatch(SyncAccountMismatchChoice choice) async {
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
+    final prefs = await SharedPreferences.getInstance();
+
+    if (choice == SyncAccountMismatchChoice.replaceLocalWithCloud) {
+      final exactKeys = <String>[
+        'settings_theme_mode', 'settings_color_theme', 'settings_locale',
+        'settings_font_scale', 'wird_target_pages', 'last_surah_number',
+        'last_surah_name', 'last_ayah_number', 'wird_lifetime_pages_total',
+        'favorite_ayahs_all', 'favorite_azkar_all', 'favorite_hadiths_all',
+        'radio_favorites', 'azkar_lifetime_total', 'tasbeeh_lifetime_total',
+        'prayers_lifetime_total', 'khatmas_completed_count',
+        'khatmas_completed_ids', 'completed_surahs_all', 'wird_progress_pages',
+        'wird_progress_day', 'wird_streak', 'wird_streak_last_day',
+        'wird_longest_streak', 'congregation_lifetime_total',
+        'advanced_bookmarks_v1', 'khatma_plans_v2_json',
+        'tasbeeh_custom_phrases_v1', 'my_duas_v1', 'custom_azkar_items_v1',
+        'sadaqah_entries_v1', 'qada_counts_v1', 'muhasabah_entries_v1',
+        'recitation_mistakes_v1',
+      ];
+      for (final key in exactKeys) {
+        await prefs.remove(key);
+      }
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith('tasbeeh_total_') ||
+            key.startsWith('prayed_') ||
+            key.startsWith('wird_pages_') ||
+            key.startsWith('azkar_completed_') ||
+            key.startsWith('tasbeeh_daily_total_') ||
+            key.startsWith('fasting_') ||
+            key.startsWith('dua_read_')) {
+          await prefs.remove(key);
+        }
+      }
+      await prefs.remove(_localLastSyncedKey);
+      await downloadAll();
+    } else {
+      // This is an explicit choice to transfer this device's synced data to
+      // the currently signed-in account. It is never done automatically.
+      await uploadAll();
+    }
+
+    await prefs.setString(_localSyncOwnerUidKey, uid);
+    await _markLocalSynced();
+  }
 
   /// Reads the 'settings' document's server-written updatedAt as a proxy
   /// for cloud data freshness overall -- uploadAll() writes it in the
@@ -508,6 +603,8 @@ class SyncService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_localLastSyncedKey, confirmedCloudTime.millisecondsSinceEpoch);
+    final uid = _uid;
+    if (uid != null) await prefs.setString(_localSyncOwnerUidKey, uid);
   }
 
   /// ROOT CAUSE FIX (v96): this used to be the ONLY place that ever
@@ -567,10 +664,23 @@ class SyncService {
 
   Future<void> _reconcileImpl() async {
     lastReconcileHadPermissionError = false;
-    final cloudUpdatedAt = await _cloudLastUpdated();
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
     final prefs = await SharedPreferences.getInstance();
     final localLastSyncedMs = prefs.getInt(_localLastSyncedKey);
+    final storedOwnerUid = prefs.getString(_localSyncOwnerUidKey);
+    if (requiresAccountResolution(
+      currentUid: uid,
+      storedOwnerUid: storedOwnerUid,
+      localLastSyncedMs: localLastSyncedMs,
+    )) {
+      throw SyncAccountMismatchException(
+        storedOwnerUid: storedOwnerUid,
+        currentUid: uid,
+      );
+    }
 
+    final cloudUpdatedAt = await _cloudLastUpdated();
     final cloudIsNewer = cloudUpdatedAt != null &&
         (localLastSyncedMs == null || cloudUpdatedAt.millisecondsSinceEpoch > localLastSyncedMs);
 
