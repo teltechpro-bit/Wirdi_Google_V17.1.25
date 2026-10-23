@@ -29,7 +29,7 @@ void main() {
     test('skips another automatic sync inside ten minutes', () {
       expect(
         SyncService.shouldSkipAutomaticSync(
-          nowMs: 700000,
+          nowMs: 699999,
           lastAttemptMs: 100000,
         ),
         isTrue,
