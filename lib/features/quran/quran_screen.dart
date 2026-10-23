@@ -763,14 +763,12 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
       for (final entry in _ayahKeys.entries) {
         final ctx = entry.value.currentContext;
         if (ctx == null) continue;
-        final render = ctx.findRenderObject();
-        if (render is! RenderBox || !render.hasSize) continue;
-        final viewport = RenderAbstractViewport.of(render);
-        if (viewport is RenderBox && viewport.hasSize) {
-          final viewportTop = viewport.localToGlobal(Offset.zero).dy;
-          viewportCenter = viewportTop + viewport.size.height / 2;
-          break;
-        }
+        final scrollable = Scrollable.maybeOf(ctx);
+        final viewportObject = scrollable?.context.findRenderObject();
+        if (viewportObject is! RenderBox || !viewportObject.hasSize) continue;
+        final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+        viewportCenter = viewportTop + viewportObject.size.height / 2;
+        break;
       }
       final screenCenter = viewportCenter ?? MediaQuery.sizeOf(context).height * 0.5;
       int? closest;
