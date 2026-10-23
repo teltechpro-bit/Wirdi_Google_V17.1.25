@@ -89,97 +89,69 @@ if 'com.ryanheise.audioservice.AudioService' not in text:
     )
     text = re.sub(r'(</application>)', audio_service_block + r'\1', text, count=1)
 
-# Add <queries> block for URL launcher and radio streams
-if '<queries>' not in text:
-    queries = (
-        '\n    <queries>\n'
-        '        <intent>\n'
-        '            <action android:name="android.intent.action.VIEW" />\n'
-        '            <data android:scheme="https" />\n'
-        '        </intent>\n'
-        '        <intent>\n'
-        '            <action android:name="android.intent.action.VIEW" />\n'
-        '            <data android:scheme="http" />\n'
-        '        </intent>\n'
-        '        <intent>\n'
-        '            <action android:name="android.intent.action.VIEW" />\n'
-        '            <data android:scheme="geo" />\n'
-        '        </intent>\n'
-        '    </queries>\n'
-    )
-    text = text.replace('</manifest>', queries + '</manifest>')
+# Use the localized launcher resource rather than Flutter's default literal project name.
+def _set_launcher_label(match):
+    attrs = match.group(1)
+    if re.search(r'\bandroid:label\s*=', attrs):
+        attrs = re.sub(
+            r'\bandroid:label\s*=\s*("[^"]*"|\'[^\']*\')',
+            'android:label="@string/app_name"',
+            attrs,
+            count=1,
+        )
+    else:
+        attrs += ' android:label="@string/app_name"'
+    return '<application' + attrs + '>'
 
-# Register the home-screen widget provider (was previously missing entirely --
-# the widget could never appear to the user without this receiver declaration).
-# Register flutter_local_notifications' own boot-persistence receivers --
-# ScheduledNotificationReceiver fires each scheduled notification at its
-# target time; ScheduledNotificationBootReceiver re-reads whatever was
-# persisted to disk and re-schedules everything after BOOT_COMPLETED /
-# MY_PACKAGE_REPLACED / QUICKBOOT_POWERON. Both classes ship inside the
-# plugin's own AAR -- no custom native Kotlin/Java code required.
-if 'ScheduledNotificationBootReceiver' not in text:
-    boot_receiver_block = (
-        '\n    <receiver android:exported="false"\n'
-        '        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n'
-        '    <receiver android:exported="false"\n'
-        '        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n'
-        '        <intent-filter>\n'
-        '            <action android:name="android.intent.action.BOOT_COMPLETED"/>\n'
-        '            <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n'
-        '            <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n'
-        '            <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n'
-        '        </intent-filter>\n'
-        '    </receiver>\n'
-    )
-    text = re.sub(r'(</application>)', boot_receiver_block + r'\1', text, count=1)
+text, n_label = re.subn(
+    r'<application\b([^>]*)>',
+    _set_launcher_label,
+    text,
+    count=1,
+    flags=re.DOTALL,
+)
+if n_label != 1:
+    raise SystemExit('ERROR: could not set android:label on the <application> element')
 
-if 'WirdiWidgetProvider' not in text:
-    widget_block = (
-        '\n    <receiver android:name="com.wirdi.wirdi.WirdiWidgetProvider"\n'
-        '        android:exported="true">\n'
-        '        <intent-filter>\n'
-        '            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n'
-        '        </intent-filter>\n'
-        '        <meta-data android:name="android.appwidget.provider"\n'
-        '            android:resource="@xml/wirdi_widget_info" />\n'
-        '    </receiver>\n'
-    )
-    text = re.sub(r'(</application>)', widget_block + r'\1', text, count=1)
+# Consolidate package-visibility queries into a single <queries> block.
+# Flutter templates may already contain <queries>; adding another block is invalid
+# or may cause required URL/speech queries to be skipped.
+query_matches = list(re.finditer(r'<queries\b[^>]*>.*?</queries>', text, flags=re.DOTALL))
+query_opening = '<queries>'
+query_contents = []
+if '<queries' in text and not query_matches:
+    raise SystemExit('ERROR: found an unclosed <queries> block in AndroidManifest.xml')
+if query_matches:
+    query_opening = re.match(r'<queries\b[^>]*>', query_matches[0].group(0), flags=re.DOTALL).group(0)
+    for match in query_matches:
+        inner = re.sub(r'^<queries\b[^>]*>|</queries>$', '', match.group(0), flags=re.DOTALL).strip()
+        if inner:
+            query_contents.append(inner)
+    text = re.sub(r'<queries\b[^>]*>.*?</queries>', '', text, flags=re.DOTALL)
 
-# v1.55: Android Auto Backup is switched OFF. It silently copied SharedPreferences
-# (progress, private reflection journal, 1.4 MB caches) to the user's Google Drive
-# and restored it on other devices, which the privacy policy does not describe.
-# Cloud sync (opt-in, per account) remains the supported way to move data.
-if 'android:allowBackup' not in text:
-    text, n_backup = re.subn(r'<application\b', '<application android:allowBackup="false"', text, count=1)
-    if n_backup != 1:
-        raise SystemExit('ERROR: could not find <application> to disable backup')
-
-# v17: prayer-time silent mode receiver (alarms + boot re-scheduling).
-if 'SilentModeReceiver' not in text:
-    silent_block = (
-        '\n    <receiver android:name="com.wirdi.wirdi.SilentModeReceiver"\n'
-        '        android:exported="false">\n'
-        '        <intent-filter>\n'
-        '            <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
-        '            <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
-        '            <action android:name="com.wirdi.wirdi.SILENT_START" />\n'
-        '            <action android:name="com.wirdi.wirdi.SILENT_END" />\n'
-        '        </intent-filter>\n'
-        '    </receiver>\n'
-    )
-    text = re.sub(r'(</application>)', silent_block + r'\1', text, count=1)
-
-# v17: Android 11+ package visibility for the speech recognizer service.
-if 'android.speech.RecognitionService' not in text:
-    speech_query = (
-        '\n    <queries>\n'
+query_body = '\n'.join(query_contents)
+required_query_intents = [
+    ('android.intent.action.VIEW', 'android:scheme="https"',
+     '        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>'),
+    ('android.intent.action.VIEW', 'android:scheme="http"',
+     '        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="http" />\n        </intent>'),
+    ('android.intent.action.VIEW', 'android:scheme="geo"',
+     '        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>'),
+]
+for action, scheme, intent_xml in required_query_intents:
+    existing_intents = re.findall(r'<intent\b.*?</intent>', query_body, flags=re.DOTALL)
+    if not any(action in intent and scheme in intent for intent in existing_intents):
+        query_body = (query_body + '\n' + intent_xml).strip()
+if 'android.speech.RecognitionService' not in query_body:
+    speech_intent = (
         '        <intent>\n'
         '            <action android:name="android.speech.RecognitionService" />\n'
-        '        </intent>\n'
-        '    </queries>\n'
+        '        </intent>'
     )
-    text = text.replace('</manifest>', speech_query + '</manifest>')
+    query_body = (query_body + '\n' + speech_intent).strip()
+
+queries_block = f'\n    {query_opening}\n{query_body}\n    </queries>\n'
+text = text.replace('</manifest>', queries_block + '</manifest>', 1)
 
 path.write_text(text)
 print('AndroidManifest.xml patched:')
