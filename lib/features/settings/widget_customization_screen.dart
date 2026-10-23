@@ -74,6 +74,10 @@ class _WidgetCustomizationScreenState extends State<WidgetCustomizationScreen> {
     setState(() => _overlayContent = value);
     await HomeWidget.saveWidgetData<String>('overlay_content', value);
     await _refreshWidgets();
+    if (_overlayEnabled) {
+      await _channel.invokeMethod<bool>('stopOverlay');
+      await _channel.invokeMethod<bool>('startOverlay');
+    }
   }
 
   @override
