@@ -33,6 +33,15 @@ private object WirdiWidgetUi {
                 else -> Color.rgb(241, 245, 249)
             }
             views.setInt(rootId, "setBackgroundColor", background)
+            val foreground = if (data.getBoolean("widget_dark_mode", false)) Color.WHITE else Color.rgb(15, 118, 110)
+            val secondary = if (data.getBoolean("widget_dark_mode", false)) Color.LTGRAY else Color.rgb(51, 65, 85)
+            val textIds = when (kind) {
+                "daily" -> intArrayOf(R.id.daily_wird_progress, R.id.daily_azkar_remaining, R.id.daily_next_prayer, R.id.daily_refresh, R.id.daily_open)
+                "ayah" -> intArrayOf(R.id.ayah_text, R.id.ayah_next, R.id.ayah_open)
+                else -> intArrayOf(R.id.tasbeeh_count, R.id.tasbeeh_open)
+            }
+            textIds.forEach { views.setTextColor(it, foreground) }
+            if (kind == "tasbeeh") views.setTextColor(R.id.tasbeeh_increment, Color.WHITE)
             when (kind) {
                 "daily" -> {
                     views.setTextViewText(R.id.daily_wird_progress, data.getString("wird_progress_text", "0 / 5 صفحات") ?: "0 / 5 صفحات")
