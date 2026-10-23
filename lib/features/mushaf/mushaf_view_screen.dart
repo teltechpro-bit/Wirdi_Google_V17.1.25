@@ -628,6 +628,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
                     onReadingPositionChanged: _scheduleVisibleReadingSave,
+                    onSaveReadingPosition: _persistLastReading,
                     fontScale: _fontScale,
                     backgroundColor: _pageBackground(context),
                   );
@@ -656,6 +657,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
                   onReadingPositionChanged: _scheduleVisibleReadingSave,
+                  onSaveReadingPosition: _persistLastReading,
                   fontScale: _fontScale,
                   backgroundColor: _pageBackground(context),
                 );
@@ -680,11 +682,12 @@ class _MushafPageView extends StatefulWidget {
   final List<SurahModel> allSurahs;
   final ValueChanged<bool>? onMultiTouch;
   final VoidCallback? onReadingPositionChanged;
+  final Future<void> Function(MushafAyahRef ayah)? onSaveReadingPosition;
   // Explicit height for continuous-scroll mode -- see BUGFIX note on build.
   final double? targetHeight;
   final double fontScale;
   final Color backgroundColor;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.onReadingPositionChanged, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.onReadingPositionChanged, this.onSaveReadingPosition, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -954,6 +957,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
   }
 
   Future<void> _showAyahActions(MushafAyahRef ayah) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -963,13 +967,13 @@ class _MushafPageViewState extends State<_MushafPageView> {
           children: [
             ListTile(
               leading: const Icon(Icons.play_arrow_rounded),
-              title: const Text('تشغيل الآية'),
+              title: Text(isArabic ? 'تشغيل الآية' : 'Play ayah'),
               onTap: () => Navigator.of(sheetContext).pop('play'),
             ),
             ListTile(
               leading: const Icon(Icons.bookmark_add_outlined),
-              title: const Text('حفظ مكان آخر موضع قراءة هنا'),
-              subtitle: const Text('سيعود المصحف إلى هذه الآية عند فتحه مرة أخرى'),
+              title: Text(isArabic ? 'حفظ مكان آخر موضع قراءة هنا' : 'Save reading position here'),
+              subtitle: Text(isArabic ? 'سيعود المصحف إلى هذه الآية عند فتحه مرة أخرى' : 'Mushaf will reopen at this ayah'),
               onTap: () => Navigator.of(sheetContext).pop('save'),
             ),
             const SizedBox(height: 8),
@@ -982,10 +986,10 @@ class _MushafPageViewState extends State<_MushafPageView> {
     if (action == 'play') {
       _playAyah(ayah);
     } else if (action == 'save') {
-      await _persistLastReading(ayah);
+      await widget.onSaveReadingPosition?.call(ayah);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ موضع القراءة')),
+        SnackBar(content: Text(isArabic ? 'تم حفظ موضع القراءة' : 'Reading position saved')),
       );
     }
   }
