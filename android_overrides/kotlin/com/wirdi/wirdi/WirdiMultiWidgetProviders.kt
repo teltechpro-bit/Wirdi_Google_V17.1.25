@@ -38,22 +38,46 @@ private object WirdiWidgetUi {
                 "ayah" -> R.id.ayah_root
                 else -> R.id.tasbeeh_root
             }
-            val background = when {
-                data.getBoolean("widget_transparent", false) -> Color.TRANSPARENT
-                data.getBoolean("widget_dark_mode", false) -> Color.rgb(23, 33, 43)
-                kind == "tasbeeh" -> Color.rgb(236, 253, 245)
-                kind == "ayah" -> Color.rgb(248, 250, 252)
-                else -> Color.rgb(241, 245, 249)
+            val dark = data.getBoolean("widget_dark_mode", false)
+            val transparent = data.getBoolean("widget_transparent", false)
+            if (transparent) {
+                views.setInt(rootId, "setBackgroundColor", Color.TRANSPARENT)
+            } else {
+                val surface = if (dark) R.drawable.wirdi_widget_surface_dark else R.drawable.wirdi_widget_surface_light
+                views.setInt(rootId, "setBackgroundResource", surface)
             }
-            views.setInt(rootId, "setBackgroundColor", background)
-            val foreground = if (data.getBoolean("widget_dark_mode", false)) Color.WHITE else Color.rgb(15, 118, 110)
-            val textIds = when (kind) {
-                "daily" -> intArrayOf(R.id.daily_wird_progress, R.id.daily_azkar_remaining, R.id.daily_next_prayer, R.id.daily_countdown, R.id.daily_refresh, R.id.daily_open)
-                "ayah" -> intArrayOf(R.id.ayah_text, R.id.ayah_next, R.id.ayah_open)
-                else -> intArrayOf(R.id.tasbeeh_count, R.id.tasbeeh_open)
+            val primary = if (dark) Color.rgb(238, 220, 167) else Color.rgb(12, 93, 77)
+            val body = if (dark) Color.rgb(244, 244, 235) else Color.rgb(23, 61, 53)
+            val muted = if (dark) Color.rgb(184, 204, 194) else Color.rgb(88, 113, 107)
+            val actionBg = if (dark) R.drawable.wirdi_widget_action_dark else R.drawable.wirdi_widget_action
+            when (kind) {
+                "daily" -> {
+                    views.setTextColor(R.id.daily_title, primary)
+                    views.setTextColor(R.id.daily_wird_progress, body)
+                    views.setTextColor(R.id.daily_azkar_remaining, muted)
+                    views.setTextColor(R.id.daily_next_prayer, primary)
+                    views.setTextColor(R.id.daily_countdown, muted)
+                    views.setTextColor(R.id.daily_refresh, primary)
+                    views.setTextColor(R.id.daily_open, primary)
+                    views.setInt(R.id.daily_refresh, "setBackgroundResource", actionBg)
+                    views.setInt(R.id.daily_open, "setBackgroundResource", actionBg)
+                }
+                "ayah" -> {
+                    views.setTextColor(R.id.ayah_title, primary)
+                    views.setTextColor(R.id.ayah_text, body)
+                    views.setTextColor(R.id.ayah_next, primary)
+                    views.setTextColor(R.id.ayah_open, primary)
+                    views.setInt(R.id.ayah_next, "setBackgroundResource", actionBg)
+                    views.setInt(R.id.ayah_open, "setBackgroundResource", actionBg)
+                }
+                else -> {
+                    views.setTextColor(R.id.tasbeeh_title, primary)
+                    views.setTextColor(R.id.tasbeeh_subtitle, muted)
+                    views.setTextColor(R.id.tasbeeh_count, primary)
+                    views.setTextColor(R.id.tasbeeh_open, muted)
+                    views.setTextColor(R.id.tasbeeh_increment, Color.WHITE)
+                }
             }
-            textIds.forEach { views.setTextColor(it, foreground) }
-            if (kind == "tasbeeh") views.setTextColor(R.id.tasbeeh_increment, Color.WHITE)
             when (kind) {
                 "daily" -> {
                     views.setTextViewText(R.id.daily_wird_progress, data.getString("wird_progress_text", "0 / 5 صفحات") ?: "0 / 5 صفحات")
