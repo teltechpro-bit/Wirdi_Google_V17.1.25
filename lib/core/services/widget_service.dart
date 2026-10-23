@@ -73,10 +73,15 @@ class WidgetService {
   /// advance without storing the entire Quran in SharedPreferences.
   static Future<void> refreshDailyAyah() async {
     try {
+      final now = DateTime.now();
+      final dateKey = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final savedDate = await HomeWidget.getWidgetData<String>('daily_ayah_date');
+      final savedPool = await HomeWidget.getWidgetData<String>('daily_ayah_pool_json');
+      if (savedDate == dateKey && savedPool != null && savedPool.isNotEmpty) return;
+
       final surahs = await QuranRepository.load();
       final allAyahs = surahs.expand((surah) => surah.ayahs).where((ayah) => ayah.text.trim().isNotEmpty).toList(growable: false);
       if (allAyahs.isEmpty) return;
-      final now = DateTime.now();
       final dayOfYear = now.difference(DateTime(now.year)).inDays;
       final start = (dayOfYear * 17) % allAyahs.length;
       final pool = List<String>.generate(
@@ -87,7 +92,7 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>('daily_ayah_pool_json', jsonEncode(pool));
       await HomeWidget.saveWidgetData<int>('daily_ayah_index', 0);
       await HomeWidget.saveWidgetData<String>('daily_ayah_text', pool.first);
-      await HomeWidget.saveWidgetData<String>('daily_ayah_date', '${now.year}-${now.month}-${now.day}');
+      await HomeWidget.saveWidgetData<String>('daily_ayah_date', dateKey);
       await _update();
     } catch (e, st) {
       AppLogger.error('Failed to select daily ayah from Quran data', error: e, stackTrace: st);
