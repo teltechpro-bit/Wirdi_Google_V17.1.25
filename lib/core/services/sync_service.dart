@@ -472,6 +472,15 @@ class SyncService {
   /// is invalidated. Keep the owner UID so a different account is detected.
   Future<void> prepareForSignOut() async {
     final prefs = await SharedPreferences.getInstance();
+    final storedOwnerUid = prefs.getString(_localSyncOwnerUidKey);
+    final hadLegacySyncMarker = prefs.getInt(_localLastSyncedKey) != null;
+    // Preserve ambiguity for upgraded installs that have a prior sync marker
+    // but predate UID ownership. Removing the timestamp alone would make the
+    // next account look like a first sync and could upload the previous user's
+    // local data without asking.
+    if (storedOwnerUid == null && hadLegacySyncMarker) {
+      await prefs.setString(_localSyncOwnerUidKey, '__legacy_unknown_owner__');
+    }
     await prefs.remove(_localLastSyncedKey);
   }
 
