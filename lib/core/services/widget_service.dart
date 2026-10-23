@@ -109,6 +109,19 @@ class WidgetService {
     }
   }
 
+  /// Keep the launcher widget associated with the phrase selected in-app.
+  /// Widget taps use a separate per-phrase monotonic counter so app taps cannot
+  /// accidentally mark unsynced launcher taps as already imported.
+  static Future<void> updateTasbeehSelection(String phraseId, int displayCount) async {
+    try {
+      await HomeWidget.saveWidgetData<String>('tasbeeh_selected_phrase_id', phraseId);
+      await HomeWidget.saveWidgetData<int>('tasbeeh_count', displayCount);
+      await _update();
+    } catch (e, st) {
+      AppLogger.error('Failed to sync selected tasbeeh phrase with widget', error: e, stackTrace: st);
+    }
+  }
+
   static Future<void> updateTasbeehCount(int count) async {
     try {
       await HomeWidget.saveWidgetData<int>('tasbeeh_count', count);
