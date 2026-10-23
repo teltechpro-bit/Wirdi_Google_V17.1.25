@@ -215,7 +215,7 @@ class _SurahListTabState extends State<_SurahListTab> {
                       if (!context.mounted) return;
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const MushafViewScreen(initialPage: 1)),
+                        MaterialPageRoute(builder: (_) => const MushafViewScreen()),
                       );
                     } catch (_) {
                       if (context.mounted) {
