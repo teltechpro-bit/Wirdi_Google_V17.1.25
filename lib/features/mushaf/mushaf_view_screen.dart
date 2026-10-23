@@ -171,10 +171,13 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     // always takes precedence over the saved position.
     int? restoreSurah = widget.initialSurahNumber;
     int? restoreAyah = widget.initialAyah;
-    if (restoreSurah == null || restoreAyah == null) {
+    final hasExplicitDestination = widget.initialPage != null ||
+        widget.initialSurahNumber != null ||
+        widget.initialAyah != null;
+    if (!hasExplicitDestination) {
       final saved = await UserProgressService.lastReading();
-      restoreSurah ??= saved?['surahNumber'] as int?;
-      restoreAyah ??= saved?['ayahNumber'] as int?;
+      restoreSurah = saved?['surahNumber'] as int?;
+      restoreAyah = saved?['ayahNumber'] as int?;
     }
     if (restoreSurah != null && restoreAyah != null) {
       for (var i = 0; i < pages.length; i++) {
