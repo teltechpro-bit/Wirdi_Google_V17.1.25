@@ -754,7 +754,24 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _visibleAyahUpdatePending = false;
       if (!mounted) return;
-      final screenCenter = MediaQuery.sizeOf(context).height * 0.5;
+      // Use the actual ListView viewport, not the full device screen.
+      // The app bar and bottom playback bar make those centers different;
+      // on long surahs this caused the visible-ayah tracker to lag near the
+      // lower part of the reader.
+      double? viewportCenter;
+      for (final entry in _ayahKeys.entries) {
+        final ctx = entry.value.currentContext;
+        if (ctx == null) continue;
+        final render = ctx.findRenderObject();
+        if (render is! RenderBox || !render.hasSize) continue;
+        final viewport = RenderAbstractViewport.of(render);
+        if (viewport is RenderBox && viewport.hasSize) {
+          final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+          viewportCenter = viewportTop + viewport.size.height / 2;
+          break;
+        }
+      }
+      final screenCenter = viewportCenter ?? MediaQuery.sizeOf(context).height * 0.5;
       int? closest;
       var bestDistance = double.infinity;
       for (final entry in _ayahKeys.entries) {
@@ -770,7 +787,19 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
           closest = entry.key;
         }
       }
-      if (closest != null) _currentVisibleAyah = closest;
+      if (closest != null && closest != _currentVisibleAyah) {
+        _currentVisibleAyah = closest;
+        // Keep Continue Reading in sync with manual scrolling as well as
+        // audio playback. Do not overwrite the playing ayah while audio is
+        // active; the audio listener owns that progress in that case.
+        if (_playingAyah == null) {
+          unawaited(UserProgressService.saveLastReading(
+            surahNumber: widget.surah.number,
+            surahName: widget.surah.name,
+            ayahNumber: closest,
+          ));
+        }
+      }
     });
   }
 
