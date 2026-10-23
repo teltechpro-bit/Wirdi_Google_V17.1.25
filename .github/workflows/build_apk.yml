@@ -289,7 +289,7 @@ jobs:
       - name: Set app name in launcher
         run: |
           mkdir -p android/app/src/main/res/values
-          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' '    <string name="app_name">Wirdi</string>' '</resources>' > android/app/src/main/res/values/strings.xml
+          printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' '    <string name="app_name">وِرْدِي</string>' '</resources>' > android/app/src/main/res/values/strings.xml
 
       # DETERMINISM FIX (production hardening audit): this used to force-clear
       # the pub cache AND delete pubspec.lock on every single run, which
