@@ -8,6 +8,7 @@ import '../../core/models/azkar_models.dart';
 import '../../core/services/arabic_text_utils.dart';
 import '../../core/services/azkar_repository.dart';
 import '../../core/services/user_progress_service.dart';
+import '../../core/services/widget_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/wirdi_identity_background.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -39,6 +40,22 @@ class _AzkarScreenState extends State<AzkarScreen> with SingleTickerProviderStat
   Future<void> _loadCompleted() async {
     final completed = await UserProgressService.completedAzkarToday();
     if (mounted) setState(() => _completedToday = completed);
+    await _updateAzkarWidgetRemaining(completed);
+  }
+
+  Future<void> _updateAzkarWidgetRemaining([Set<String>? completedOverride]) async {
+    try {
+      final completed = completedOverride ?? await UserProgressService.completedAzkarToday();
+      final categories = await _future;
+      final totalItems = categories.fold<int>(0, (sum, category) => sum + category.items.length);
+      final completedItems = categories.fold<int>(
+        0,
+        (sum, category) => sum + category.items.where((item) => completed.contains(item.uid)).length,
+      );
+      await WidgetService.updateAzkarRemaining((totalItems - completedItems).clamp(0, totalItems));
+    } catch (_) {
+      // Keep the azkar screen usable even if widget refresh is unavailable.
+    }
   }
 
   @override
@@ -284,6 +301,7 @@ class _AzkarDetailsScreenState extends State<AzkarDetailsScreen> {
         );
       }
     }
+    unawaited(_updateAzkarWidgetRemaining(_completedToday));
   }
 
   Future<void> _toggleFavorite(AzkarItemModel item) async {
