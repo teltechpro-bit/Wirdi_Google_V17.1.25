@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../core/services/app_logger.dart';
 
 import '../../core/services/notification_service.dart';
 import '../../core/services/prayer_notification_scheduler.dart';
@@ -98,6 +101,21 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
     }
   }
 
+  Future<void> _shareDiagnostics() async {
+    final file = await AppLogger.diagnosticLogFile();
+    if (!mounted) return;
+    if (file == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t(context, 'لا يوجد سجل تشخيص متاح بعد.', 'No diagnostic log is available yet.'))),
+      );
+      return;
+    }
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: _t(context, 'سجل تشخيص محلي من وِرْدِي. راجع المحتوى قبل إرساله.', 'Local Wirdi diagnostic log. Review its contents before sharing.'),
+    );
+  }
+
   Widget _statusTile(String label, bool ok, {String? valueText}) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -182,6 +200,12 @@ class _NotificationDiagnosticsScreenState extends State<NotificationDiagnosticsS
                   ),
                 ],
                 const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: _shareDiagnostics,
+                  icon: const Icon(Icons.share_outlined),
+                  label: Text(_t(context, 'مشاركة سجل التشخيص', 'Share diagnostic log')),
+                ),
+                const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () async {
                     await NotificationService.showTestNotification();
