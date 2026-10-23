@@ -141,8 +141,8 @@ class SyncService {
       <String, dynamic>{...payload, 'updatedAt': now},
       SetOptions(merge: true),
     );
-    await prefs.setString(key, fingerprint);
     changedSections.add(section);
+    await prefs.setString(key, fingerprint);
     return true;
   }
 
