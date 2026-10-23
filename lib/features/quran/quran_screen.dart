@@ -20,6 +20,7 @@ import '../../core/services/settings_service.dart';
 import '../../core/services/tafsir_repository.dart';
 import '../../core/services/transliteration_repository.dart';
 import '../../core/services/user_progress_service.dart';
+import '../../core/services/widget_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/wirdi_identity_background.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -754,7 +755,20 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _visibleAyahUpdatePending = false;
       if (!mounted) return;
-      final screenCenter = MediaQuery.sizeOf(context).height * 0.5;
+      // Use the actual ListView viewport, not the full device screen.
+      // The app bar and bottom playback bar make those centers different.
+      double? viewportCenter;
+      for (final entry in _ayahKeys.entries) {
+        final ctx = entry.value.currentContext;
+        if (ctx == null) continue;
+        final scrollable = Scrollable.maybeOf(ctx);
+        final viewportObject = scrollable?.context.findRenderObject();
+        if (viewportObject is! RenderBox || !viewportObject.hasSize) continue;
+        final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+        viewportCenter = viewportTop + viewportObject.size.height / 2;
+        break;
+      }
+      final screenCenter = viewportCenter ?? MediaQuery.sizeOf(context).height * 0.5;
       int? closest;
       var bestDistance = double.infinity;
       for (final entry in _ayahKeys.entries) {
@@ -770,7 +784,17 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
           closest = entry.key;
         }
       }
-      if (closest != null) _currentVisibleAyah = closest;
+      if (closest != null && closest != _currentVisibleAyah) {
+        _currentVisibleAyah = closest;
+        // Persist manual reading progress unless audio playback owns progress.
+        if (_playingAyah == null) {
+          unawaited(UserProgressService.saveLastReading(
+            surahNumber: widget.surah.number,
+            surahName: widget.surah.name,
+            ayahNumber: closest,
+          ));
+        }
+      }
     });
   }
 
@@ -1105,6 +1129,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     await UserProgressService.markPageRead();
     await UserProgressService.registerStreakCheckpoint();
     await UserProgressService.markSurahCompleted(widget.surah.number);
+    final pagesToday = await UserProgressService.pagesReadToday();
+    final target = await UserProgressService.dailyWirdTarget();
+    final khatmaRatio = await UserProgressService.quranCompletionRatio();
+    unawaited(WidgetService.updateProgress(pagesToday, target, khatmaRatio));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).quranAddedToWird)));
   }

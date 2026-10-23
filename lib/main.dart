@@ -15,6 +15,7 @@ import 'core/services/islamic_occasions_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/local_cache_service.dart';
 import 'core/services/radio_service.dart';
+import 'core/services/widget_service.dart';
 import 'core/services/qiraat_service.dart';
 import 'core/services/settings_service.dart';
 import 'core/services/wirdi_audio_handler.dart';
@@ -152,6 +153,7 @@ void main() {
     // Discover additional riwayah readers asynchronously; Hafs playback does
     // not wait for this network catalog.
     runApp(const WirdiApp());
+    unawaited(WidgetService.refreshDailyAyah());
     unawaited(QiraatService.instance.loadReaders().catchError(
       (Object error, StackTrace stack) {
         debugPrint('[main] Background reader catalog load failed: $error\n$stack');

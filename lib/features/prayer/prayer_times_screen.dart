@@ -14,6 +14,7 @@ import '../../core/services/prayer_service.dart';
 import '../../core/services/moon_calculator.dart';
 import '../../core/services/settings_service.dart';
 import '../../core/services/user_progress_service.dart';
+import '../../core/services/widget_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/wirdi_identity_background.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -75,6 +76,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
 
     try {
       final result = await PrayerService.fetchUsingSavedPreference();
+      unawaited(WidgetService.updatePrayerTimes(result.prayers, result.next));
       setState(() {
         _result = result;
         _loading = false;
@@ -119,6 +121,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     setState(() => _loading = true);
     try {
       final result = await PrayerService.fetchPrayerTimes();
+      unawaited(WidgetService.updatePrayerTimes(result.prayers, result.next));
       setState(() {
         _result = result;
         _availabilityError = null;
@@ -166,6 +169,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     setState(() => _loading = true);
     try {
       final result = await PrayerService.fetchPrayerTimesForCity(city);
+      unawaited(WidgetService.updatePrayerTimes(result.prayers, result.next));
       setState(() {
         _result = result;
         _availabilityError = null;
@@ -220,6 +224,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
           locationLabel: result.locationLabel,
         );
         if (mounted) setState(() => _result = updated);
+        unawaited(WidgetService.updatePrayerTimes(updated.prayers, updated.next));
         return;
       }
       _load();

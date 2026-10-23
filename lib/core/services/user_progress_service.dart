@@ -158,6 +158,17 @@ static String _dayKeyFor(DateTime d) {
     }
   }
 
+  static Future<void> incrementTasbeehDailyTotalBy(int amount) async {
+    if (amount <= 0) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'tasbeeh_daily_total_${_todayKey()}';
+    await prefs.setInt(key, (prefs.getInt(key) ?? 0) + amount);
+    await prefs.setInt(
+      'tasbeeh_lifetime_total',
+      (prefs.getInt('tasbeeh_lifetime_total') ?? 0) + amount,
+    );
+  }
+
   static Future<int> lifetimeAzkarTotal() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('azkar_lifetime_total') ?? 0;
