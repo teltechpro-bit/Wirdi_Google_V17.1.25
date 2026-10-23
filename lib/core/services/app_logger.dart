@@ -14,6 +14,22 @@ class AppLogger {
   static const String _logFileName = 'wirdi_diagnostics.log';
   static Future<void> _writeQueue = Future<void>.value();
 
+  static final RegExp _emailPattern = RegExp(
+    r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}',
+    caseSensitive: false,
+  );
+  static final RegExp _sensitiveQueryPattern = RegExp(
+    r'([?&](?:access_token|id_token|token|api_key|apikey|key|password|email|authorization|code)=)[^&#\\s]+',
+    caseSensitive: false,
+  );
+
+  static String _sanitize(String value) => value
+      .replaceAll(_emailPattern, '[redacted-email]')
+      .replaceAllMapped(
+        _sensitiveQueryPattern,
+        (match) => '${match[1]}[REDACTED]',
+      );
+
   static void error(String message, {String name = 'Wirdi', Object? error, StackTrace? stackTrace}) {
     developer.log(message, name: name, error: error, stackTrace: stackTrace, level: 1000);
     _enqueue('ERROR', name, message, error, stackTrace);
@@ -33,10 +49,10 @@ class AppLogger {
   ) {
     final line = StringBuffer()
       ..write(DateTime.now().toIso8601String())
-      ..write(' [$level] [$name] ')
-      ..writeln(message);
-    if (error != null) line.writeln('Error: $error');
-    if (stackTrace != null) line.writeln(stackTrace);
+      ..write(' [$level] [${_sanitize(name)}] ')
+      ..writeln(_sanitize(message));
+    if (error != null) line.writeln('Error: ${_sanitize(error.toString())}');
+    if (stackTrace != null) line.writeln(_sanitize(stackTrace.toString()));
 
     _writeQueue = _writeQueue.then((_) async {
       final directory = await getApplicationSupportDirectory();
