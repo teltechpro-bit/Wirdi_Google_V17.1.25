@@ -105,7 +105,7 @@ class _WidgetCustomizationScreenState extends State<WidgetCustomizationScreen> {
           Text('المحتوى داخل الدائرة', style: theme.textTheme.titleMedium),
           RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'tasbeeh', groupValue: _overlayContent, title: const Text('عداد التسبيح'), onChanged: (v) { if (v != null) _setContent(v); }),
           RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'dhikr', groupValue: _overlayContent, title: const Text('ذكر متجدد'), onChanged: (v) { if (v != null) _setContent(v); }),
-          RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'quran', groupValue: _overlayContent, title: const Text('اختصار القرآن / الراديو'), onChanged: (v) { if (v != null) _setContent(v); }),
+          RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'quran', groupValue: _overlayContent, title: const Text('فتح وِرْدِي'), onChanged: (v) { if (v != null) _setContent(v); }),
           const SizedBox(height: 16),
           FilledButton.icon(onPressed: _refreshWidgets, icon: const Icon(Icons.refresh), label: const Text('تحديث الويدجت الآن')),
         ],
