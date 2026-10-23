@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.widget.RemoteViews
+import org.json.JSONArray
 import es.antonborri.home_widget.HomeWidgetProvider
 
 private object WirdiWidgetUi {
@@ -24,8 +25,8 @@ private object WirdiWidgetUi {
         if (kind == "ayah") {
             val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
             if (data.getString("daily_ayah_date", "") != today) {
-                val next = (data.getInt("daily_ayah_index", 0) + 1) % ayat.size
-                data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", ayat[next]).putString("daily_ayah_date", today).apply()
+                val pool = readAyahPool(data)
+                data.edit().putInt("daily_ayah_index", 0).putString("daily_ayah_text", pool.first()).putString("daily_ayah_date", today).apply()
             }
         }
         ids.forEach { id ->
@@ -98,9 +99,23 @@ private object WirdiWidgetUi {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs.edit().putInt(COUNT, prefs.getInt(COUNT, 0) + 1).apply()
     }
+    private fun readAyahPool(data: SharedPreferences): List<String> {
+        val raw = data.getString("daily_ayah_pool_json", null)
+        if (!raw.isNullOrBlank()) {
+            try {
+                val json = JSONArray(raw)
+                val verses = (0 until json.length()).mapNotNull { json.optString(it).takeIf(String::isNotBlank) }
+                if (verses.isNotEmpty()) return verses
+            } catch (_: Exception) { }
+        }
+        return ayat.toList()
+    }
+
     fun nextAyah(context: Context, data: SharedPreferences) {
-        val next = (data.getInt("daily_ayah_index", 0) + 1) % ayat.size
-        data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", ayat[next]).apply()
+        val pool = readAyahPool(data)
+        val next = (data.getInt("daily_ayah_index", 0) + 1) % pool.size
+        val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", pool[next]).putString("daily_ayah_date", today).apply()
     }
 }
 
