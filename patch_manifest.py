@@ -139,7 +139,8 @@ required_query_intents = [
      '        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>'),
 ]
 for action, scheme, intent_xml in required_query_intents:
-    if action not in query_body or scheme not in query_body:
+    existing_intents = re.findall(r'<intent\b.*?</intent>', query_body, flags=re.DOTALL)
+    if not any(action in intent and scheme in intent for intent in existing_intents):
         query_body = (query_body + '\n' + intent_xml).strip()
 if 'android.speech.RecognitionService' not in query_body:
     speech_intent = (
