@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:home_widget/home_widget.dart';
+import '../../core/services/widget_service.dart';
 
 import '../../core/services/user_progress_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -40,7 +42,7 @@ class TasbeehScreen extends StatefulWidget {
   State<TasbeehScreen> createState() => _TasbeehScreenState();
 }
 
-class _TasbeehScreenState extends State<TasbeehScreen> {
+class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserver {
   List<_TasbeehPhrase> _customPhrases = [];
   late _TasbeehPhrase _selected = _builtInPhrases.first;
   int _today = 0;
@@ -58,7 +60,19 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCustomPhrases().then((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   Future<void> _loadCustomPhrases() async {
@@ -139,11 +153,24 @@ class _TasbeehScreenState extends State<TasbeehScreen> {
     });
 
     unawaited(_persistIncrement(nextDaily, nextTotal, completedCycle: completedCycle));
+    unawaited(_syncHomeWidgetAfterAppTap());
 
     if (completedCycle) {
       HapticFeedback.heavyImpact();
     }
   }
+  Future<void> _syncHomeWidgetAfterAppTap() async {
+    try {
+      final current = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
+      final next = current + 1;
+      await WidgetService.updateTasbeehCount(next);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('tasbeeh_widget_synced_count', next);
+    } catch (_) {
+      // The in-app counter remains usable if a launcher widget is unavailable.
+    }
+  }
+
   Future<void> _persistIncrement(int next, int nextTotal, {bool completedCycle = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('tasbeeh_today_${_selected.id}', next);
