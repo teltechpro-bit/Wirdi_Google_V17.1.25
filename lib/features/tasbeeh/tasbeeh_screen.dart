@@ -99,6 +99,21 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Import tasbeeh taps made directly from the Android launcher widget.
+    final widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
+    final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
+    final pendingTaps = widgetCount - syncedCount;
+    if (pendingTaps > 0) {
+      final dayKey = 'tasbeeh_day_' + _selected.id;
+      final todayKey = 'tasbeeh_today_' + _selected.id;
+      final totalKey = 'tasbeeh_total_' + _selected.id;
+      final oldToday = prefs.getString(dayKey) == _todayKey() ? (prefs.getInt(todayKey) ?? 0) : 0;
+      await prefs.setInt(todayKey, oldToday + pendingTaps);
+      await prefs.setInt(totalKey, (prefs.getInt(totalKey) ?? 0) + pendingTaps);
+      await prefs.setString(dayKey, _todayKey());
+      await prefs.setInt('tasbeeh_widget_synced_count', widgetCount);
+    }
     final storedDay = prefs.getString('tasbeeh_day_${_selected.id}');
     final todayCount = storedDay == _todayKey() ? (prefs.getInt('tasbeeh_today_${_selected.id}') ?? 0) : 0;
     final storedCycle = storedDay == _todayKey() ? (prefs.getInt('tasbeeh_cycle_${_selected.id}') ?? (todayCount % _selected.target)) : 0;
