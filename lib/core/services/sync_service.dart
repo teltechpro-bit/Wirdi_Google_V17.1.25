@@ -122,7 +122,7 @@ class SyncService {
       _stableFingerprint(payload);
 
   String _fingerprintKey(String uid, String section) =>
-      'sync_upload_fingerprint_${uid}_${section}';
+      'sync_upload_fingerprint_${uid}_$section';
 
   Future<bool> _setSectionIfChanged({
     required SharedPreferences prefs,
