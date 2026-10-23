@@ -42,6 +42,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   bool _session = false; // the user pressed "start" and has not pressed "stop"
   bool _listening = false;
   bool _starting = false;
+  int _emptyRecognitionRestarts = 0;
+  bool _recognizedWordsThisCycle = false;
+  bool _restartScheduled = false;
   String? _lastError;
   Completer<void>? _finalResultWaiter;
 
@@ -178,10 +181,33 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   void _onStatus(String status) {
     if (!mounted) return;
     final nowListening = status == 'listening';
+    if (nowListening) {
+      _recognizedWordsThisCycle = false;
+      _restartScheduled = false;
+    }
     if (_listening != nowListening) setState(() => _listening = nowListening);
-    // Android ends a recognition session after a short silence; keep going
-    // until the user presses stop.
-    if ((status == 'done' || status == 'notListening') && _session) {
+
+    // Android ends a recognition session after silence. Retry a few times,
+    // but stop instead of creating an endless no-match/restart loop.
+    if ((status == 'done' || status == 'notListening') &&
+        _session &&
+        !_restartScheduled) {
+      _restartScheduled = true;
+      if (_recognizedWordsThisCycle) {
+        _emptyRecognitionRestarts = 0;
+      } else {
+        _emptyRecognitionRestarts++;
+      }
+      if (_emptyRecognitionRestarts >= 3) {
+        setState(() {
+          _session = false;
+          _listening = false;
+          _speechUnavailable = false;
+          _lastError =
+              'لم يتم التقاط كلام بعد عدة محاولات. تحدث بوضوح قرب الميكروفون ثم ابدأ المحاولة مرة أخرى.';
+        });
+        return;
+      }
       Future<void>.delayed(const Duration(milliseconds: 250), () {
         if (mounted && _session && !_speech.isListening) _listen();
       });
@@ -197,6 +223,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       setState(() {
         _session = true;
         _lastError = null;
+        _emptyRecognitionRestarts = 0;
+        _recognizedWordsThisCycle = false;
+        _restartScheduled = false;
         _states = List<_WordState>.filled(_expected.length, _WordState.pending);
         _finalWords.clear();
         _partialWords = const <String>[];
@@ -265,6 +294,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
   void _onResult(stt.SpeechRecognitionResult result) {
     final words = ArabicWordMatch.tokens(result.recognizedWords).map((e) => e.value).toList();
+    if (words.isNotEmpty) {
+      _recognizedWordsThisCycle = true;
+      _emptyRecognitionRestarts = 0;
+    }
     if (result.finalResult) {
       _finalWords.addAll(words);
       _partialWords = const <String>[];
