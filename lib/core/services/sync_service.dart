@@ -107,12 +107,14 @@ class SyncService {
 
   static String _stableFingerprint(Map<String, dynamic> payload) {
     final bytes = utf8.encode(jsonEncode(_canonicalize(payload)));
-    var hash = 0x811c9dc5;
+    var hashA = 0x811c9dc5;
+    var hashB = 0x9e3779b9;
     for (final byte in bytes) {
-      hash ^= byte;
-      hash = (hash * 0x01000193) & 0xffffffff;
+      hashA = ((hashA ^ byte) * 0x01000193) & 0xffffffff;
+      hashB = ((hashB ^ (byte + hashA)) * 0x85ebca6b) & 0xffffffff;
     }
-    return hash.toRadixString(16).padLeft(8, '0');
+    return hashA.toRadixString(16).padLeft(8, '0') +
+        hashB.toRadixString(16).padLeft(8, '0');
   }
 
   @visibleForTesting
