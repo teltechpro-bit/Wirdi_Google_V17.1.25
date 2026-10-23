@@ -747,7 +747,12 @@ class SyncService {
       return;
     }
     await prefs.setInt(key, nowMs);
-    await syncNow();
+    try {
+      await syncNow();
+    } catch (_) {
+      await prefs.remove(key);
+      rethrow;
+    }
   }
 
   Future<void> syncOnSignIn() async => _reconcile();
