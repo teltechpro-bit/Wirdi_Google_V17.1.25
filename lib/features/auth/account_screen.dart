@@ -20,6 +20,56 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await SyncService.instance.syncNow();
       setState(() { _ok = true; _msg = l.authSyncSuccess; });
+    } on SyncAccountMismatchException catch (e) {
+      if (!mounted) return;
+      final choice = await showDialog<SyncAccountMismatchChoice>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Different account detected'),
+          content: const Text(
+            'The data currently stored on this device may belong to another account. '
+            'To prevent mixing private Quran progress, favorites, prayer history, and other data, '
+            'nothing was synced. Choose explicitly how to continue.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(
+                dialogContext, SyncAccountMismatchChoice.uploadLocalToAccount),
+              child: const Text('Upload this device data'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext, SyncAccountMismatchChoice.replaceLocalWithCloud),
+              child: const Text('Replace local data'),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) {
+        setState(() {
+          _ok = false;
+          _msg = 'Sync cancelled. Local data was not changed.';
+        });
+      } else {
+        try {
+          await SyncService.instance.resolveAccountMismatch(choice);
+          if (!mounted) return;
+          setState(() {
+            _ok = true;
+            _msg = choice == SyncAccountMismatchChoice.replaceLocalWithCloud
+                ? 'Local synced data replaced from this account.'
+                : 'This device data uploaded to this account.';
+          });
+        } catch (resolveError) {
+          if (!mounted) return;
+          setState(() { _ok = false; _msg = 'Account-specific sync failed: $resolveError'; });
+        }
+      }
     } on FirestoreRulesNotPublishedException catch (e) {
       // The single most actionable failure message this screen can
       // show -- see FirestoreRulesNotPublishedException's doc comment.
@@ -47,6 +97,7 @@ class _AccountScreenState extends State<AccountScreen> {
       title: Text(l.authSignOutTitle), content: Text(l.authSignOutMessage),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.authSignOut))]));
     if (ok != true) return;
+    await SyncService.instance.prepareForSignOut();
     await AuthService.instance.signOut();
     if (mounted) Navigator.pushReplacementNamed(context, '/login');
   }
