@@ -139,6 +139,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   final Map<String, int> _ayahToPageIndex = <String, int>{};
   List<GlobalKey> _pageKeys = <GlobalKey>[];
   int _continuousScrollRequestId = 0;
+  bool _suppressNextPageSave = false;
 
   @override
   void initState() {
@@ -162,12 +163,21 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
         _ayahToPageIndex['${ayah.surahNumber}:${ayah.ayahNumber}'] = pageIndex;
       }
     }
-    if (widget.initialSurahNumber != null && widget.initialAyah != null) {
+    int? targetSurah = widget.initialSurahNumber;
+    int? targetAyah = widget.initialAyah;
+    if (targetSurah == null && targetAyah == null && widget.initialPage == null) {
+      final last = await UserProgressService.lastReading();
+      targetSurah = last?['surahNumber'] as int?;
+      targetAyah = last?['ayahNumber'] as int?;
+    }
+    if (targetSurah != null && targetAyah != null) {
       for (var i = 0; i < pages.length; i++) {
-        if (pages[i].ayahs.any((a) => a.surahNumber == widget.initialSurahNumber && a.ayahNumber == widget.initialAyah)) {
+        if (pages[i].ayahs.any((a) => a.surahNumber == targetSurah && a.ayahNumber == targetAyah)) {
+          final needsJump = i != _currentPageIndex;
           _currentPageIndex = i;
+          _suppressNextPageSave = needsJump;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _pageController.hasClients) {
+            if (mounted && _pageController.hasClients && needsJump) {
               _pageController.jumpToPage(i);
             }
           });
@@ -558,17 +568,21 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               itemCount: pages.length,
               onPageChanged: (index) {
                 _currentPageIndex = index;
+                if (_suppressNextPageSave) {
+                  _suppressNextPageSave = false;
+                  return;
+                }
                 if (pages[index].ayahs.isNotEmpty) {
                   final firstAyah = pages[index].ayahs.first;
                   final surah = allSurahs.firstWhere(
                     (s) => s.number == firstAyah.surahNumber,
                     orElse: () => allSurahs.first,
                   );
-                  UserProgressService.saveLastReading(
+                  unawaited(UserProgressService.saveLastReading(
                     surahNumber: firstAyah.surahNumber,
                     surahName: surah.name,
                     ayahNumber: firstAyah.ayahNumber,
-                  );
+                  ));
                 }
               },
               itemBuilder: (context, index) {
@@ -739,10 +753,140 @@ class _MushafPageViewState extends State<_MushafPageView> {
   void _playAyah(MushafAyahRef ayah) {
     final surah = _surahFor(ayah.surahNumber);
     if (surah == null) return;
+    unawaited(UserProgressService.saveLastReading(
+      surahNumber: ayah.surahNumber,
+      surahName: surah.name,
+      ayahNumber: ayah.ayahNumber,
+    ));
     if (quranAudio.isPlayingFor(ayah.surahNumber, ayah.ayahNumber)) {
       quranAudio.stop();
     } else {
       quranAudio.playAyah(surah, widget.allSurahs, ayah.ayahNumber);
+    }
+  }
+
+  Future<void> _showAyahActionsAt(Offset globalPosition) async {
+    MushafAyahRef? selected;
+    for (final ayah in widget.page.ayahs) {
+      final anchor = _ayahTextAnchors['${ayah.surahNumber}:${ayah.ayahNumber}'];
+      final textContext = anchor?.key.currentContext;
+      final render = textContext?.findRenderObject();
+      final range = anchor?.range;
+      if (render is! RenderParagraph || !render.attached || range == null) continue;
+      final local = render.globalToLocal(globalPosition);
+      if (!render.size.contains(local)) continue;
+      final offset = render.getPositionForOffset(local).offset;
+      if (offset >= range.start && offset <= range.end) {
+        selected = ayah;
+        break;
+      }
+    }
+    if (selected == null || !mounted) return;
+
+    final ayah = selected;
+    final surah = _surahFor(ayah.surahNumber);
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                isArabic
+                    ? '${surah?.name ?? ''} — الآية ${ayah.ayahNumber}'
+                    : '${surah?.englishName ?? surah?.name ?? ''} — Ayah ${ayah.ayahNumber}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.play_arrow_rounded),
+              title: Text(isArabic ? 'تشغيل الآية' : 'Play ayah'),
+              onTap: () => Navigator.pop(sheetContext, 'play'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined),
+              title: Text(isArabic ? 'حفظ موضع القراءة هنا' : 'Save reading position here'),
+              subtitle: Text(isArabic ? 'سيعود المصحف إلى هذه الآية لاحقًا' : 'Resume the Mushaf from this ayah next time'),
+              onTap: () => Navigator.pop(sheetContext, 'save'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'play') {
+      _playAyah(ayah);
+    } else if (action == 'save' && surah != null) {
+      await UserProgressService.saveLastReading(
+        surahNumber: ayah.surahNumber,
+        surahName: surah.name,
+        ayahNumber: ayah.ayahNumber,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isArabic ? 'تم حفظ موضع القراءة' : 'Reading position saved')),
+        );
+      }
+    }
+  }
+
+  bool _visibleAyahSavePending = false;
+  String? _lastVisibleAyahSaved;
+
+  bool _onMushafScrollNotification(ScrollNotification notification) {
+    if (_visibleAyahSavePending || notification is ScrollEndNotification && notification.depth > 2) return false;
+    _visibleAyahSavePending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibleAyahSavePending = false;
+      if (!mounted) return;
+      _saveVisibleAyahPosition();
+    });
+    return false;
+  }
+
+  void _saveVisibleAyahPosition() {
+    MushafAyahRef? closest;
+    var bestDistance = double.infinity;
+    for (final ayah in widget.page.ayahs) {
+      final id = '${ayah.surahNumber}:${ayah.ayahNumber}';
+      final anchor = _ayahTextAnchors[id];
+      final textContext = anchor?.key.currentContext;
+      final render = textContext?.findRenderObject();
+      final range = anchor?.range;
+      if (render is! RenderParagraph || !render.attached || range == null) continue;
+      final boxes = render.getBoxesForSelection(TextSelection(baseOffset: range.start, extentOffset: range.end));
+      if (boxes.isEmpty) continue;
+      final box = boxes.first;
+      final top = render.localToGlobal(Offset(0, box.top)).dy;
+      final bottom = render.localToGlobal(Offset(0, box.bottom)).dy;
+      final scrollable = Scrollable.maybeOf(textContext!);
+      final viewportObject = scrollable?.context.findRenderObject();
+      if (viewportObject is! RenderBox || !viewportObject.attached) continue;
+      final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+      final viewportBottom = viewportTop + viewportObject.size.height;
+      if (bottom < viewportTop || top > viewportBottom) continue;
+      final distance = (top - (viewportTop + viewportObject.size.height * 0.28)).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        closest = ayah;
+      }
+    }
+    if (closest == null) return;
+    final id = '${closest.surahNumber}:${closest.ayahNumber}';
+    if (id == _lastVisibleAyahSaved) return;
+    _lastVisibleAyahSaved = id;
+    final surah = _surahFor(closest.surahNumber);
+    if (surah != null) {
+      unawaited(UserProgressService.saveLastReading(
+        surahNumber: closest.surahNumber,
+        surahName: surah.name,
+        ayahNumber: closest.ayahNumber,
+      ));
     }
   }
 
@@ -1019,14 +1163,21 @@ class _MushafPageViewState extends State<_MushafPageView> {
         // problem). In continuous mode we return the page directly --
         // guaranteed correct, bounded, single-scrollable layout, at the
         // cost of no pinch-zoom there.
-        if (widget.targetHeight != null) {
-          return pageCard;
-        }
-        return InteractiveViewer(
-          panEnabled: false,
-          minScale: 0.8,
-          maxScale: 2.2,
-          child: pageCard,
+        final interactivePage = widget.targetHeight != null
+            ? pageCard
+            : InteractiveViewer(
+                panEnabled: false,
+                minScale: 0.8,
+                maxScale: 2.2,
+                child: pageCard,
+              );
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onMushafScrollNotification,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onLongPressStart: (details) => _showAyahActionsAt(details.globalPosition),
+            child: interactivePage,
+          ),
         );
       },
     ),
