@@ -191,11 +191,17 @@ if is_kts:
 else:
     text2 = text2.replace('compileSdk flutter.compileSdkVersion', 'compileSdk 36')
     text2 = text2.replace('targetSdk flutter.targetSdkVersion', 'targetSdk 36')
+if is_kts:
+    sdk_values_pinned = 'compileSdk = 36' in text2 and 'targetSdk = 36' in text2
+else:
+    sdk_values_pinned = 'compileSdk 36' in text2 and 'targetSdk 36' in text2
+if not sdk_values_pinned:
+    raise SystemExit('ERROR: could not pin compileSdk/targetSdk to 36; generated Gradle template changed')
 if text2 != path.read_text():
     path.write_text(text2)
     print('compileSdk/targetSdk pinned to 36 (was flutter.compileSdkVersion/targetSdkVersion)')
 else:
-    raise SystemExit('ERROR: could not pin compileSdk/targetSdk to 36; generated Gradle template changed')
+    print('compileSdk/targetSdk already pinned to 36')
 
 
 # ---- FIX v219: force ALL Android modules (including third-party plugins
