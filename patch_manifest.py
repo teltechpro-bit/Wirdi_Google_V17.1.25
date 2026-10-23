@@ -89,6 +89,63 @@ if 'com.ryanheise.audioservice.AudioService' not in text:
     )
     text = re.sub(r'(</application>)', audio_service_block + r'\1', text, count=1)
 
+
+# Preserve Wirdi's scheduled-notification, widget, and silent-mode registrations.
+# CI generates the Android platform folder from scratch, so these must be injected.
+if 'ScheduledNotificationReceiver' not in text:
+    notification_receivers = (
+        '\n    <receiver android:exported="false"\n'
+        '        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n'
+        '    <receiver android:exported="false"\n'
+        '        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n'
+        '        <intent-filter>\n'
+        '            <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
+        '            <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
+        '            <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n'
+        '            <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />\n'
+        '        </intent-filter>\n'
+        '    </receiver>\n'
+    )
+    text = re.sub(r'(</application>)', notification_receivers + r'\1', text, count=1)
+
+if 'WirdiWidgetProvider' not in text:
+    widget_block = (
+        '\n    <receiver android:name="com.wirdi.wirdi.WirdiWidgetProvider"\n'
+        '        android:exported="true">\n'
+        '        <intent-filter>\n'
+        '            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n'
+        '        </intent-filter>\n'
+        '        <meta-data android:name="android.appwidget.provider"\n'
+        '            android:resource="@xml/wirdi_widget_info" />\n'
+        '    </receiver>\n'
+    )
+    text = re.sub(r'(</application>)', widget_block + r'\1', text, count=1)
+
+if 'SilentModeReceiver' not in text:
+    silent_block = (
+        '\n    <receiver android:name="com.wirdi.wirdi.SilentModeReceiver"\n'
+        '        android:exported="false">\n'
+        '        <intent-filter>\n'
+        '            <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
+        '            <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
+        '            <action android:name="com.wirdi.wirdi.SILENT_START" />\n'
+        '            <action android:name="com.wirdi.wirdi.SILENT_END" />\n'
+        '        </intent-filter>\n'
+        '    </receiver>\n'
+    )
+    text = re.sub(r'(</application>)', silent_block + r'\1', text, count=1)
+
+# Keep Android Auto Backup disabled; user data migration is handled by opt-in sync.
+if 'android:allowBackup' not in text:
+    text, n_backup = re.subn(
+        r'<application\b',
+        '<application android:allowBackup="false"',
+        text,
+        count=1,
+    )
+    if n_backup != 1:
+        raise SystemExit('ERROR: could not set android:allowBackup="false"')
+
 # Use the localized launcher resource rather than Flutter's default literal project name.
 def _set_launcher_label(match):
     attrs = match.group(1)
