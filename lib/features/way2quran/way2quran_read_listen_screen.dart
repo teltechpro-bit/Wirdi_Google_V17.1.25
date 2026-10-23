@@ -187,6 +187,7 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     try {
     final audio = _audioFor(surah);
     final dir = await getApplicationDocumentsDirectory();
+    if (!mounted) return;
     final reciterSlug = selectedReciter?.slug ?? 'reciter';
     final recitationSlug = selectedRecitation ?? 'recitation';
     final fileStem = '${reciterSlug}_${recitationSlug}_${surah.number}';
@@ -198,11 +199,13 @@ class _Way2QuranReadListenScreenState extends State<Way2QuranReadListenScreen> {
     final legacyExists = !localExists && await legacyFile.exists();
     final playableFile = localExists ? localFile : legacyFile;
     final url = audio?.url.isNotEmpty == true ? audio!.url : audio?.downloadUrl ?? '';
+    if (!mounted) return;
     if (!localExists && url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد تلاوة لهذه السورة عند هذا القارئ')));
       return;
     }
     await quranAudio.setSpeed(speed);
+    if (!mounted) return;
     final title = surah.name + ' — ' + selectedReciter!.name(Localizations.localeOf(context).languageCode == 'ar');
     if (localExists || legacyExists) {
       await quranAudio.playExternalFile(
