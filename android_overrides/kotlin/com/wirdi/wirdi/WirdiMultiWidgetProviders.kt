@@ -2,6 +2,7 @@ package com.wirdi.wirdi
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.graphics.Color
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -19,6 +20,19 @@ private object WirdiWidgetUi {
         val pkg = context.packageName
         ids.forEach { id ->
             val views = RemoteViews(pkg, layout)
+            val rootId = when (kind) {
+                "daily" -> R.id.daily_root
+                "ayah" -> R.id.ayah_root
+                else -> R.id.tasbeeh_root
+            }
+            val background = when {
+                data.getBoolean("widget_transparent", false) -> Color.TRANSPARENT
+                data.getBoolean("widget_dark_mode", false) -> Color.rgb(23, 33, 43)
+                kind == "tasbeeh" -> Color.rgb(236, 253, 245)
+                kind == "ayah" -> Color.rgb(248, 250, 252)
+                else -> Color.rgb(241, 245, 249)
+            }
+            views.setInt(rootId, "setBackgroundColor", background)
             when (kind) {
                 "daily" -> {
                     views.setTextViewText(R.id.daily_wird_progress, data.getString("wird_progress_text", "0 / 5 صفحات") ?: "0 / 5 صفحات")
