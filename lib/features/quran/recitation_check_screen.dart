@@ -44,6 +44,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   bool _starting = false;
   int _emptyRecognitionRestarts = 0;
   bool _recognizedWordsThisCycle = false;
+  bool _cycleCounted = false;
   bool _restartScheduled = false;
   String? _lastError;
   Completer<void>? _finalResultWaiter;
@@ -183,33 +184,42 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     final nowListening = status == 'listening';
     if (nowListening) {
       _recognizedWordsThisCycle = false;
+      _cycleCounted = false;
       _restartScheduled = false;
     }
     if (_listening != nowListening) setState(() => _listening = nowListening);
 
-    // Android ends a recognition session after silence. Retry a few times,
-    // but stop instead of creating an endless no-match/restart loop.
-    if ((status == 'done' || status == 'notListening') &&
-        _session &&
-        !_restartScheduled) {
+    // Android may emit both "done" and "notListening" for one cycle. Count
+    // that cycle once, but allow the later status to restart if the first
+    // delayed check runs before the recognizer fully stops.
+    if ((status == 'done' || status == 'notListening') && _session) {
+      if (!_cycleCounted) {
+        _cycleCounted = true;
+        if (_recognizedWordsThisCycle) {
+          _emptyRecognitionRestarts = 0;
+        } else {
+          _emptyRecognitionRestarts++;
+        }
+        if (_emptyRecognitionRestarts >= 3) {
+          setState(() {
+            _session = false;
+            _listening = false;
+            _speechUnavailable = false;
+            _lastError =
+                'لم يتم التقاط كلام بعد عدة محاولات. تحدث بوضوح قرب الميكروفون ثم ابدأ المحاولة مرة أخرى.';
+          });
+          return;
+        }
+      }
+      if (_restartScheduled) return;
       _restartScheduled = true;
-      if (_recognizedWordsThisCycle) {
-        _emptyRecognitionRestarts = 0;
-      } else {
-        _emptyRecognitionRestarts++;
-      }
-      if (_emptyRecognitionRestarts >= 3) {
-        setState(() {
-          _session = false;
-          _listening = false;
-          _speechUnavailable = false;
-          _lastError =
-              'لم يتم التقاط كلام بعد عدة محاولات. تحدث بوضوح قرب الميكروفون ثم ابدأ المحاولة مرة أخرى.';
-        });
-        return;
-      }
       Future<void>.delayed(const Duration(milliseconds: 250), () {
-        if (mounted && _session && !_speech.isListening) _listen();
+        if (!mounted || !_session) return;
+        if (_speech.isListening) {
+          _restartScheduled = false;
+          return;
+        }
+        _listen();
       });
     }
   }
@@ -225,6 +235,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         _lastError = null;
         _emptyRecognitionRestarts = 0;
         _recognizedWordsThisCycle = false;
+        _cycleCounted = false;
         _restartScheduled = false;
         _states = List<_WordState>.filled(_expected.length, _WordState.pending);
         _finalWords.clear();
