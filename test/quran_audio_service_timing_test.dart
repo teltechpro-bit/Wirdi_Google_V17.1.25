@@ -50,7 +50,7 @@ void main() {
       expect(
         QuranAudioService.ayahForPositionFromTimings(
           timings,
-          const Duration(milliseconds: 0),
+          const Duration(milliseconds: -1),
         ),
         1,
       );
