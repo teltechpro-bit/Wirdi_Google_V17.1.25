@@ -100,20 +100,35 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Import tasbeeh taps made directly from the Android launcher widget.
-    var widgetCount = 0;
-    try { widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0; } catch (_) { /* Launcher widgets may be unavailable on this platform. */ }
-    final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
-    final pendingTaps = widgetCount - syncedCount;
-    if (pendingTaps > 0) {
-      final dayKey = 'tasbeeh_day_' + _selected.id;
-      final todayKey = 'tasbeeh_today_' + _selected.id;
-      final totalKey = 'tasbeeh_total_' + _selected.id;
-      final oldToday = prefs.getString(dayKey) == _todayKey() ? (prefs.getInt(todayKey) ?? 0) : 0;
-      await prefs.setInt(todayKey, oldToday + pendingTaps);
-      await prefs.setInt(totalKey, (prefs.getInt(totalKey) ?? 0) + pendingTaps);
-      await prefs.setString(dayKey, _todayKey());
+    // One-time migration for widget taps recorded by older app versions.
+    // After migration, app taps never advance this legacy sync watermark.
+    if (!(prefs.getBool('tasbeeh_widget_migrated_v2') ?? false)) {
+      var widgetCount = 0;
+      try {
+        widgetCount = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
+      } catch (_) { /* Launcher widgets may be unavailable on this platform. */ }
+      final syncedCount = prefs.getInt('tasbeeh_widget_synced_count') ?? 0;
+      final legacyPending = (widgetCount - syncedCount).clamp(0, 100000);
+      if (legacyPending > 0) await _applyImportedWidgetTaps(prefs, _selected, legacyPending);
       await prefs.setInt('tasbeeh_widget_synced_count', widgetCount);
+      await prefs.setBool('tasbeeh_widget_migrated_v2', true);
+    }
+
+    // Separate monotonic counters preserve which dhikr was selected at tap time.
+    for (final phrase in _allPhrases) {
+      var widgetTaps = 0;
+      try {
+        widgetTaps = await HomeWidget.getWidgetData<int>('tasbeeh_widget_taps_${phrase.id}', defaultValue: 0) ?? 0;
+      } catch (_) { continue; }
+      final syncKey = 'tasbeeh_widget_synced_taps_${phrase.id}';
+      final syncedTaps = prefs.getInt(syncKey) ?? 0;
+      final pending = (widgetTaps - syncedTaps).clamp(0, 100000);
+      if (pending > 0) {
+        await _applyImportedWidgetTaps(prefs, phrase, pending);
+        await prefs.setInt(syncKey, widgetTaps);
+      } else if (widgetTaps > syncedTaps) {
+        await prefs.setInt(syncKey, widgetTaps);
+      }
     }
     final storedDay = prefs.getString('tasbeeh_day_${_selected.id}');
     final todayCount = storedDay == _todayKey() ? (prefs.getInt('tasbeeh_today_${_selected.id}') ?? 0) : 0;
@@ -138,6 +153,22 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
       _total = total;
     });
     await _loadGrandTotal();
+    await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount);
+  }
+
+  Future<void> _applyImportedWidgetTaps(SharedPreferences prefs, _TasbeehPhrase phrase, int count) async {
+    final dayKey = 'tasbeeh_day_${phrase.id}';
+    final todayKey = 'tasbeeh_today_${phrase.id}';
+    final cycleKey = 'tasbeeh_cycle_${phrase.id}';
+    final totalKey = 'tasbeeh_total_${phrase.id}';
+    final sameDay = prefs.getString(dayKey) == _todayKey();
+    final today = sameDay ? (prefs.getInt(todayKey) ?? 0) : 0;
+    final cycle = sameDay ? (prefs.getInt(cycleKey) ?? (today % phrase.target)) : 0;
+    await prefs.setInt(todayKey, today + count);
+    await prefs.setInt(cycleKey, (cycle + count) % phrase.target);
+    await prefs.setInt(totalKey, (prefs.getInt(totalKey) ?? 0) + count);
+    await prefs.setString(dayKey, _todayKey());
+    for (var i = 0; i < count; i++) { await UserProgressService.incrementTasbeehDailyTotal(); }
   }
 
   /// Combined total across every phrase (built-in + custom), separate
@@ -178,11 +209,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
   }
   Future<void> _syncHomeWidgetAfterAppTap() async {
     try {
-      final current = await HomeWidget.getWidgetData<int>('tasbeeh_count', defaultValue: 0) ?? 0;
-      final next = current + 1;
-      await WidgetService.updateTasbeehCount(next);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('tasbeeh_widget_synced_count', next);
+      await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount);
     } catch (_) {
       // The in-app counter remains usable if a launcher widget is unavailable.
     }
