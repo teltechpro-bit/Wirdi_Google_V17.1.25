@@ -3,6 +3,9 @@ package com.wirdi.wirdi
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.graphics.Color
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -18,6 +21,13 @@ private object WirdiWidgetUi {
     )
     fun refresh(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences, layout: Int, kind: String) {
         val pkg = context.packageName
+        if (kind == "ayah") {
+            val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+            if (data.getString("daily_ayah_date", "") != today) {
+                val next = (data.getInt("daily_ayah_index", 0) + 1) % ayat.size
+                data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", ayat[next]).putString("daily_ayah_date", today).apply()
+            }
+        }
         ids.forEach { id ->
             val views = RemoteViews(pkg, layout)
             val rootId = when (kind) {
