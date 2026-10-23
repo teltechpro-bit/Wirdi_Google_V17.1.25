@@ -3,7 +3,7 @@ import re
 
 candidates = list(Path("android/app/src/main/kotlin").rglob("MainActivity.kt"))
 if not candidates:
-    print("WARNING: MainActivity.kt not found -- audio_service media notification will not work")
+    raise SystemExit("ERROR: MainActivity.kt not found; cannot guarantee media notification and silent-mode integration")
 else:
     for path in candidates:
         text = path.read_text()
@@ -73,7 +73,7 @@ else:
                 text = text[:bodyless.start()] + new_line + text[bodyless.end():]
                 print(f"{path}: added class body with dispatchKeyEvent()")
             else:
-                print(f"WARNING: {path}: could not find MainActivity class declaration in an expected shape -- dispatchKeyEvent() NOT added, please check this file manually")
+                raise SystemExit(f"ERROR: {path}: MainActivity class declaration not recognized; dispatchKeyEvent() was not added")
         else:
             print(f"{path}: dispatchKeyEvent() already present, skipping that step")
 
@@ -96,7 +96,7 @@ else:
                 text = text[:brace_open2.end()] + cfg_method + text[brace_open2.end():]
                 print(f"{path}: registered PrayerSilentMode channel")
             else:
-                print(f"WARNING: {path}: could not register PrayerSilentMode channel -- silent-mode feature will not work")
+                raise SystemExit(f"ERROR: {path}: could not register PrayerSilentMode channel")
         else:
             print(f"{path}: PrayerSilentMode already registered, skipping")
 
