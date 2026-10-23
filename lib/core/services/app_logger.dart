@@ -15,20 +15,17 @@ class AppLogger {
   static Future<void> _writeQueue = Future<void>.value();
 
   static final RegExp _emailPattern = RegExp(
-    r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}',
+    r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}',
     caseSensitive: false,
   );
-  static final RegExp _sensitiveQueryPattern = RegExp(
-    r'([?&](?:access_token|id_token|token|api_key|apikey|key|password|email|authorization|code)=)[^&#\\s]+',
+  static final RegExp _urlWithQueryPattern = RegExp(
+    r'https?://[^\s?]+\?[^\s]+',
     caseSensitive: false,
   );
 
   static String _sanitize(String value) => value
       .replaceAll(_emailPattern, '[redacted-email]')
-      .replaceAllMapped(
-        _sensitiveQueryPattern,
-        (match) => '${match[1]}[REDACTED]',
-      );
+      .replaceAll(_urlWithQueryPattern, '[redacted-url-with-query]');
 
   static void error(String message, {String name = 'Wirdi', Object? error, StackTrace? stackTrace}) {
     developer.log(message, name: name, error: error, stackTrace: stackTrace, level: 1000);
