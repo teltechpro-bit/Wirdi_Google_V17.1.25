@@ -938,10 +938,15 @@ class _MushafPageViewState extends State<_MushafPageView> {
     final textPosition = renderObject.getPositionForOffset(localPosition);
     final offset = textPosition.offset;
 
-    for (final ayah in ayahs) {
+    for (var index = 0; index < ayahs.length; index++) {
+      final ayah = ayahs[index];
       final anchor = _ayahTextAnchors['${ayah.surahNumber}:${ayah.ayahNumber}'];
       if (anchor == null) continue;
-      if (offset >= anchor.range.start && offset <= anchor.range.end) {
+      final isFinalAyah = index == ayahs.length - 1;
+      final isInsideAyah = offset >= anchor.range.start &&
+          (offset < anchor.range.end ||
+              (isFinalAyah && offset == anchor.range.end));
+      if (isInsideAyah) {
         unawaited(_showAyahActions(ayah));
         return;
       }
