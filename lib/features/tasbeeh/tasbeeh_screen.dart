@@ -168,7 +168,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
     await prefs.setInt(cycleKey, (cycle + count) % phrase.target);
     await prefs.setInt(totalKey, (prefs.getInt(totalKey) ?? 0) + count);
     await prefs.setString(dayKey, _todayKey());
-    for (var i = 0; i < count; i++) { await UserProgressService.incrementTasbeehDailyTotal(); }
+    await UserProgressService.incrementTasbeehDailyTotalBy(count);
   }
 
   /// Combined total across every phrase (built-in + custom), separate
