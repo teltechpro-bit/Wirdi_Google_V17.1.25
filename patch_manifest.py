@@ -89,6 +89,30 @@ if 'com.ryanheise.audioservice.AudioService' not in text:
     )
     text = re.sub(r'(</application>)', audio_service_block + r'\1', text, count=1)
 
+# Use the localized launcher resource rather than Flutter's default literal project name.
+def _set_launcher_label(match):
+    attrs = match.group(1)
+    if re.search(r'\bandroid:label\s*=', attrs):
+        attrs = re.sub(
+            r'\bandroid:label\s*=\s*("[^"]*"|\'[^\']*\')',
+            'android:label="@string/app_name"',
+            attrs,
+            count=1,
+        )
+    else:
+        attrs += ' android:label="@string/app_name"'
+    return '<application' + attrs + '>'
+
+text, n_label = re.subn(
+    r'<application\b([^>]*)>',
+    _set_launcher_label,
+    text,
+    count=1,
+    flags=re.DOTALL,
+)
+if n_label != 1:
+    raise SystemExit('ERROR: could not set android:label on the <application> element')
+
 # Consolidate package-visibility queries into a single <queries> block.
 # Flutter templates may already contain <queries>; adding another block is invalid
 # or may cause required URL/speech queries to be skipped.
