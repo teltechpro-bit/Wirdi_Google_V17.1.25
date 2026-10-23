@@ -139,7 +139,6 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   final Map<String, int> _ayahToPageIndex = <String, int>{};
   List<GlobalKey> _pageKeys = <GlobalKey>[];
   int _continuousScrollRequestId = 0;
-  bool _suppressNextPageSave = false;
   int? _restoreSurahNumber;
   int? _restoreAyahNumber;
 
@@ -190,14 +189,15 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     if (targetSurah != null && targetAyah != null) {
       for (var i = 0; i < pages.length; i++) {
         if (pages[i].ayahs.any((a) => a.surahNumber == targetSurah && a.ayahNumber == targetAyah)) {
-          final needsJump = i != _currentPageIndex;
+          if (i != _currentPageIndex) {
+            // _loadAll runs while the FutureBuilder still shows its loading
+            // state, so the PageController has not been attached yet. Set its
+            // initial page now instead of scheduling a jump that could race
+            // the first rendered PageView.
+            _pageController.dispose();
+            _pageController = PageController(initialPage: i);
+          }
           _currentPageIndex = i;
-          _suppressNextPageSave = needsJump;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _pageController.hasClients && needsJump) {
-              _pageController.jumpToPage(i);
-            }
-          });
           break;
         }
       }
@@ -594,10 +594,6 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               itemCount: pages.length,
               onPageChanged: (index) {
                 _currentPageIndex = index;
-                if (_suppressNextPageSave) {
-                  _suppressNextPageSave = false;
-                  return;
-                }
                 if (pages[index].ayahs.isNotEmpty) {
                   final firstAyah = pages[index].ayahs.first;
                   final surah = allSurahs.firstWhere(
