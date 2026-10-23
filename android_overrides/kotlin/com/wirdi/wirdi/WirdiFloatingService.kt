@@ -23,6 +23,7 @@ class WirdiFloatingService : Service() {
         private const val CHANNEL = "wirdi_floating_widget"
         private const val PREFS = "HomeWidgetPreferences"
         private const val COUNT = "tasbeeh_count"
+        private val adhkar = arrayOf("سُبْحَانَ اللهِ", "الْحَمْدُ لِلَّهِ", "اللهُ أَكْبَرُ", "أَسْتَغْفِرُ اللهَ", "لَا إِلَهَ إِلَّا اللهُ", "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ", "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ", "سُبْحَانَ اللهِ وَبِحَمْدِهِ")
     }
     private var wm: WindowManager? = null
     private var bubble: TextView? = null
@@ -48,7 +49,7 @@ class WirdiFloatingService : Service() {
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val initialContent = prefs.getString("overlay_content", "tasbeeh") ?: "tasbeeh"
         v.text = when (initialContent) {
-            "dhikr" -> "اذكر الله"
+            "dhikr" -> adhkar[prefs.getInt("overlay_dhikr_index", 0).coerceIn(0, adhkar.lastIndex)]
             "quran" -> "وِرْدِي\nالقرآن"
             else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
         }
@@ -62,14 +63,21 @@ class WirdiFloatingService : Service() {
                     if (kotlin.math.abs(e.rawX-sx)<8 && kotlin.math.abs(e.rawY-sy)<8) {
                         val prefs=getSharedPreferences(PREFS, MODE_PRIVATE)
                         when (prefs.getString("overlay_content", "tasbeeh")) {
-                            "dhikr" -> (view as TextView).text = if ((view as TextView).text.toString().contains("استغفر")) "سبحان الله" else "استغفر الله"
+                            "dhikr" -> {
+                                val next = (prefs.getInt("overlay_dhikr_index", 0) + 1) % adhkar.size
+                                prefs.edit().putInt("overlay_dhikr_index", next).apply()
+                                (view as TextView).text = adhkar[next]
+                            }
                             "quran" -> {
                                 val launch = packageManager.getLaunchIntentForPackage(packageName)
                                 launch?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 if (launch != null) startActivity(launch)
                             }
                             else -> {
-                                val n=prefs.getInt(COUNT,0)+1; prefs.edit().putInt(COUNT,n).apply()
+                                val n=prefs.getInt(COUNT,0)+1
+                                val phraseId = prefs.getString("tasbeeh_selected_phrase_id", "subhanallah") ?: "subhanallah"
+                                val tapKey = "tasbeeh_widget_taps_$phraseId"
+                                prefs.edit().putInt(COUNT,n).putInt(tapKey,prefs.getInt(tapKey,0)+1).apply()
                                 (view as TextView).text="سُبْحَانَ الله\n$n"
                                 val ids=AppWidgetManager.getInstance(this).getAppWidgetIds(ComponentName(this,WirdiTasbeehWidgetProvider::class.java))
                                 sendBroadcast(Intent(this,WirdiTasbeehWidgetProvider::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids))
