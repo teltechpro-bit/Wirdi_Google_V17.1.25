@@ -42,8 +42,8 @@ class WirdiFloatingService : Service() {
     private fun showBubble() {
         if (bubble != null) return
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
-        val p = WindowManager.LayoutParams(78, 78, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
-        p.gravity = Gravity.TOP or Gravity.START; p.x = 12; p.y = 180
+        val p = WindowManager.LayoutParams(dp(78), dp(78), type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
+        p.gravity = Gravity.TOP or Gravity.START; p.x = dp(12); p.y = dp(180)
         val v = TextView(this)
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val initialContent = prefs.getString("overlay_content", "tasbeeh") ?: "tasbeeh"
@@ -52,7 +52,7 @@ class WirdiFloatingService : Service() {
             "quran" -> "وِرْدِي\nالقرآن"
             else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
         }
-        v.textSize = 12f; v.gravity = Gravity.CENTER; v.setTextColor(Color.WHITE); v.setBackgroundColor(Color.rgb(15,118,110)); v.setPadding(8,8,8,8)
+        v.textSize = 12f; v.gravity = Gravity.CENTER; v.setTextColor(Color.WHITE); v.setBackgroundResource(R.drawable.wirdi_floating_bubble); v.setPadding(dp(8),dp(8),dp(8),dp(8))
         var sx = 0f; var sy = 0f; var px = 0; var py = 0
         v.setOnTouchListener { view, e ->
             when (e.action) {
@@ -77,7 +77,7 @@ class WirdiFloatingService : Service() {
                         }
                     } else if (kotlin.math.abs(e.rawX-sx)>=8 || kotlin.math.abs(e.rawY-sy)>=8) {
                         val screenWidth = resources.displayMetrics.widthPixels
-                        if (p.x <= 16 || p.x + 78 >= screenWidth - 16) stopSelf()
+                        if (p.x <= dp(16) || p.x + dp(78) >= screenWidth - dp(16)) stopSelf()
                     }
                     true
                 }
@@ -86,6 +86,8 @@ class WirdiFloatingService : Service() {
         }
         try { wm?.addView(v,p); bubble=v } catch (_: Exception) { stopSelf() }
     }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
     override fun onDestroy() { bubble?.let { try { wm?.removeView(it) } catch (_: Exception) {} }; bubble=null; getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 }
