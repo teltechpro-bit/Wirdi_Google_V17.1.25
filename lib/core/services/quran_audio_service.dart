@@ -360,7 +360,13 @@ class QuranAudioService extends ChangeNotifier {
         'Quran audio player error',
         error: error,
       );
+      if (_stopping) return;
       isBuffering = false;
+      isPaused = true;
+      if (isExternalPlayback) {
+        externalError = 'Audio playback failed. Check the file or link and try again.';
+      }
+      unawaited(_setQuranWakelock(false));
       notifyListeners();
     });
   }
@@ -688,6 +694,7 @@ class QuranAudioService extends ChangeNotifier {
     _stopping = false;
     _externalPlaylistMode = true;
     _externalPlaylistTitles = List<String>.unmodifiable(titles);
+    externalError = null;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
     _fullSurahOnly = false;
@@ -721,8 +728,8 @@ class QuranAudioService extends ChangeNotifier {
       _externalPlaylistMode = false;
       _externalPlaylistTitles = const <String>[];
       isBuffering = false;
-      externalUrl = null;
-      externalTitle = null;
+      isPaused = true;
+      externalError = 'Unable to play this downloaded audio queue. Try downloading the files again.';
       AppLogger.error('Failed to start local audio queue', error: e, stackTrace: st);
       notifyListeners();
     }
@@ -732,6 +739,7 @@ class QuranAudioService extends ChangeNotifier {
     if (path.isEmpty) return;
     _externalPlaylistMode = true;
     _externalPlaylistTitles = const <String>[];
+    externalError = null;
     _rangeStartAyah = null;
     _rangeEndAyah = null;
     _fullSurahOnly = false;
@@ -759,8 +767,8 @@ class QuranAudioService extends ChangeNotifier {
       notifyListeners();
     } catch (e, st) {
       isBuffering = false;
-      externalUrl = null;
-      externalTitle = null;
+      isPaused = true;
+      externalError = 'Unable to play this downloaded audio. Try downloading it again.';
       AppLogger.error('Failed to start local Way2Quran audio', error: e, stackTrace: st);
       notifyListeners();
     }
