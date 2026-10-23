@@ -3,7 +3,16 @@ name: Way2Quran Audio URL Probe
 on:
   pull_request:
     branches: [main]
+    paths:
+      - '.github/workflows/way2quran-audio-probe.yml'
+      - 'lib/features/way2quran/**'
+      - 'lib/core/services/**'
+      - 'lib/core/data/**'
+      - 'pubspec.yaml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   probe-audio:
