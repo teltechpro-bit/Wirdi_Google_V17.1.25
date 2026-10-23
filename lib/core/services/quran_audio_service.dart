@@ -144,15 +144,25 @@ class QuranAudioService extends ChangeNotifier {
 
   int ayahAtSurahProgress(double fraction) => _progress.isEmpty ? (playingAyah ?? 1) : _progress.locate(fraction).ayah;
 
+  @visibleForTesting
+  static int ayahForPositionFromTimings(
+    Map<int, ({int startMs, int endMs})> timings,
+    Duration value,
+  ) {
+    if (timings.isEmpty) return 1;
+    final ms = value.inMilliseconds;
+    final ordered = timings.entries.toList()
+      ..sort((a, b) => a.value.startMs.compareTo(b.value.startMs));
+    for (final entry in ordered) {
+      if (ms >= entry.value.startMs && ms < entry.value.endMs) return entry.key;
+    }
+    if (ms >= ordered.last.value.endMs) return ordered.last.key;
+    return ordered.first.key;
+  }
+
   int _ayahForFullSurahPosition(Duration value) {
     if (_fullSurahTimings.isNotEmpty) {
-      final ms = value.inMilliseconds;
-      final ordered = _fullSurahTimings.entries.toList()..sort((a, b) => a.value.startMs.compareTo(b.value.startMs));
-      for (final entry in ordered) {
-        if (ms >= entry.value.startMs && ms < entry.value.endMs) return entry.key;
-      }
-      if (ms >= ordered.last.value.endMs) return ordered.last.key;
-      return ordered.first.key;
+      return ayahForPositionFromTimings(_fullSurahTimings, value);
     }
     if (duration <= Duration.zero || _progress.isEmpty) return playingAyah ?? 1;
     return _progress.locate((value.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)).ayah;
