@@ -179,8 +179,23 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
         if (pages[i].ayahs.any((a) => a.surahNumber == resumeSurah && a.ayahNumber == resumeAyah)) {
           _currentPageIndex = i;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _pageController.hasClients) _pageController.jumpToPage(i);
-            if (mounted) _scheduleVisibleReadingSave();
+            if (!mounted) return;
+            if (_pageController.hasClients && !_continuousScroll) _pageController.jumpToPage(i);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _pageKeys[i].currentState?.scrollToAyah(resumeSurah!, resumeAyah!);
+              // Explicit destinations should become the saved reading point.
+              if (widget.initialSurahNumber != null && widget.initialAyah != null) {
+                _scheduleLastReadSave(
+                  MushafAyahRef(
+                    surahNumber: widget.initialSurahNumber!,
+                    ayahNumber: widget.initialAyah!,
+                    text: '',
+                  ),
+                  immediate: true,
+                );
+              }
+            });
           });
           break;
         }
@@ -704,6 +719,46 @@ class _MushafPageViewState extends State<_MushafPageView> {
 
   void _notifyReadingPositionChanged() {
     widget.onReadingPositionChanged?.call();
+  }
+
+  /// Scrolls the saved ayah into view inside the page. PageView itself
+  /// can only restore a page index, so this second step restores the verse.
+  void scrollToAyah(int surahNumber, int ayahNumber, [int attempt = 0]) {
+    final anchor = _ayahTextAnchors['$surahNumber:$ayahNumber'];
+    final textContext = anchor?.key.currentContext;
+    final range = anchor?.range;
+    if (textContext == null || range == null) {
+      if (attempt < 8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) scrollToAyah(surahNumber, ayahNumber, attempt + 1);
+        });
+      }
+      return;
+    }
+    final renderObject = textContext.findRenderObject();
+    final scrollable = Scrollable.maybeOf(textContext);
+    final viewportObject = scrollable?.context.findRenderObject();
+    if (renderObject is! RenderParagraph ||
+        !renderObject.attached ||
+        viewportObject is! RenderBox ||
+        !viewportObject.attached) {
+      return;
+    }
+    final boxes = renderObject.getBoxesForSelection(
+      TextSelection(baseOffset: range.start, extentOffset: range.end),
+    );
+    if (boxes.isEmpty) return;
+    final verseTop = renderObject.localToGlobal(Offset(0, boxes.first.top)).dy;
+    final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+    final desiredTop = viewportTop + viewportObject.size.height * 0.30;
+    final position = scrollable!.position;
+    final target = (position.pixels + verseTop - desiredTop).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    if ((position.pixels - target).abs() > 4) {
+      position.jumpTo(target);
+    }
   }
 
   /// Finds the ayah whose rendered text is nearest the viewport center.
