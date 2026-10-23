@@ -151,7 +151,7 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       );
 
       if (!ok) {
-        final permissionGranted = _speech.hasPermission;
+        final permissionGranted = await _speech.hasPermission;
         if (mounted) {
           setState(() {
             _speechReady = false;
