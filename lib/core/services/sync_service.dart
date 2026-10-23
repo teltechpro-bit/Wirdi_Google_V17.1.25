@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -93,6 +94,56 @@ class SyncService {
     }
   }
 
+  static dynamic _canonicalize(dynamic value) {
+    if (value is Map) {
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
+      return <String, dynamic>{
+        for (final key in keys) key: _canonicalize(value[key]),
+      };
+    }
+    if (value is List) return value.map(_canonicalize).toList();
+    return value;
+  }
+
+  static String _stableFingerprint(Map<String, dynamic> payload) {
+    final bytes = utf8.encode(jsonEncode(_canonicalize(payload)));
+    var hash = 0x811c9dc5;
+    for (final byte in bytes) {
+      hash ^= byte;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  @visibleForTesting
+  static String fingerprintForTesting(Map<String, dynamic> payload) =>
+      _stableFingerprint(payload);
+
+  String _fingerprintKey(String uid, String section) =>
+      'sync_upload_fingerprint_${uid}_${section}';
+
+  Future<bool> _setSectionIfChanged({
+    required SharedPreferences prefs,
+    required String section,
+    required Map<String, dynamic> payload,
+    required FieldValue now,
+    required Set<String> changedSections,
+    Map<String, dynamic>? fingerprintPayload,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw NotSignedInException();
+    final fingerprint = _stableFingerprint(fingerprintPayload ?? payload);
+    final key = _fingerprintKey(uid, section);
+    if (prefs.getString(key) == fingerprint) return false;
+    await _doc(section).set(
+      <String, dynamic>{...payload, 'updatedAt': now},
+      SetOptions(merge: true),
+    );
+    await prefs.setString(key, fingerprint);
+    changedSections.add(section);
+    return true;
+  }
+
   /// ROOT CAUSE FIX: every section below except "tasbeeh" was reading
   /// SharedPreferences keys that DO NOT MATCH what the real owning
   /// service actually uses -- e.g. this used to read
@@ -127,26 +178,37 @@ class SyncService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final now = FieldValue.serverTimestamp();
+      final changedSections = <String>{};
 
       await _runIsolated('settings', () async {
-        await _doc('settings').set({
-          'themeMode': prefs.getString('settings_theme_mode') ?? 'system',
-          'colorTheme': prefs.getString('settings_color_theme') ?? 'emerald',
-          'locale': prefs.getString('settings_locale') ?? 'ar',
-          'fontScale': prefs.getDouble('settings_font_scale') ?? 1.0,
-          'wirdTarget': prefs.getInt('wird_target_pages') ?? 5,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'settings',
+          payload: <String, dynamic>{
+            'themeMode': prefs.getString('settings_theme_mode') ?? 'system',
+            'colorTheme': prefs.getString('settings_color_theme') ?? 'emerald',
+            'locale': prefs.getString('settings_locale') ?? 'ar',
+            'fontScale': prefs.getDouble('settings_font_scale') ?? 1.0,
+            'wirdTarget': prefs.getInt('wird_target_pages') ?? 5,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('quran_progress', () async {
-        await _doc('quran_progress').set({
-          'lastSurahNumber': prefs.getInt('last_surah_number'),
-          'lastSurahName': prefs.getString('last_surah_name'),
-          'lastAyahNumber': prefs.getInt('last_ayah_number'),
-          'lifetimePagesTotal': prefs.getInt('wird_lifetime_pages_total') ?? 0,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'quran_progress',
+          payload: <String, dynamic>{
+            'lastSurahNumber': prefs.getInt('last_surah_number'),
+            'lastSurahName': prefs.getString('last_surah_name'),
+            'lastAyahNumber': prefs.getInt('last_ayah_number'),
+            'lifetimePagesTotal': prefs.getInt('wird_lifetime_pages_total') ?? 0,
+          },
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('tasbeeh', () async {
@@ -160,13 +222,35 @@ class SyncService {
             grandTotal += val;
           }
         }
-        await _doc('tasbeeh').set({'phrases': tasbeehData, 'grandTotal': grandTotal, 'updatedAt': now}, SetOptions(merge: true));
+        await _setSectionIfChanged(
+          prefs: prefs,
+          section: 'tasbeeh',
+          payload: <String, dynamic>{'phrases': tasbeehData, 'grandTotal': grandTotal},
+          now: now,
+          changedSections: changedSections,
+        );
       }, failures);
 
       await _runIsolated('profile', () async {
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          await _doc('profile').set({'displayName': user.displayName ?? '', 'email': user.email ?? '', 'photoUrl': user.photoURL ?? '', 'lastSyncAt': now}, SetOptions(merge: true));
+          await _setSectionIfChanged(
+            prefs: prefs,
+            section: 'profile',
+            payload: <String, dynamic>{
+              'displayName': user.displayName ?? '',
+              'email': user.email ?? '',
+              'photoUrl': user.photoURL ?? '',
+              'lastSyncAt': now,
+            },
+            fingerprintPayload: <String, dynamic>{
+              'displayName': user.displayName ?? '',
+              'email': user.email ?? '',
+              'photoUrl': user.photoURL ?? '',
+            },
+            now: now,
+            changedSections: changedSections,
+          );
         }
       }, failures);
 
