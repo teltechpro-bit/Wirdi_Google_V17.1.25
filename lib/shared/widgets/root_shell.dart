@@ -80,7 +80,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     // Auto-sync when app comes back to foreground
     if (state == AppLifecycleState.resumed &&
         AuthService.instance.isSignedIn) {
-      SyncService.instance.syncNow().catchError((_) {});
+      SyncService.instance.syncAutomatically().catchError((_) {});
     }
     // FIX: "Auto dark mode at Maghrib" is normally driven by a per-second
     // timer that only lives in HomeDashboardScreen -- while the phone's
