@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../core/models/quran_models.dart';
 import '../../core/services/arabic_word_match.dart';
 import '../../core/services/quran_repository.dart';
+import '../../core/services/quran_audio_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/bi.dart';
 
@@ -274,6 +275,12 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     if (_starting || _expected.isEmpty) return;
     _starting = true;
     try {
+      // Active Quran/radio playback can hold audio focus or compete for the
+      // microphone on some Android devices. Pause it before requesting speech.
+      final audio = QuranAudioService.instance;
+      if (!audio.isPaused && (audio.playingAyah != null || audio.externalUrl != null)) {
+        await audio.pause();
+      }
       final ok = await _ensureSpeech();
       if (!ok || !mounted) return;
       setState(() {
