@@ -757,13 +757,29 @@ class SyncService {
     }
   }
 
-  Future<void> syncOnSignIn() async => _reconcile();
+  Future<void> _recordSuccessfulSyncForAutoCooldown() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      'sync_auto_last_attempt_at_ms_$uid',
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Future<void> syncOnSignIn() async {
+    await _reconcile();
+    await _recordSuccessfulSyncForAutoCooldown();
+  }
 
   /// Was previously `await uploadAll(); await _markLocalSynced();` --
   /// a blind, direction-less upload. See [_reconcile] doc above for why
   /// that silently broke cross-device sync. Now shares the exact same
   /// freshness-aware logic as syncOnSignIn().
-  Future<void> syncNow() async => _reconcile();
+  Future<void> syncNow() async {
+    await _reconcile();
+    await _recordSuccessfulSyncForAutoCooldown();
+  }
 
   /// Deletes all user data from Firestore (called before account deletion).
   Future<void> deleteAllCloudData() async {
