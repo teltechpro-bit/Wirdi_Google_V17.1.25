@@ -185,10 +185,11 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
   Future<void> _increment() async {
     HapticFeedback.mediumImpact();
 
+    final phrase = _selected;
     final nextDaily = _today + 1;
     final nextCycle = _cycleCount + 1;
     final nextTotal = _total + 1;
-    final completedCycle = nextCycle >= _selected.target;
+    final completedCycle = nextCycle >= phrase.target;
 
     // The daily total NEVER resets. Only the visual tasbeeh cycle resets
     // after the selected target, so the ring starts a fresh round while
@@ -200,27 +201,27 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
       _grandTotal += 1;
     });
 
-    unawaited(_persistIncrement(nextDaily, nextTotal, completedCycle: completedCycle));
-    unawaited(_syncHomeWidgetAfterAppTap());
+    unawaited(_persistIncrement(phrase, nextDaily, nextTotal, completedCycle: completedCycle));
+    unawaited(_syncHomeWidgetAfterAppTap(phrase.id, completedCycle ? 0 : nextCycle));
 
     if (completedCycle) {
       HapticFeedback.heavyImpact();
     }
   }
-  Future<void> _syncHomeWidgetAfterAppTap() async {
+  Future<void> _syncHomeWidgetAfterAppTap(String phraseId, int displayCount) async {
     try {
-      await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount);
+      await WidgetService.updateTasbeehSelection(phraseId, displayCount);
     } catch (_) {
       // The in-app counter remains usable if a launcher widget is unavailable.
     }
   }
 
-  Future<void> _persistIncrement(int next, int nextTotal, {bool completedCycle = false}) async {
+  Future<void> _persistIncrement(_TasbeehPhrase phrase, int next, int nextTotal, {bool completedCycle = false}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('tasbeeh_today_${_selected.id}', next);
-    await prefs.setInt('tasbeeh_cycle_${_selected.id}', completedCycle ? 0 : (next % _selected.target));
-    await prefs.setString('tasbeeh_day_${_selected.id}', _todayKey());
-    await prefs.setInt('tasbeeh_total_${_selected.id}', nextTotal);
+    await prefs.setInt('tasbeeh_today_${phrase.id}', next);
+    await prefs.setInt('tasbeeh_cycle_${phrase.id}', completedCycle ? 0 : (next % phrase.target));
+    await prefs.setString('tasbeeh_day_${phrase.id}', _todayKey());
+    await prefs.setInt('tasbeeh_total_${phrase.id}', nextTotal);
     await UserProgressService.incrementTasbeehDailyTotal();
   }
 
