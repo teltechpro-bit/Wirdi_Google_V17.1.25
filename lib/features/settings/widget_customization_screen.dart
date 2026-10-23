@@ -77,6 +77,7 @@ class _WidgetCustomizationScreenState extends State<WidgetCustomizationScreen> {
     if (_overlayEnabled) {
       await _channel.invokeMethod<bool>('stopOverlay');
       await _channel.invokeMethod<bool>('startOverlay');
+      await HomeWidget.saveWidgetData<bool>('overlay_enabled', true);
     }
   }
 
