@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/services/tajweed_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -128,6 +130,9 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
 
   int _currentPageIndex = 0;
   ScrollController? _continuousScrollController;
+  Timer? _lastReadSaveTimer;
+  bool _visibleReadingUpdatePending = false;
+  String? _lastAudioReadingKey;
   double _fontScale = 1.0;
 
   /// Cached once [_loadAll] resolves, so [_onAudioChanged] (which fires
@@ -137,7 +142,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   List<MushafPage>? _pages;
   List<SurahModel>? _allSurahs;
   final Map<String, int> _ayahToPageIndex = <String, int>{};
-  List<GlobalKey> _pageKeys = <GlobalKey>[];
+  List<GlobalKey<_MushafPageViewState>> _pageKeys = <GlobalKey<_MushafPageViewState>>[];
   int _continuousScrollRequestId = 0;
 
   @override
@@ -155,27 +160,81 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     final pages = results[0] as List<MushafPage>;
     _pages = pages;
     _allSurahs = results[1] as List<SurahModel>;
-    _pageKeys = List<GlobalKey>.generate(pages.length, (_) => GlobalKey());
+    _pageKeys = List<GlobalKey<_MushafPageViewState>>.generate(pages.length, (_) => GlobalKey<_MushafPageViewState>());
     _ayahToPageIndex.clear();
     for (var pageIndex = 0; pageIndex < pages.length; pageIndex++) {
       for (final ayah in pages[pageIndex].ayahs) {
         _ayahToPageIndex['${ayah.surahNumber}:${ayah.ayahNumber}'] = pageIndex;
       }
     }
-    if (widget.initialSurahNumber != null && widget.initialAyah != null) {
+    int? resumeSurah = widget.initialSurahNumber;
+    int? resumeAyah = widget.initialAyah;
+    if (resumeSurah == null && resumeAyah == null && widget.initialPage == null) {
+      final saved = await UserProgressService.lastReading();
+      resumeSurah = saved?['surahNumber'] as int?;
+      resumeAyah = saved?['ayahNumber'] as int?;
+    }
+    if (resumeSurah != null && resumeAyah != null) {
       for (var i = 0; i < pages.length; i++) {
-        if (pages[i].ayahs.any((a) => a.surahNumber == widget.initialSurahNumber && a.ayahNumber == widget.initialAyah)) {
+        if (pages[i].ayahs.any((a) => a.surahNumber == resumeSurah && a.ayahNumber == resumeAyah)) {
           _currentPageIndex = i;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _pageController.hasClients) {
-              _pageController.jumpToPage(i);
-            }
+            if (mounted && _pageController.hasClients) _pageController.jumpToPage(i);
+            if (mounted) _scheduleVisibleReadingSave();
           });
           break;
         }
       }
     }
     return (pages, results[1] as List<SurahModel>);
+  }
+
+  void _scheduleLastReadSave(MushafAyahRef ayah, {bool immediate = false}) {
+    _lastReadSaveTimer?.cancel();
+    if (immediate) {
+      unawaited(_persistLastReading(ayah));
+      return;
+    }
+    _lastReadSaveTimer = Timer(const Duration(milliseconds: 350), () {
+      unawaited(_persistLastReading(ayah));
+    });
+  }
+
+  Future<void> _persistLastReading(MushafAyahRef ayah) async {
+    final surahs = _allSurahs;
+    if (surahs == null || surahs.isEmpty) return;
+    SurahModel? surah;
+    for (final candidate in surahs) {
+      if (candidate.number == ayah.surahNumber) {
+        surah = candidate;
+        break;
+      }
+    }
+    if (surah == null) return;
+    await UserProgressService.saveLastReading(
+      surahNumber: ayah.surahNumber,
+      surahName: surah.name,
+      ayahNumber: ayah.ayahNumber,
+    );
+  }
+
+  void _scheduleVisibleReadingSave() {
+    if (_visibleReadingUpdatePending || !mounted) return;
+    _visibleReadingUpdatePending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibleReadingUpdatePending = false;
+      if (!mounted) return;
+      MushafAyahRef? closestAyah;
+      var bestDistance = double.infinity;
+      for (final key in _pageKeys) {
+        final visible = key.currentState?.visibleAyahNearViewportCenter();
+        if (visible != null && visible.$2 < bestDistance) {
+          closestAyah = visible.$1;
+          bestDistance = visible.$2;
+        }
+      }
+      if (closestAyah != null) _scheduleLastReadSave(closestAyah);
+    });
   }
 
   /// FIX: during continuous "play whole surah" playback, the currently
@@ -193,7 +252,13 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
     final ayah = quranAudio.playingAyah;
     if (pages == null || surah == null || ayah == null) return;
 
-    final targetIndex = _ayahToPageIndex['$surah:$ayah'];
+    final readingKey = '$surah:$ayah';
+    if (_lastAudioReadingKey != readingKey) {
+      _lastAudioReadingKey = readingKey;
+      _scheduleLastReadSave(MushafAyahRef(surahNumber: surah, ayahNumber: ayah, text: ''), immediate: true);
+    }
+
+    final targetIndex = _ayahToPageIndex[readingKey];
     if (targetIndex == null) return;
 
     if (_continuousScroll) {
@@ -299,6 +364,8 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
   @override
   void dispose() {
     quranAudio.removeListener(_onAudioChanged);
+    _lastReadSaveTimer?.cancel();
+    _continuousScrollController?.removeListener(_scheduleVisibleReadingSave);
     _pageController.dispose();
     _continuousScrollRequestId++;
     _continuousScrollController?.dispose();
@@ -445,13 +512,16 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                 if (_pageController.hasClients) {
                   _currentPageIndex = _pageController.page?.round() ?? _pageController.initialPage;
                 }
+                _continuousScrollController?.removeListener(_scheduleVisibleReadingSave);
                 _continuousScrollController?.dispose();
-                _continuousScrollController = ScrollController(initialScrollOffset: _currentPageIndex * itemHeight);
+                _continuousScrollController = ScrollController(initialScrollOffset: _currentPageIndex * itemHeight)
+                  ..addListener(_scheduleVisibleReadingSave);
               } else {
                 final controller = _continuousScrollController;
                 if (controller != null && controller.hasClients) {
                   _currentPageIndex = (controller.offset / itemHeight).round().clamp(0, 1 << 20);
                 }
+                controller?.removeListener(_scheduleVisibleReadingSave);
                 controller?.dispose();
                 _continuousScrollController = null;
               }
@@ -542,6 +612,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                     onMultiTouch: (active) {
                       if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                     },
+                    onReadingPositionChanged: _scheduleVisibleReadingSave,
                     fontScale: _fontScale,
                     backgroundColor: _pageBackground(context),
                   );
@@ -558,18 +629,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
               itemCount: pages.length,
               onPageChanged: (index) {
                 _currentPageIndex = index;
-                if (pages[index].ayahs.isNotEmpty) {
-                  final firstAyah = pages[index].ayahs.first;
-                  final surah = allSurahs.firstWhere(
-                    (s) => s.number == firstAyah.surahNumber,
-                    orElse: () => allSurahs.first,
-                  );
-                  UserProgressService.saveLastReading(
-                    surahNumber: firstAyah.surahNumber,
-                    surahName: surah.name,
-                    ayahNumber: firstAyah.ayahNumber,
-                  );
-                }
+                _scheduleVisibleReadingSave();
               },
               itemBuilder: (context, index) {
                 final page = pages[index];
@@ -580,6 +640,7 @@ class _MushafViewScreenState extends State<MushafViewScreen> {
                   onMultiTouch: (active) {
                     if (mounted && _multiTouchActive != active) setState(() => _multiTouchActive = active);
                   },
+                  onReadingPositionChanged: _scheduleVisibleReadingSave,
                   fontScale: _fontScale,
                   backgroundColor: _pageBackground(context),
                 );
@@ -603,13 +664,12 @@ class _MushafPageView extends StatefulWidget {
   final MushafPage page;
   final List<SurahModel> allSurahs;
   final ValueChanged<bool>? onMultiTouch;
-  // Explicit height for continuous-scroll mode -- see BUGFIX note in
-  // _MushafPageViewState.build() below for why this is required instead
-  // of relying on LayoutBuilder's constraints.maxHeight in that mode.
+  final VoidCallback? onReadingPositionChanged;
+  // Explicit height for continuous-scroll mode -- see BUGFIX note on build.
   final double? targetHeight;
   final double fontScale;
   final Color backgroundColor;
-  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
+  const _MushafPageView({super.key, required this.page, required this.allSurahs, this.onMultiTouch, this.onReadingPositionChanged, this.targetHeight, this.fontScale = 1.0, required this.backgroundColor});
 
   @override
   State<_MushafPageView> createState() => _MushafPageViewState();
@@ -638,7 +698,45 @@ class _MushafPageViewState extends State<_MushafPageView> {
   void initState() {
     super.initState();
     quranAudio.addListener(_onAudioChanged);
+    _innerScrollController.addListener(_notifyReadingPositionChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToPlayingAyahIfNeeded());
+  }
+
+  void _notifyReadingPositionChanged() {
+    widget.onReadingPositionChanged?.call();
+  }
+
+  /// Finds the ayah whose rendered text is nearest the viewport center.
+  /// Works in page-flip and continuous-scroll modes without estimating height.
+  (MushafAyahRef, double)? visibleAyahNearViewportCenter() {
+    var bestDistance = double.infinity;
+    MushafAyahRef? bestAyah;
+    for (final ayah in widget.page.ayahs) {
+      final anchor = _ayahTextAnchors['${ayah.surahNumber}:${ayah.ayahNumber}'];
+      final textContext = anchor?.key.currentContext;
+      final range = anchor?.range;
+      if (textContext == null || range == null) continue;
+      final renderObject = textContext.findRenderObject();
+      if (renderObject is! RenderParagraph || !renderObject.attached) continue;
+      final scrollable = Scrollable.maybeOf(textContext);
+      final viewportObject = scrollable?.context.findRenderObject();
+      if (viewportObject is! RenderBox || !viewportObject.attached) continue;
+      final boxes = renderObject.getBoxesForSelection(
+        TextSelection(baseOffset: range.start, extentOffset: range.end),
+      );
+      if (boxes.isEmpty) continue;
+      final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+      final viewportBottom = viewportTop + viewportObject.size.height;
+      final top = renderObject.localToGlobal(Offset(0, boxes.first.top)).dy;
+      final bottom = renderObject.localToGlobal(Offset(0, boxes.last.bottom)).dy;
+      if (bottom < viewportTop || top > viewportBottom) continue;
+      final distance = (((top + bottom) / 2) - ((viewportTop + viewportBottom) / 2)).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestAyah = ayah;
+      }
+    }
+    return bestAyah == null ? null : (bestAyah, bestDistance);
   }
 
   void _onAudioChanged() {
@@ -717,6 +815,7 @@ class _MushafPageViewState extends State<_MushafPageView> {
   @override
   void dispose() {
     quranAudio.removeListener(_onAudioChanged);
+    _innerScrollController.removeListener(_notifyReadingPositionChanged);
     _disposeRecognizers();
     _innerScrollController.dispose();
     super.dispose();
