@@ -32,6 +32,7 @@ import '../khatma/khatma_tracker_screen.dart';
 import '../prayer/prayer_times_screen.dart';
 import '../qibla/qibla_screen.dart';
 import '../quran/quran_screen.dart';
+import '../mushaf/mushaf_view_screen.dart';
 import '../radio/radio_screen.dart';
 import '../ramadan/ramadan_companion_screen.dart';
 import '../settings/settings_screen.dart';
@@ -805,7 +806,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => QuranScreen(
+                  builder: (_) => MushafViewScreen(
                     initialSurahNumber: _lastReading?['surahNumber'] as int?,
                     initialAyah: _lastReading?['ayahNumber'] as int?,
                   ),
