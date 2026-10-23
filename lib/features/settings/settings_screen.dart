@@ -27,6 +27,7 @@ import '../../core/services/audio_download_service.dart';
 import '../../core/services/adhan_audio_cache.dart';
 import '../../core/services/notification_service.dart';
 import 'notification_diagnostics_screen.dart';
+import 'widget_customization_screen.dart';
 import '../../core/services/daily_reminder_scheduler.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/settings_service.dart';
@@ -532,6 +533,22 @@ _previewCompleteSub?.cancel();
                         onChanged: (value) async {
                           await appSettings.setHighContrastEnabled(value);
                         },
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.widgets_outlined),
+                        title: Text(
+                          Localizations.localeOf(context).languageCode == 'ar' ? 'مركز الويدجت والنافذة العائمة' : 'Widgets & floating bubble',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          Localizations.localeOf(context).languageCode == 'ar' ? 'تخصيص ويدجت الورد والآية والسبحة' : 'Customize daily wird, ayah and tasbeeh widgets',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => const WidgetCustomizationScreen(),
+                        )),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
