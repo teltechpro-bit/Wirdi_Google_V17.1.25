@@ -3,6 +3,8 @@ from pathlib import Path
 kts_path = Path('android/app/build.gradle.kts')
 groovy_path = Path('android/app/build.gradle')
 path = kts_path if kts_path.exists() else groovy_path
+if not path.exists():
+    raise SystemExit("ERROR: neither android/app/build.gradle.kts nor android/app/build.gradle exists")
 text = path.read_text()
 is_kts = path.suffix == '.kts'
 
@@ -193,9 +195,7 @@ if text2 != path.read_text():
     path.write_text(text2)
     print('compileSdk/targetSdk pinned to 36 (was flutter.compileSdkVersion/targetSdkVersion)')
 else:
-    print('WARNING: could not find the expected flutter.compileSdkVersion/targetSdkVersion lines to pin -- '
-          'the generated build.gradle(.kts) may use different property names than expected. '
-          'Check android/app/build.gradle(.kts) manually and verify compileSdk/targetSdk are 36.')
+    raise SystemExit('ERROR: could not pin compileSdk/targetSdk to 36; generated Gradle template changed')
 
 
 # ---- FIX v219: force ALL Android modules (including third-party plugins
@@ -279,6 +279,4 @@ if root_path.exists():
     else:
         print(f'Subprojects compileSdk override already present in {root_path} -- skipping')
 else:
-    print('WARNING: neither android/build.gradle.kts nor android/build.gradle found -- '
-          'could not add the subprojects-wide compileSdk override. Third-party plugins '
-          'may still fail to build against a newer required SDK level.')
+    raise SystemExit('ERROR: neither android/build.gradle.kts nor android/build.gradle found; cannot pin plugin compile SDK')
