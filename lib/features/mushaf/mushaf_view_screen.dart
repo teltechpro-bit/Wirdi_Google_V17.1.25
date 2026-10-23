@@ -780,11 +780,32 @@ class _MushafPageViewState extends State<_MushafPageView> {
         TextSelection(baseOffset: range.start, extentOffset: range.end),
       );
       if (boxes.isEmpty) continue;
-      final viewportTop = viewportObject.localToGlobal(Offset.zero).dy;
+      final viewportOrigin = viewportObject.localToGlobal(Offset.zero);
+      final viewportTop = viewportOrigin.dy;
       final viewportBottom = viewportTop + viewportObject.size.height;
+      final viewportLeft = viewportOrigin.dx;
+      final viewportRight = viewportLeft + viewportObject.size.width;
+      var intersectsViewport = false;
+      for (final box in boxes) {
+        final boxStart = renderObject.localToGlobal(Offset(box.left, box.top));
+        final boxEnd = renderObject.localToGlobal(Offset(box.right, box.bottom));
+        final left = boxStart.dx < boxEnd.dx ? boxStart.dx : boxEnd.dx;
+        final right = boxStart.dx > boxEnd.dx ? boxStart.dx : boxEnd.dx;
+        final top = boxStart.dy < boxEnd.dy ? boxStart.dy : boxEnd.dy;
+        final bottom = boxStart.dy > boxEnd.dy ? boxStart.dy : boxEnd.dy;
+        if (right >= viewportLeft &&
+            left <= viewportRight &&
+            bottom >= viewportTop &&
+            top <= viewportBottom) {
+          intersectsViewport = true;
+          break;
+        }
+      }
+      // PageView builds neighboring pages too; reject their text when it is
+      // vertically aligned but horizontally outside the actual viewport.
+      if (!intersectsViewport) continue;
       final top = renderObject.localToGlobal(Offset(0, boxes.first.top)).dy;
       final bottom = renderObject.localToGlobal(Offset(0, boxes.last.bottom)).dy;
-      if (bottom < viewportTop || top > viewportBottom) continue;
       final distance = (((top + bottom) / 2) - ((viewportTop + viewportBottom) / 2)).abs();
       if (distance < bestDistance) {
         bestDistance = distance;
