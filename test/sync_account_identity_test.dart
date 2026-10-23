@@ -36,6 +36,17 @@ void main() {
       );
     });
 
+    test('treats the sign-out legacy-owner sentinel as ambiguous', () {
+      expect(
+        SyncService.requiresAccountResolution(
+          currentUid: 'account-b',
+          storedOwnerUid: '__legacy_unknown_owner__',
+          localLastSyncedMs: null,
+        ),
+        isTrue,
+      );
+    });
+
     test('allows first sync on a device with no prior sync marker', () {
       expect(
         SyncService.requiresAccountResolution(
