@@ -34,7 +34,6 @@ private object WirdiWidgetUi {
             }
             views.setInt(rootId, "setBackgroundColor", background)
             val foreground = if (data.getBoolean("widget_dark_mode", false)) Color.WHITE else Color.rgb(15, 118, 110)
-            val secondary = if (data.getBoolean("widget_dark_mode", false)) Color.LTGRAY else Color.rgb(51, 65, 85)
             val textIds = when (kind) {
                 "daily" -> intArrayOf(R.id.daily_wird_progress, R.id.daily_azkar_remaining, R.id.daily_next_prayer, R.id.daily_refresh, R.id.daily_open)
                 "ayah" -> intArrayOf(R.id.ayah_text, R.id.ayah_next, R.id.ayah_open)
@@ -86,6 +85,13 @@ private object WirdiWidgetUi {
 }
 
 class WirdiDailyWidgetProvider : HomeWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WirdiDailyWidgetProvider::class.java))
+            onUpdate(context, manager, ids, context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE))
+        } else super.onReceive(context, intent)
+    }
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) =
         WirdiWidgetUi.refresh(context, appWidgetManager, appWidgetIds, widgetData, R.layout.wirdi_daily_widget, "daily")
 }
