@@ -18,6 +18,9 @@
         android:text="0" android:textColor="#0C5D4D" android:textSize="30sp"
         android:textStyle="bold" android:fontFamily="sans-serif-light" />
 
+    <TextView android:id="@+id/tasbeeh_open" android:layout_width="match_parent"
+        android:layout_height="20dp" android:gravity="center" android:text="فتح وِرْدِي"
+        android:textColor="#0C5D4D" android:textSize="10sp" />
     <TextView android:id="@+id/tasbeeh_increment" android:layout_width="match_parent"
         android:layout_height="38dp" android:gravity="center" android:text="＋  تسبيح"
         android:textColor="#FFFFFF" android:background="@drawable/wirdi_widget_primary_action"
