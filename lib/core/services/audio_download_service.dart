@@ -33,9 +33,21 @@ class AudioDownloadService {
     return File('${dir.path}/$globalAyahNumber.mp3');
   }
 
+  /// Accept an MP3 frame sync or ID3 tag; reject HTML/error bodies even
+  /// when a server mistakenly returns HTTP 200.
+  static bool hasValidMp3Header(List<int> bytes) {
+    if (bytes.length < 3) return false;
+    final hasId3 = bytes[0] == 0x49 &&
+        bytes[1] == 0x44 &&
+        bytes[2] == 0x33;
+    final hasMpegFrame = bytes.length >= 2 &&
+        bytes[0] == 0xFF &&
+        (bytes[1] & 0xE0) == 0xE0;
+    return hasId3 || hasMpegFrame;
+  }
+
   static Future<bool> isAyahDownloaded(String reciterId, int globalAyahNumber) async {
-    final file = await _fileFor(reciterId, globalAyahNumber);
-    return file.exists();
+    return (await localPathFor(reciterId, globalAyahNumber)) != null;
   }
 
   static Future<String?> localPathFor(String reciterId, int globalAyahNumber) async {
@@ -43,11 +55,11 @@ class AudioDownloadService {
     if (!await file.exists()) return null;
     try {
       final size = await file.length();
-      if (size < 1024) {
-        // Suspiciously small (or 0-byte) -- almost certainly a partial
-        // or corrupted download from an interrupted transfer. Remove it
-        // and fall back to streaming instead of handing a broken file
-        // to the player.
+      if (size < 1024 || !hasValidMp3Header(await file.openRead(0, 3).fold<List<int>>(
+        <int>[],
+        (bytes, chunk) => bytes..addAll(chunk),
+      ))) {
+        // Remove interrupted or non-audio files so a future download can repair them.
         await file.delete();
         return null;
       }
@@ -83,22 +95,44 @@ class AudioDownloadService {
       final globalNumber = offset + ayahNumber;
       final file = await _fileFor(reciterId, globalNumber);
 
-      if (!await file.exists()) {
+      // Existing files are trusted only after size and header validation.
+      if (await localPathFor(reciterId, globalNumber) == null) {
+        final partFile = File('${file.path}.part');
         try {
+          if (await partFile.exists()) await partFile.delete();
           final response = await http
               .get(Uri.parse(AppSources.ayahAudioUrl(globalNumber, reciter: reciterId)))
               .timeout(const Duration(seconds: 30));
 
           if (response.statusCode == 200) {
-            await file.writeAsBytes(response.bodyBytes);
+            final bytes = response.bodyBytes;
+            final declaredLength = int.tryParse(response.headers['content-length'] ?? '');
+            final lengthMatches = declaredLength == null || declaredLength == bytes.length;
+            final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+            final looksLikeHtml = contentType.contains('text/html') ||
+                contentType.contains('application/json');
+            if (bytes.length >= 1024 &&
+                lengthMatches &&
+                !looksLikeHtml &&
+                hasValidMp3Header(bytes)) {
+              await partFile.writeAsBytes(bytes, flush: true);
+              // Same-directory rename makes the completed download visible
+              // atomically; an interrupted .part is never treated as audio.
+              if (await file.exists()) await file.delete();
+              await partFile.rename(file.path);
+            } else {
+              AppLogger.error('Rejected invalid/incomplete MP3 response for ayah $globalNumber');
+              if (await partFile.exists()) await partFile.delete();
+            }
           } else {
             AppLogger.error('Ayah download failed: HTTP ${response.statusCode} for ayah $globalNumber');
           }
         } catch (e, st) {
+          if (await partFile.exists()) {
+            try { await partFile.delete(); } catch (_) {}
+          }
           AppLogger.error('Ayah download failed', error: e, stackTrace: st);
-          // Continue to the next ayah rather than aborting the whole
-          // surah over one failed file — the user can retry later and
-          // only the missing ones will be re-fetched.
+          // Continue to the next ayah rather than aborting the whole surah.
         }
       }
 
