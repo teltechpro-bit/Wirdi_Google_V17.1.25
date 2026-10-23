@@ -13,6 +13,7 @@ import '../../core/services/arabic_text_utils.dart';
 import '../../core/services/audio_download_service.dart';
 import '../../core/services/mushaf_repository.dart';
 import '../../core/services/quran_audio_service.dart';
+import '../../core/services/qiraat_service.dart';
 import '../../core/services/quran_repository.dart';
 import '../../core/services/quran_translation_repository.dart';
 import '../../core/services/settings_service.dart';
@@ -905,13 +906,25 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
       ),
     );
 
-    if (chosen != null && chosen != appSettings.reciterId) {
+    final wasNonHafs = QiraatService.instance.selectedRiwayahId != 'hafs';
+    if (chosen != null &&
+        (chosen != appSettings.reciterId || wasNonHafs)) {
       await quranAudio.changeReciter(
         chosen,
         surah: widget.surah,
         allSurahs: widget.allSurahs,
       );
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      if (wasNonHafs) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(languageCode == 'ar'
+                ? 'تمت العودة إلى قارئ وردي الأصلي (حفص).'
+                : 'Returned to Wirdi’s original Hafs reader.'),
+          ),
+        );
+      }
     }
   }
 

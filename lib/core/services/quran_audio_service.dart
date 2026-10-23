@@ -927,7 +927,10 @@ class QuranAudioService extends ChangeNotifier {
     // those tracks is active, switch back to the current surah using Wirdi's
     // selected reader instead of leaving the external track playing.
     final wasExternal = isExternalPlayback;
-    if (reciterId == appSettings.reciterId) {
+    final qiraatService = QiraatService.instance;
+    await qiraatService.load();
+    final mustRestoreHafs = qiraatService.selectedRiwayahId != 'hafs';
+    if (reciterId == appSettings.reciterId && !mustRestoreHafs) {
       if (wasExternal) {
         await playWholeSurah(surah, allSurahs);
       }
@@ -946,12 +949,13 @@ class QuranAudioService extends ChangeNotifier {
     final savedRangeEnd = _rangeEndAyah;
 
     await stop();
-    await appSettings.setReciterId(reciterId);
+    if (reciterId != appSettings.reciterId) {
+      await appSettings.setReciterId(reciterId);
+    }
 
     // The Quran-screen reader picker is Wirdi's native reciter preference.
-    // A one-off Recitation Library preview must not remain the active Quran source.
-    final qiraatService = QiraatService.instance;
-    await qiraatService.load();
+    // Selecting the already-selected reader while another riwayah is active
+    // must still restore Wirdi's original Hafs playback path.
     await qiraatService.setRiwayah('hafs');
 
     if (wasExternal) {
