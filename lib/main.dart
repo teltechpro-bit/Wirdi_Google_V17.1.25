@@ -125,17 +125,38 @@ void main() {
       }
     });
 
-    await appSettings.load();
-    await QiraatService.instance.load();
-    await RadioService.instance.init();
-    await initializeDateFormatting();
+    // Startup services are isolated: a corrupt local preference or an
+    // unavailable optional service must never prevent Flutter from mounting.
+    try {
+      await appSettings.load();
+    } catch (e, st) {
+      debugPrint('[main] Settings load failed; using safe defaults: $e\n$st');
+    }
+    try {
+      await QiraatService.instance.load();
+    } catch (e, st) {
+      debugPrint('[main] Riwayah preference load failed; using Hafs defaults: $e\n$st');
+    }
+    try {
+      await RadioService.instance.init();
+    } catch (e, st) {
+      debugPrint('[main] Radio initialization failed: $e\n$st');
+    }
+    try {
+      await initializeDateFormatting();
+    } catch (e, st) {
+      debugPrint('[main] Date formatting initialization failed: $e\n$st');
+    }
 
-    // Keeps the CPU awake during audio playback so Radio/Quran recitation
-    // doesn't get suspended by the OS a few seconds/minutes after the
-    // screen locks or the app backgrounds. Complements the AudioContext
-    // (audio focus) set above -- that alone wasn't enough to survive
-    // screen-lock on this device.
+    // Always mount the app even when an optional startup initializer fails.
+    // Discover additional riwayah readers asynchronously; Hafs playback does
+    // not wait for this network catalog.
     runApp(const WirdiApp());
+    unawaited(QiraatService.instance.loadReaders().catchError(
+      (Object error, StackTrace stack) {
+        debugPrint('[main] Background reader catalog load failed: $error\n$stack');
+      },
+    ));
   }, (Object error, StackTrace stack) {
     debugPrint('[runZonedGuarded] Uncaught error: $error\n$stack');
   });
