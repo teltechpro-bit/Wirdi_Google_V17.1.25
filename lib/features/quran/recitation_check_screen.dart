@@ -251,9 +251,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     }
     if (!mounted) return;
     if (_finalWords.isEmpty) {
+      // Silence/no recognized words is not evidence that the speech service
+      // is unavailable or that microphone permission was denied.
       setState(() {
-        _lastError = 'لم يصل نص من خدمة التعرف على الصوت. تأكد من السماح بالميكروفون وتثبيت/تفعيل خدمة Google للتعرف على الكلام وحزمة اللغة العربية، ثم حاول مرة أخرى.';
-        _speechUnavailable = true;
+        _lastError = 'لم يتم التقاط كلام. جرّب التحدث بوضوح بالقرب من الميكروفون ثم أعد المحاولة.';
+        _speechUnavailable = false;
         _listening = false;
       });
       return;
