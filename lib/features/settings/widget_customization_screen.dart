@@ -114,16 +114,70 @@ class _WidgetCustomizationScreenState extends State<WidgetCustomizationScreen> {
   }
 
   Widget _preview(ThemeData theme, {required IconData icon, required String title, required String subtitle, required String sample}) {
-    return Card(margin: const EdgeInsets.symmetric(vertical: 6), child: Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(icon, color: theme.colorScheme.primary), const SizedBox(width: 8), Expanded(child: Text(title, style: theme.textTheme.titleMedium))]),
-        const SizedBox(height: 4), Text(subtitle, style: theme.textTheme.bodySmall), const SizedBox(height: 10),
-        Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(
-          color: _transparent ? theme.colorScheme.surface.withValues(alpha: 0.35) : (_dark ? const Color(0xFF17212B) : const Color(0xFFF1F5F9)),
-          borderRadius: BorderRadius.circular(12)),
-          child: Text(sample, textAlign: TextAlign.center, style: TextStyle(color: _dark ? Colors.white : const Color(0xFF0F766E), fontSize: 14))),
-      ]),
-    ));
+    final dark = _dark;
+    final primary = dark ? const Color(0xFFEEDCA7) : const Color(0xFF0C5D4D);
+    final body = dark ? const Color(0xFFF4F4EB) : const Color(0xFF173D35);
+    final muted = dark ? const Color(0xFFB8CCC2) : const Color(0xFF58716B);
+    final surface = _transparent
+        ? theme.colorScheme.surface.withValues(alpha: 0.35)
+        : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(subtitle, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 9),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: surface,
+              gradient: _transparent ? null : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: dark
+                    ? const [Color(0xFF1D3731), Color(0xFF10241F)]
+                    : const [Color(0xFFFFFCF5), Color(0xFFEAF4EF)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: dark ? const Color(0xFF365B50) : const Color(0xFFD6E5DA)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: dark ? 0.12 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, color: primary, size: 20),
+                    const SizedBox(width: 7),
+                    Text('وِرْدِي', style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 13)),
+                    const Spacer(),
+                    const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFFC5A45A)),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Container(width: 34, height: 2, alignment: Alignment.centerLeft, color: const Color(0xFFC5A45A),
+                  child: const SizedBox(width: 34, height: 2)),
+                const SizedBox(height: 9),
+                Text(sample, textAlign: TextAlign.center,
+                  style: TextStyle(color: body, fontSize: 14, height: 1.55, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 5),
+                Text('طريقك إلى القرب', textAlign: TextAlign.center,
+                  style: TextStyle(color: muted, fontSize: 10)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
