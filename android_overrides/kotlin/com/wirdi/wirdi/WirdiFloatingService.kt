@@ -43,7 +43,7 @@ class WirdiFloatingService : Service() {
         if (bubble != null) return
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
         val p = WindowManager.LayoutParams(dp(78), dp(78), type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
-        p.gravity = Gravity.TOP or Gravity.START; p.x = dp(12); p.y = dp(180)
+        p.gravity = Gravity.TOP or Gravity.START; p.x = (resources.displayMetrics.widthPixels - dp(90)).coerceAtLeast(dp(8)); p.y = dp(180)
         val v = TextView(this)
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val initialContent = prefs.getString("overlay_content", "tasbeeh") ?: "tasbeeh"
@@ -53,10 +53,10 @@ class WirdiFloatingService : Service() {
             else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
         }
         v.textSize = 12f; v.gravity = Gravity.CENTER; v.setTextColor(Color.WHITE); v.setBackgroundResource(R.drawable.wirdi_floating_bubble); v.setPadding(dp(8),dp(8),dp(8),dp(8))
-        var sx = 0f; var sy = 0f; var px = 0; var py = 0
+        var sx = 0f; var sy = 0f; var px = 0; var py = 0; var startWindowX = 0
         v.setOnTouchListener { view, e ->
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> { sx=e.rawX; sy=e.rawY; px=p.x; py=p.y; true }
+                MotionEvent.ACTION_DOWN -> { sx=e.rawX; sy=e.rawY; px=p.x; py=p.y; startWindowX=p.x; true }
                 MotionEvent.ACTION_MOVE -> { p.x=px+(e.rawX-sx).toInt(); p.y=py+(e.rawY-sy).toInt(); wm?.updateViewLayout(view,p); true }
                 MotionEvent.ACTION_UP -> {
                     if (kotlin.math.abs(e.rawX-sx)<8 && kotlin.math.abs(e.rawY-sy)<8) {
@@ -77,7 +77,7 @@ class WirdiFloatingService : Service() {
                         }
                     } else if (kotlin.math.abs(e.rawX-sx)>=8 || kotlin.math.abs(e.rawY-sy)>=8) {
                         val screenWidth = resources.displayMetrics.widthPixels
-                        if (p.x <= dp(16) || p.x + dp(78) >= screenWidth - dp(16)) { getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); stopSelf() }
+                        if (kotlin.math.abs(p.x - startWindowX) >= dp(40) && (p.x <= dp(16) || p.x + dp(78) >= screenWidth - dp(16))) { getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("overlay_enabled", false).apply(); stopSelf() }
                     }
                     true
                 }
