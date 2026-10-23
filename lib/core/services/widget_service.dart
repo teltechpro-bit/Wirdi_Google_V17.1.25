@@ -30,6 +30,11 @@ class WidgetService {
     try {
       await HomeWidget.saveWidgetData<String>('next_prayer_name', next.name);
       await HomeWidget.saveWidgetData<String>('next_prayer_time', next.timeText);
+      final minutesLeft = next.dateTime.difference(DateTime.now()).inMinutes.clamp(0, 24 * 60);
+      final hours = minutesLeft ~/ 60;
+      final minutes = minutesLeft % 60;
+      final countdown = hours > 0 ? 'متبقي $hours س و $minutes د' : 'متبقي $minutes دقيقة';
+      await HomeWidget.saveWidgetData<String>('next_prayer_countdown_text', countdown);
       await _update();
     } catch (e, st) {
       AppLogger.error('Failed to update prayer-times home-screen widget', error: e, stackTrace: st);
