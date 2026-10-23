@@ -50,7 +50,43 @@ class WidgetService {
     }
   }
 
+  static Future<void> updateAzkarRemaining(int remaining) async {
+    if (appSettings.widgetLocked) return;
+    try {
+      await HomeWidget.saveWidgetData<String>('azkar_remaining_text', 'الأذكار المتبقية: $remaining');
+      await _update();
+    } catch (e, st) {
+      AppLogger.error('Failed to update azkar count on home widgets', error: e, stackTrace: st);
+    }
+  }
+
+  static Future<void> updateDailyAyah(String arabicText, {int? index}) async {
+    try {
+      await HomeWidget.saveWidgetData<String>('daily_ayah_text', arabicText);
+      if (index != null) await HomeWidget.saveWidgetData<int>('daily_ayah_index', index);
+      await _update();
+    } catch (e, st) {
+      AppLogger.error('Failed to update daily ayah widget', error: e, stackTrace: st);
+    }
+  }
+
+  static Future<void> updateTasbeehCount(int count) async {
+    try {
+      await HomeWidget.saveWidgetData<int>('tasbeeh_count', count);
+      await _update();
+    } catch (e, st) {
+      AppLogger.error('Failed to update tasbeeh widget', error: e, stackTrace: st);
+    }
+  }
+
   static Future<void> _update() async {
     await HomeWidget.updateWidget(androidName: _androidWidgetName, iOSName: _iosWidgetName);
+    for (final name in const ['WirdiDailyWidgetProvider', 'WirdiAyahWidgetProvider', 'WirdiTasbeehWidgetProvider']) {
+      try {
+        await HomeWidget.updateWidget(androidName: name);
+      } catch (e, st) {
+        AppLogger.error('Failed to refresh $name', error: e, stackTrace: st);
+      }
+    }
   }
 }
