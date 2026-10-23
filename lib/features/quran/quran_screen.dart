@@ -20,6 +20,7 @@ import '../../core/services/settings_service.dart';
 import '../../core/services/tafsir_repository.dart';
 import '../../core/services/transliteration_repository.dart';
 import '../../core/services/user_progress_service.dart';
+import '../../core/services/widget_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/wirdi_identity_background.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -1105,6 +1106,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     await UserProgressService.markPageRead();
     await UserProgressService.registerStreakCheckpoint();
     await UserProgressService.markSurahCompleted(widget.surah.number);
+    final pagesToday = await UserProgressService.pagesReadToday();
+    final target = await UserProgressService.dailyWirdTarget();
+    final khatmaRatio = await UserProgressService.quranCompletionRatio();
+    unawaited(WidgetService.updateProgress(pagesToday, target, khatmaRatio));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).quranAddedToWird)));
   }
