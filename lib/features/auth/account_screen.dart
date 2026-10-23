@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/auth_service.dart';
 import 'login_screen.dart';
 import '../../core/services/sync_service.dart';
+import '../../core/utils/bi.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/generated/app_localizations.dart';
 
@@ -199,6 +200,15 @@ class _AccountScreenState extends State<AccountScreen> {
           SizedBox(width: double.infinity, child: FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: AppColors.primaryEmerald), onPressed: _syncing ? null : _sync,
             icon: _syncing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.cloud_sync_rounded),
             label: Text(_syncing ? l.authSyncing : l.authSyncNow))),
+          const SizedBox(height: 8),
+          Text(
+            bi(
+              context,
+              'تنبيه: المزامنة الحالية تجمع بعض القوائم والتقدم بين الأجهزة؛ حذف عنصر على جهاز قد لا يحذفه من الأجهزة الأخرى وقد يعود عند المزامنة.',
+              'Note: sync currently combines some lists and progress across devices. Deleting an item on one device may not delete it on other devices, and it may reappear after syncing.',
+            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
         ]))),
         const SizedBox(height: 16),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
