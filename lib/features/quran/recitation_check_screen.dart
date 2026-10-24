@@ -65,8 +65,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     if (diagnostic['recordAudioPermissionGranted'] != true) {
       return 'أندرويد لا يؤكد منح RECORD_AUDIO للتطبيق. أعد فتح إعدادات أذونات وِرْدِي واسمح بالميكروفون.';
     }
-    if (diagnostic['recognitionAvailable'] != true || services.isEmpty) {
+    if (diagnostic['recognitionAvailable'] != true) {
       return 'الميكروفون مسموح، لكن أندرويد لا يجد خدمة تعرّف على الكلام متاحة. فعّل/حدّث تطبيق Google أو خدمة Speech Recognition وثبّت حزمة العربية، ثم أعد تشغيل الهاتف. لا يحتاج هذا إلى تغيير إذن الميكروفون داخل وِرْدِي.';
+    }
+    if (services.isEmpty) {
+      return 'أندرويد يعلن أن التعرف على الكلام متاح، لكنه لم يعرض اسم الخدمة. حدّث تطبيق Google أو خدمة Speech Recognition، ثم أعد المحاولة. إذا استمر الفشل، أرسل لنا نص الخطأ الظاهر.';
     }
     return 'خدمة الكلام موجودة (${services.join(', ')}). المعرّف الافتراضي: ${recognizer.isEmpty ? 'غير محدد' : recognizer}. إذا استمر الخطأ، افحص تطبيق خدمة الكلام نفسه وصلاحية الميكروفون لديه.';
   }
