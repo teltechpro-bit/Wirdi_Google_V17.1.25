@@ -404,10 +404,14 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       );
     } catch (e) {
       final permissionGranted = (await Permission.microphone.status).isGranted;
+      final diagnostic = await _readNativeSpeechDiagnostics();
       if (!mounted) return;
       setState(() {
-        _lastError = e.toString();
-        _microphonePermissionIssue = !permissionGranted;
+        _lastError = !permissionGranted
+            ? e.toString()
+            : '${e.toString()} — ${_speechServiceHint(diagnostic)}';
+        _microphonePermissionIssue = !permissionGranted ||
+            diagnostic?['recordAudioPermissionGranted'] == false;
         _speechUnavailable = true;
         _session = false;
         _listening = false;
