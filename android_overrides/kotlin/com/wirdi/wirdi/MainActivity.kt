@@ -22,6 +22,27 @@ class MainActivity : AudioServiceActivity() {
         PrayerSilentMode.register(flutterEngine, this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
+                "openSpeechSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
+                        if (intent.resolveActivity(packageManager) != null) {
+                            startActivity(intent)
+                        } else {
+                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("speech_settings_unavailable", e.message, null)
+                    }
+                }
+                "openAppSettings" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("app_settings_unavailable", e.message, null)
+                    }
+                }
                 "speechDiagnostics" -> {
                     val hasRecordPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
                         checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
