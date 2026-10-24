@@ -286,9 +286,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
-      // Some speech services don't enumerate downloaded locales reliably.
-      // Try Arabic Egypt explicitly rather than blocking the user at setup.
-      pick ??= 'ar-EG';
+      // Never force a locale the installed recognizer did not report:
+      // unsupported "ar-EG" can make listening fail even with RECORD_AUDIO granted.
+      // If no Arabic locale is enumerated, let Android use its configured default
+      // and clearly tell the user how to install/select Arabic speech support.
+      final hasArabicLocale = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'));
 
       if (mounted) {
         setState(() {
@@ -296,9 +298,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           _speechUnavailable = false;
           _microphonePermissionIssue = false;
           _localeId = pick;
-          _lastError = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'))
+          _lastError = hasArabicLocale
               ? null
-              : 'لم تعرض الخدمة حزم العربية ضمن اللغات المثبتة؛ سنجرب العربية المصرية. إذا لم يظهر نص، ثبّت حزمة العربية من إعدادات خدمة Google الصوتية.';
+              : 'خدمة الكلام لا تعرض لغة عربية مثبتة. سنجرب لغة النظام؛ لتصحيح التلاوة بالعربية، فعّل/نزّل العربية من إعدادات تطبيق Google أو خدمة التعرف على الكلام.';
         });
       }
       return true;
