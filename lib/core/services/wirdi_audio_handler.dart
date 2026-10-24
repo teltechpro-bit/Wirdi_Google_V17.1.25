@@ -230,10 +230,11 @@ class WirdiAudioHandler extends BaseAudioHandler {
   ]) async {
     if (mediaId.startsWith('wirdi_radio_')) {
       final id = Uri.decodeComponent(mediaId.substring('wirdi_radio_'.length));
-      final station = RadioService.instance.allStations
+      final matches = RadioService.instance.allStations
           .where((item) => item.id == id)
-          .firstOrNull;
-      if (station == null) return;
+          .toList(growable: false);
+      if (matches.isEmpty) return;
+      final station = matches.first;
       await RadioService.instance.play(station);
       return;
     }
@@ -242,8 +243,9 @@ class WirdiAudioHandler extends BaseAudioHandler {
       final number = int.tryParse(mediaId.substring('wirdi_surah_'.length));
       if (number == null || number < 1 || number > 114) return;
       final surahs = await QuranRepository.load();
-      final surah = surahs.where((item) => item.number == number).firstOrNull;
-      if (surah == null) return;
+      final matches = surahs.where((item) => item.number == number).toList(growable: false);
+      if (matches.isEmpty) return;
+      final surah = matches.first;
       await quranAudio.playWholeSurah(surah, surahs);
     }
   }
