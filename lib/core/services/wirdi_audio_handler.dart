@@ -214,36 +214,6 @@ class WirdiAudioHandler extends BaseAudioHandler {
     return const <MediaItem>[];
   }
 
-  @override
-  Future<MediaItem?> getMediaItem(String mediaId) async {
-    if (mediaId == _browseSurahs || mediaId == _browseRadio) {
-      return MediaItem(
-        id: mediaId,
-        title: mediaId == _browseSurahs ? 'سور القرآن الكريم' : 'إذاعات القرآن الكريم',
-        playable: false,
-      );
-    }
-    if (mediaId.startsWith(_surahPrefix)) {
-      final number = int.tryParse(mediaId.substring(_surahPrefix.length));
-      if (number == null || number < 1 || number > 114) return null;
-      final surahs = await QuranRepository.load();
-      for (final surah in surahs) {
-        if (surah.number == number) {
-          return MediaItem(id: mediaId, title: surah.name, artist: surah.englishName, playable: true);
-        }
-      }
-    }
-    if (mediaId.startsWith(_radioPrefix)) {
-      final id = mediaId.substring(_radioPrefix.length);
-      for (final station in RadioService.instance.stations) {
-        if (station.id == id) {
-          return MediaItem(id: mediaId, title: station.nameAr, artist: station.nameEn, playable: true, isLive: true);
-        }
-      }
-    }
-    return null;
-  }
-
   /// Start playback through Wirdi's existing engines. No second player is
   /// created, and RadioService/QuranAudioService keep their coordinator rules.
   @override
