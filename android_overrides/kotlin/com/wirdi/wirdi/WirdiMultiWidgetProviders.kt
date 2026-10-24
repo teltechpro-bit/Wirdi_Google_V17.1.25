@@ -26,8 +26,8 @@ private object WirdiWidgetUi {
             val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
             if (data.getString("daily_ayah_date", "") != today) {
                 val pool = readAyahPool(data)
-                val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
-                val next = (dayOfYear * 17) % pool.size
+                val epochDay = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis())
+                val next = Math.floorMod(epochDay * 17L, pool.size.toLong()).toInt()
                 data.edit().putInt("daily_ayah_index", next).putString("daily_ayah_text", pool[next]).putString("daily_ayah_date", today).apply()
             }
         }
@@ -104,7 +104,8 @@ private object WirdiWidgetUi {
                     views.setOnClickPendingIntent(R.id.ayah_open, launchApp(context, 2002))
                 }
                 "tasbeeh" -> {
-                    val count = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(COUNT, 0)
+                    val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    val count = prefs.getInt("tasbeeh_display_count", prefs.getInt(COUNT, 0))
                     views.setTextViewText(R.id.tasbeeh_count, count.toString())
                     views.setOnClickPendingIntent(R.id.tasbeeh_increment, broadcast(context, WirdiTasbeehWidgetProvider::class.java, 3001, "com.wirdi.wirdi.INCREMENT_TASBEEH"))
                     views.setOnClickPendingIntent(R.id.tasbeeh_open, launchApp(context, 3002))
@@ -127,7 +128,9 @@ private object WirdiWidgetUi {
         val phraseId = prefs.getString("tasbeeh_selected_phrase_id", "subhanallah") ?: "subhanallah"
         val phraseTapKey = "tasbeeh_widget_taps_$phraseId"
         prefs.edit()
+            // COUNT remains a monotonic legacy counter for migration; the visible counter tracks the selected phrase's widget cycle.
             .putInt(COUNT, prefs.getInt(COUNT, 0) + 1)
+            .putInt("tasbeeh_display_count", prefs.getInt("tasbeeh_display_count", prefs.getInt(COUNT, 0)) + 1)
             .putInt(phraseTapKey, prefs.getInt(phraseTapKey, 0) + 1)
             .apply()
     }
@@ -147,7 +150,7 @@ private object WirdiWidgetUi {
         val pool = readAyahPool(data)
         val today = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
         val next = if (data.getString("daily_ayah_date", "") != today) {
-            (java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) * 17) % pool.size
+            Math.floorMod(java.util.concurrent.TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis()) * 17L, pool.size.toLong()).toInt()
         } else {
             (data.getInt("daily_ayah_index", 0) + 1) % pool.size
         }
