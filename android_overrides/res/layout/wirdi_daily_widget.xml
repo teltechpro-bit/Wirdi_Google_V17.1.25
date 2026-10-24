@@ -4,53 +4,117 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="14dp"
+    android:padding="9dp"
     android:background="@drawable/wirdi_widget_surface_light">
 
-    <TextView
-        android:id="@+id/daily_title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="وِرْدِي  •  وِرْد اليوم"
-        android:textStyle="bold"
-        android:textColor="#0C5D4D"
-        android:textSize="14sp"
-        android:fontFamily="sans-serif-medium" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/daily_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="وِرْدِي  •  وِرْد اليوم"
+            android:textStyle="bold"
+            android:textColor="#0C5D4D"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="يومي"
+            android:textColor="#9B7A32"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="3dp"
+            android:background="@drawable/wirdi_widget_action" />
+    </LinearLayout>
 
-    <View android:layout_width="34dp" android:layout_height="2dp"
-        android:layout_marginTop="5dp" android:layout_marginBottom="5dp"
+    <View
+        android:layout_width="36dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
         android:background="#C5A45A" />
 
-    <TextView android:id="@+id/daily_wird_progress"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
+    <TextView
+        android:id="@+id/daily_wird_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="إنجاز الورد  •  0 / 5 صفحات"
-        android:textColor="#173D35" android:textSize="13sp"
-        android:fontFamily="sans-serif-medium" />
+        android:textColor="#173D35"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
-    <TextView android:id="@+id/daily_azkar_remaining"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="3dp" android:text="الأذكار المتبقية: 0"
-        android:textColor="#58716B" android:textSize="11sp" />
+    <TextView
+        android:id="@+id/daily_azkar_remaining"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="الأذكار المتبقية: 0"
+        android:textColor="#58716B"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
-    <TextView android:id="@+id/daily_next_prayer"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" android:text="الصلاة القادمة • --:--"
-        android:textColor="#0C5D4D" android:textStyle="bold" android:textSize="12sp" />
-
-    <TextView android:id="@+id/daily_countdown"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="متبقي -- دقيقة" android:textColor="#58716B" android:textSize="11sp" />
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="3dp" android:orientation="horizontal">
-        <TextView android:id="@+id/daily_refresh" android:layout_width="0dp"
-            android:layout_height="32dp" android:layout_weight="1" android:gravity="center"
-            android:text="↻ تحديث" android:textColor="#0C5D4D" android:textStyle="bold"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/daily_next_prayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="الصلاة القادمة • --:--"
+                android:textColor="#0C5D4D"
+                android:textStyle="bold"
+                android:textSize="11sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+            <TextView
+                android:id="@+id/daily_countdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="متبقي -- دقيقة"
+                android:textColor="#58716B"
+                android:textSize="10sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/daily_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="↻ تحديث"
+            android:textColor="#0C5D4D"
+            android:textStyle="bold"
+            android:textSize="10sp"
             android:background="@drawable/wirdi_widget_action" />
-        <View android:layout_width="8dp" android:layout_height="1dp" />
-        <TextView android:id="@+id/daily_open" android:layout_width="0dp"
-            android:layout_height="32dp" android:layout_weight="1" android:gravity="center"
-            android:text="فتح وِرْدِي" android:textColor="#0C5D4D"
+        <View android:layout_width="5dp" android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/daily_open"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="فتح وِرْدِي"
+            android:textColor="#0C5D4D"
+            android:textSize="10sp"
             android:background="@drawable/wirdi_widget_action" />
     </LinearLayout>
 </LinearLayout>
