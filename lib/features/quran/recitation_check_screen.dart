@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
@@ -29,6 +30,36 @@ class RecitationCheckScreen extends StatefulWidget {
 }
 
 class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
+  static const MethodChannel _nativeChannel = MethodChannel('wirdi/overlay');
+
+  Future<Map<String, dynamic>?> _readNativeSpeechDiagnostics() async {
+    try {
+      return await _nativeChannel.invokeMapMethod<String, dynamic>('speechDiagnostics');
+    } catch (_) {
+      // Keep non-Android platforms and older installed builds functional.
+      return null;
+    }
+  }
+
+  String _speechServiceHint(Map<String, dynamic>? diagnostic) {
+    if (diagnostic == null) {
+      return 'تعذر قراءة حالة خدمة الكلام من أندرويد. تأكد من تحديث التطبيق ثم أعد المحاولة.';
+    }
+    final services = (diagnostic['recognitionServices'] as List<dynamic>?)
+            ?.map((value) => value.toString())
+            .where((value) => value.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final recognizer = (diagnostic['defaultRecognizer'] ?? '').toString();
+    if (diagnostic['recordAudioPermissionGranted'] != true) {
+      return 'أندرويد لا يؤكد منح RECORD_AUDIO للتطبيق. أعد فتح إعدادات أذونات وِرْدِي واسمح بالميكروفون.';
+    }
+    if (diagnostic['recognitionAvailable'] != true || services.isEmpty) {
+      return 'الميكروفون مسموح، لكن أندرويد لا يجد خدمة تعرّف على الكلام متاحة. فعّل/حدّث تطبيق Google أو خدمة Speech Recognition وثبّت حزمة العربية، ثم أعد تشغيل الهاتف. لا يحتاج هذا إلى تغيير إذن الميكروفون داخل وِرْدِي.';
+    }
+    return 'خدمة الكلام موجودة (${services.join(', ')}). المعرّف الافتراضي: ${recognizer.isEmpty ? 'غير محدد' : recognizer}. إذا استمر الخطأ، افحص تطبيق خدمة الكلام نفسه وصلاحية الميكروفون لديه.';
+  }
+
   stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechInitializationAttempted = false;
 
@@ -131,6 +162,35 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       return false;
     }
 
+    // Cross-check the permission and Android SpeechRecognizer service
+    // natively. A granted app permission alone does not mean a recognition
+    // service is installed/enabled on the device.
+    final nativeDiagnostics = await _readNativeSpeechDiagnostics();
+    if (nativeDiagnostics != null) {
+      if (nativeDiagnostics['recordAudioPermissionGranted'] != true) {
+        if (mounted) {
+          setState(() {
+            _speechReady = false;
+            _speechUnavailable = true;
+            _microphonePermissionIssue = true;
+            _lastError = _speechServiceHint(nativeDiagnostics);
+          });
+        }
+        return false;
+      }
+      if (nativeDiagnostics['recognitionAvailable'] != true) {
+        if (mounted) {
+          setState(() {
+            _speechReady = false;
+            _speechUnavailable = true;
+            _microphonePermissionIssue = false;
+            _lastError = _speechServiceHint(nativeDiagnostics);
+          });
+        }
+        return false;
+      }
+    }
+
     // speech_to_text caches its first initialize() result for an instance.
     // If the service/permission was unavailable on the first attempt, replace
     // the failed instance before allowing a genuine retry.
@@ -175,14 +235,16 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
       if (!ok) {
         final permissionGranted = (await Permission.microphone.status).isGranted;
+        final diagnostic = await _readNativeSpeechDiagnostics();
         if (mounted) {
           setState(() {
             _speechReady = false;
             _speechUnavailable = true;
-            _microphonePermissionIssue = !permissionGranted;
+            _microphonePermissionIssue = !permissionGranted ||
+                diagnostic?['recordAudioPermissionGranted'] == false;
             _lastError = !permissionGranted
                 ? 'لم يمنح النظام صلاحية الميكروفون للتطبيق. افتح إعدادات التطبيق وتأكد من السماح بالميكروفون.'
-                : 'خدمة التعرف على الكلام غير متاحة. تأكد من تثبيت/تفعيل تطبيق Google أو خدمة Speech Recognition وتحديثها.';
+                : _speechServiceHint(diagnostic);
           });
         }
         return false;
