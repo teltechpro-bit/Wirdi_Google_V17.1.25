@@ -41,6 +41,17 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     }
   }
 
+  Future<void> _enrichSpeechError(String message) async {
+    final diagnostic = await _readNativeSpeechDiagnostics();
+    if (!mounted) return;
+    setState(() {
+      _lastError = '$message — ${_speechServiceHint(diagnostic)}';
+      if (diagnostic?['recordAudioPermissionGranted'] == false) {
+        _microphonePermissionIssue = true;
+      }
+    });
+  }
+
   String _speechServiceHint(Map<String, dynamic>? diagnostic) {
     if (diagnostic == null) {
       return 'تعذر قراءة حالة خدمة الكلام من أندرويد. تأكد من تحديث التطبيق ثم أعد المحاولة.';
@@ -228,6 +239,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
               _listening = false;
             }
           });
+          if (!permissionIssue && !noMatchOrTimeout) {
+            unawaited(_enrichSpeechError(message));
+          }
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
