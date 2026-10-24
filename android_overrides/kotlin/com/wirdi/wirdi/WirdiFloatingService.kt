@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -53,7 +54,13 @@ class WirdiFloatingService : Service() {
             "quran" -> "وِرْدِي\nالقرآن"
             else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
         }
-        v.textSize = 12f; v.gravity = Gravity.CENTER; v.setTextColor(Color.WHITE); v.setBackgroundResource(R.drawable.wirdi_floating_bubble); v.setPadding(dp(8),dp(8),dp(8),dp(8))
+        v.textSize = if (initialContent == "dhikr") 10f else 12f
+        v.gravity = Gravity.CENTER
+        v.setTextColor(Color.rgb(255, 248, 229))
+        v.typeface = Typeface.create("serif", Typeface.BOLD)
+        v.setShadowLayer(1.5f, 0f, 1f, Color.rgb(4, 35, 29))
+        v.setBackgroundResource(R.drawable.wirdi_floating_bubble)
+        v.setPadding(dp(7), dp(7), dp(7), dp(7))
         var sx = 0f; var sy = 0f; var px = 0; var py = 0; var startWindowX = 0
         v.setOnTouchListener { view, e ->
             when (e.action) {

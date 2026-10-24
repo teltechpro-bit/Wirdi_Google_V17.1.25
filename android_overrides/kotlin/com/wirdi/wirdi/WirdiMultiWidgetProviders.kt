@@ -97,8 +97,9 @@ private object WirdiWidgetUi {
                     views.setOnClickPendingIntent(R.id.daily_open, launchApp(context, 1002))
                 }
                 "ayah" -> {
-                    val index = data.getInt("daily_ayah_index", 0).coerceIn(0, ayat.lastIndex)
-                    views.setTextViewText(R.id.ayah_text, data.getString("daily_ayah_text", ayat[index]) ?: ayat[index])
+                    val pool = readAyahPool(data)
+                    val index = data.getInt("daily_ayah_index", 0).coerceIn(0, pool.lastIndex)
+                    views.setTextViewText(R.id.ayah_text, data.getString("daily_ayah_text", pool[index]) ?: pool[index])
                     views.setOnClickPendingIntent(R.id.ayah_next, broadcast(context, WirdiAyahWidgetProvider::class.java, 2001, "com.wirdi.wirdi.NEXT_AYAH"))
                     views.setOnClickPendingIntent(R.id.ayah_open, launchApp(context, 2002))
                 }

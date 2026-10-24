@@ -1,28 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/tasbeeh_root"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:gravity="center"
-    android:padding="10dp" android:background="@drawable/wirdi_widget_surface_light">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="9dp"
+    android:background="@drawable/wirdi_widget_surface_light">
 
-    <TextView android:id="@+id/tasbeeh_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center" android:text="وِرْدِي"
-        android:textColor="#0C5D4D" android:textStyle="bold" android:textSize="12sp" />
+    <TextView
+        android:id="@+id/tasbeeh_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="وِرْدِي"
+        android:textColor="#0C5D4D"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif-medium" />
 
-    <TextView android:id="@+id/tasbeeh_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center" android:text="السبحة السريعة"
-        android:textColor="#58716B" android:textSize="10sp" />
+    <TextView
+        android:id="@+id/tasbeeh_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="السبحة السريعة"
+        android:textColor="#58716B"
+        android:textSize="10sp" />
 
-    <TextView android:id="@+id/tasbeeh_count" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:gravity="center"
-        android:text="0" android:textColor="#0C5D4D" android:textSize="30sp"
-        android:textStyle="bold" android:fontFamily="sans-serif-light" />
+    <View
+        android:layout_width="28dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="2dp"
+        android:background="#C5A45A" />
 
-    <TextView android:id="@+id/tasbeeh_open" android:layout_width="match_parent"
-        android:layout_height="20dp" android:gravity="center" android:text="فتح وِرْدِي"
-        android:textColor="#0C5D4D" android:textSize="10sp" />
-    <TextView android:id="@+id/tasbeeh_increment" android:layout_width="match_parent"
-        android:layout_height="38dp" android:gravity="center" android:text="＋  تسبيح"
-        android:textColor="#FFFFFF" android:background="@drawable/wirdi_widget_primary_action"
-        android:textStyle="bold" android:textSize="13sp" />
+    <TextView
+        android:id="@+id/tasbeeh_count"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="0"
+        android:textColor="#0C5D4D"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-light" />
+
+    <TextView
+        android:id="@+id/tasbeeh_increment"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:gravity="center"
+        android:text="＋  تسبيح"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/wirdi_widget_primary_action"
+        android:textStyle="bold"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/tasbeeh_open"
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:gravity="center"
+        android:text="فتح وِرْدِي"
+        android:textColor="#58716B"
+        android:textSize="9sp" />
 </LinearLayout>
