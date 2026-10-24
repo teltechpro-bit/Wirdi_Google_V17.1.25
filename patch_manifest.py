@@ -178,6 +178,18 @@ if 'com.wirdi.wirdi.WirdiFloatingService' not in text:
     )
     text = re.sub(r'(</application>)', overlay_service + r'\1', text, count=1)
 
+# Advertise Wirdi as a media app to Android Auto / Android Automotive.
+# This enables discovery of the existing audio_service media session; a browsable
+# catalog still requires the handler to expose getChildren()/playFromMediaId().
+if 'com.google.android.gms.car.application' not in text:
+    car_metadata = (
+        '\\n    <meta-data android:name="com.google.android.gms.car.application" '
+        'android:resource="@xml/automotive_app_desc" />\\n'
+    )
+    text, n_car = re.subn(r'(</application>)', car_metadata + r'\\1', text, count=1)
+    if n_car != 1:
+        raise SystemExit('ERROR: could not register Android Auto media metadata')
+
 # Keep Android Auto Backup disabled; user data migration is handled by opt-in sync.
 if 'android:allowBackup' not in text:
     text, n_backup = re.subn(
