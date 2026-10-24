@@ -28,7 +28,7 @@ class MainActivity : AudioServiceActivity() {
                     val services = try {
                         packageManager.queryIntentServices(
                             Intent(RecognitionService.SERVICE_INTERFACE),
-                            PackageManager.MATCH_DEFAULT_ONLY
+                            0
                         ).mapNotNull { it.serviceInfo?.packageName }.distinct()
                     } catch (_: Exception) { emptyList<String>() }
                     val defaultRecognizer = try {
