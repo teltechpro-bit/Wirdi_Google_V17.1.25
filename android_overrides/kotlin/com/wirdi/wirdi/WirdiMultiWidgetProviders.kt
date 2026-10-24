@@ -14,7 +14,7 @@ import android.widget.RemoteViews
 import org.json.JSONArray
 import es.antonborri.home_widget.HomeWidgetProvider
 
-private object WirdiWidgetUi {
+internal object WirdiWidgetUi {
     private const val PREFS = "HomeWidgetPreferences"
     private const val COUNT = "tasbeeh_count"
     private val ayat = arrayOf(
@@ -123,14 +123,21 @@ private object WirdiWidgetUi {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(context, request, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
+    /** Label shown on the bubble: the phrase selected in the app + its visible count. */
+    fun tasbeehLabel(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val phrase = prefs.getString("tasbeeh_selected_phrase_text", "سُبْحَانَ الله") ?: "سُبْحَانَ الله"
+        return phrase + "\n" + prefs.getInt("tasbeeh_display_count", prefs.getInt(COUNT, 0))
+    }
     fun increment(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val phraseId = prefs.getString("tasbeeh_selected_phrase_id", "subhanallah") ?: "subhanallah"
         val phraseTapKey = "tasbeeh_widget_taps_$phraseId"
+        val display = prefs.getInt("tasbeeh_display_count", prefs.getInt(COUNT, 0))
         prefs.edit()
             // COUNT remains a monotonic legacy counter for migration; the visible counter tracks the selected phrase's widget cycle.
             .putInt(COUNT, prefs.getInt(COUNT, 0) + 1)
-            .putInt("tasbeeh_display_count", prefs.getInt("tasbeeh_display_count", prefs.getInt(COUNT, 0)) + 1)
+            .putInt("tasbeeh_display_count", display + 1)
             .putInt(phraseTapKey, prefs.getInt(phraseTapKey, 0) + 1)
             .apply()
     }

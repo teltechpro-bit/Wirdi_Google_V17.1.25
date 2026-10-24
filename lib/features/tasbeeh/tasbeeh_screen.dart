@@ -153,7 +153,7 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
       _total = total;
     });
     await _loadGrandTotal();
-    await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount);
+    await WidgetService.updateTasbeehSelection(_selected.id, _cycleCount, phraseText: _selected.text);
   }
 
   Future<void> _applyImportedWidgetTaps(SharedPreferences prefs, _TasbeehPhrase phrase, int count) async {
@@ -202,15 +202,15 @@ class _TasbeehScreenState extends State<TasbeehScreen> with WidgetsBindingObserv
     });
 
     unawaited(_persistIncrement(phrase, nextDaily, nextTotal, completedCycle: completedCycle));
-    unawaited(_syncHomeWidgetAfterAppTap(phrase.id, completedCycle ? 0 : nextCycle));
+    unawaited(_syncHomeWidgetAfterAppTap(phrase.id, completedCycle ? 0 : nextCycle, phrase.text));
 
     if (completedCycle) {
       HapticFeedback.heavyImpact();
     }
   }
-  Future<void> _syncHomeWidgetAfterAppTap(String phraseId, int displayCount) async {
+  Future<void> _syncHomeWidgetAfterAppTap(String phraseId, int displayCount, String phraseText) async {
     try {
-      await WidgetService.updateTasbeehSelection(phraseId, displayCount);
+      await WidgetService.updateTasbeehSelection(phraseId, displayCount, phraseText: phraseText);
     } catch (_) {
       // The in-app counter remains usable if a launcher widget is unavailable.
     }
