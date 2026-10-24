@@ -174,6 +174,7 @@ class VoiceSearchResolver {
     if (q.isEmpty) return null;
     String? best;
     var bestScore = 0.0;
+    var tied = false;
     for (final s in stations) {
       final hay = <String>{
         ..._tokens(normalize('${s.nameAr} ${s.nameEn} ${s.country}')).map((t) => t.startsWith('ال') && t.length > 3 ? t.substring(2) : t),
@@ -186,8 +187,13 @@ class VoiceSearchResolver {
       if (score > bestScore) {
         bestScore = score;
         best = s.id;
+        tied = false;
+      } else if (score == bestScore && score > 0 && best != s.id) {
+        tied = true;
       }
     }
-    return bestScore >= 0.6 ? best : null;
+    // A generic query such as "Quran radio" can match several stations.
+    // Never start an arbitrary station when the best match is ambiguous.
+    return bestScore >= 0.6 && !tied ? best : null;
   }
 }
