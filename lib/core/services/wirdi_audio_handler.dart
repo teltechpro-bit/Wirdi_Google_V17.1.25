@@ -1,5 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 
+import '../models/quran_models.dart';
+import 'quran_repository.dart';
+
 import 'quran_audio_service.dart';
 import 'radio_service.dart';
 
@@ -166,6 +169,83 @@ class WirdiAudioHandler extends BaseAudioHandler {
       processingState: AudioProcessingState.idle,
       playing: false,
     ));
+  }
+
+
+  /// Android Auto browsable root. The tree is intentionally shallow and
+  /// focused on audio choices that can be selected safely while driving.
+  @override
+  Future<MediaItem?> getRoot([Map<String, dynamic>? rootHints]) async {
+    return const MediaItem(
+      id: 'wirdi_root',
+      title: 'وِرْدِي',
+      browsable: true,
+      playable: false,
+    );
+  }
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [
+    Map<String, dynamic>? options,
+  ]) async {
+    if (parentMediaId == 'wirdi_root') {
+      return const [
+        MediaItem(id: 'category_surahs', title: 'Quran Surahs', browsable: true, playable: false),
+        MediaItem(id: 'category_radio', title: 'Quran Radio', browsable: true, playable: false),
+      ];
+    }
+
+    if (parentMediaId == 'category_surahs') {
+      final surahs = await QuranRepository.load();
+      return surahs.map((surah) => MediaItem(
+        id: 'wirdi_surah_${surah.number}',
+        title: surah.englishName.isNotEmpty ? surah.englishName : surah.name,
+        artist: surah.name,
+        album: 'Quran',
+        playable: true,
+        browsable: false,
+      )).toList(growable: false);
+    }
+
+    if (parentMediaId == 'category_radio') {
+      final stations = RadioService.instance.allStations;
+      return stations.map((station) => MediaItem(
+        id: 'wirdi_radio_${Uri.encodeComponent(station.id)}',
+        title: station.nameEn.isNotEmpty ? station.nameEn : station.nameAr,
+        artist: station.nameAr,
+        album: station.country,
+        playable: true,
+        browsable: false,
+      )).toList(growable: false);
+    }
+
+    return const <MediaItem>[];
+  }
+
+  @override
+  Future<void> playFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    if (mediaId.startsWith('wirdi_radio_')) {
+      final id = Uri.decodeComponent(mediaId.substring('wirdi_radio_'.length));
+      final station = RadioService.instance.allStations
+          .where((item) => item.id == id)
+          .firstOrNull;
+      if (station == null) return;
+      await RadioService.instance.play(station);
+      return;
+    }
+
+    if (mediaId.startsWith('wirdi_surah_')) {
+      final number = int.tryParse(mediaId.substring('wirdi_surah_'.length));
+      if (number == null || number < 1 || number > 114) return;
+      final surahs = await QuranRepository.load();
+      final surah = surahs.where((item) => item.number == number).firstOrNull;
+      if (surah == null) return;
+      await quranAudio.playWholeSurah(surah, surahs);
+    }
   }
 
   @override
