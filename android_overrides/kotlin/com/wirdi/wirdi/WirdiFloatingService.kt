@@ -52,7 +52,7 @@ class WirdiFloatingService : Service() {
         v.text = when (initialContent) {
             "dhikr" -> adhkar[prefs.getInt("overlay_dhikr_index", 0).coerceIn(0, adhkar.lastIndex)]
             "quran" -> "وِرْدِي\nالقرآن"
-            else -> "سُبْحَانَ الله\n" + prefs.getInt(COUNT, 0)
+            else -> WirdiWidgetUi.tasbeehLabel(this)
         }
         v.textSize = if (initialContent == "dhikr") 10f else 12f
         v.gravity = Gravity.CENTER
@@ -81,11 +81,10 @@ class WirdiFloatingService : Service() {
                                 if (launch != null) startActivity(launch)
                             }
                             else -> {
-                                val n=prefs.getInt(COUNT,0)+1
-                                val phraseId = prefs.getString("tasbeeh_selected_phrase_id", "subhanallah") ?: "subhanallah"
-                                val tapKey = "tasbeeh_widget_taps_$phraseId"
-                                prefs.edit().putInt(COUNT,n).putInt(tapKey,prefs.getInt(tapKey,0)+1).apply()
-                                (view as TextView).text="سُبْحَانَ الله\n$n"
+                                // Same path as the home-screen widget tap: legacy counter,
+                                // visible counter and the per-phrase monotonic tap counter.
+                                WirdiWidgetUi.increment(this)
+                                (view as TextView).text = WirdiWidgetUi.tasbeehLabel(this)
                                 val ids=AppWidgetManager.getInstance(this).getAppWidgetIds(ComponentName(this,WirdiTasbeehWidgetProvider::class.java))
                                 sendBroadcast(Intent(this,WirdiTasbeehWidgetProvider::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids))
                             }

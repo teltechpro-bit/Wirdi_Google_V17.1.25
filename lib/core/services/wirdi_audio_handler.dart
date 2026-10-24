@@ -1,7 +1,9 @@
 import 'package:audio_service/audio_service.dart';
 
 import '../models/quran_models.dart';
+import 'app_logger.dart';
 import 'quran_audio_service.dart';
+import 'wirdi_browse_ids.dart';
 import 'quran_repository.dart';
 import 'radio_service.dart';
 
@@ -172,45 +174,46 @@ class WirdiAudioHandler extends BaseAudioHandler {
 
   /// Android Auto browsable root. Folder items are represented as non-playable
   /// MediaItems; the platform maps these to browsable media-browser entries.
-  static const String _browseSurahs = 'wirdi:browse:surahs';
-  static const String _browseRadio = 'wirdi:browse:radio';
-  static const String _surahPrefix = 'wirdi:surah:';
-  static const String _radioPrefix = 'wirdi:radio:';
-
   @override
   Future<List<MediaItem>> getChildren(
     String parentMediaId, [Map<String, dynamic>? options]
   ) async {
-    if (parentMediaId == AudioService.browsableRootId || parentMediaId == 'root') {
-      return const [
-        MediaItem(id: _browseSurahs, title: 'سور القرآن الكريم', playable: false),
-        MediaItem(id: _browseRadio, title: 'إذاعات القرآن الكريم', playable: false),
-      ];
-    }
+    try {
+      if (parentMediaId == AudioService.browsableRootId || parentMediaId == 'root') {
+        return const [
+          MediaItem(id: WirdiBrowseIds.surahs, title: 'سور القرآن الكريم', playable: false),
+          MediaItem(id: WirdiBrowseIds.radio, title: 'إذاعات القرآن الكريم', playable: false),
+        ];
+      }
 
-    if (parentMediaId == _browseSurahs) {
-      final surahs = await QuranRepository.load();
-      return surahs.map((SurahModel surah) => MediaItem(
-        id: '$_surahPrefix${surah.number}',
-        title: surah.name,
-        artist: surah.englishName,
-        album: 'القرآن الكريم',
-        playable: true,
-      )).toList(growable: false);
-    }
+      if (parentMediaId == WirdiBrowseIds.surahs) {
+        final surahs = await QuranRepository.load();
+        return surahs.map((SurahModel surah) => MediaItem(
+          id: WirdiBrowseIds.surah(surah.number),
+          title: surah.name,
+          artist: surah.englishName,
+          album: 'القرآن الكريم',
+          playable: true,
+        )).toList(growable: false);
+      }
 
-    if (parentMediaId == _browseRadio) {
-      final stations = RadioService.instance.stations;
-      return stations.map((station) => MediaItem(
-        id: '$_radioPrefix${station.id}',
-        title: station.nameAr.isNotEmpty ? station.nameAr : station.nameEn,
-        artist: station.nameEn,
-        album: station.country,
-        playable: true,
-        isLive: true,
-      )).toList(growable: false);
+      if (parentMediaId == WirdiBrowseIds.radio) {
+        // The car can open the browse tree before the app UI ever ran; make
+        // sure favourites/catalogue state is initialised (idempotent).
+        await RadioService.instance.init();
+        return RadioService.instance.stations.map((station) => MediaItem(
+          id: WirdiBrowseIds.station(station.id),
+          title: station.nameAr.isNotEmpty ? station.nameAr : station.nameEn,
+          artist: station.nameEn,
+          album: station.country,
+          playable: true,
+          isLive: true,
+        )).toList(growable: false);
+      }
+    } catch (e, st) {
+      // A failure here must show an empty folder, never crash the media session.
+      AppLogger.error('Android Auto browse failed for $parentMediaId', error: e, stackTrace: st);
     }
-
     return const <MediaItem>[];
   }
 
@@ -218,25 +221,29 @@ class WirdiAudioHandler extends BaseAudioHandler {
   /// created, and RadioService/QuranAudioService keep their coordinator rules.
   @override
   Future<void> playFromMediaId(String mediaId, [Map<String, dynamic>? extras]) async {
-    if (mediaId.startsWith(_surahPrefix)) {
-      final number = int.tryParse(mediaId.substring(_surahPrefix.length));
-      if (number == null || number < 1 || number > 114) return;
-      final surahs = await QuranRepository.load();
-      SurahModel? selected;
-      for (final surah in surahs) {
-        if (surah.number == number) { selected = surah; break; }
+    try {
+      final number = WirdiBrowseIds.parseSurah(mediaId);
+      if (number != null) {
+        final surahs = await QuranRepository.load();
+        SurahModel? selected;
+        for (final surah in surahs) {
+          if (surah.number == number) { selected = surah; break; }
+        }
+        if (selected != null) await quranAudio.playWholeSurah(selected, surahs);
+        return;
       }
-      if (selected != null) await quranAudio.playWholeSurah(selected, surahs);
-      return;
-    }
-    if (mediaId.startsWith(_radioPrefix)) {
-      final id = mediaId.substring(_radioPrefix.length);
-      for (final station in RadioService.instance.stations) {
-        if (station.id == id) {
-          await RadioService.instance.play(station);
-          return;
+      final stationId = WirdiBrowseIds.parseStation(mediaId);
+      if (stationId != null) {
+        await RadioService.instance.init();
+        for (final station in RadioService.instance.stations) {
+          if (station.id == stationId) {
+            await RadioService.instance.play(station);
+            return;
+          }
         }
       }
+    } catch (e, st) {
+      AppLogger.error('Android Auto playback request failed for $mediaId', error: e, stackTrace: st);
     }
   }
 

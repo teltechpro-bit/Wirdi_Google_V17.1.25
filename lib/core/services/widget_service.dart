@@ -115,9 +115,10 @@ class WidgetService {
   /// Keep the launcher widget associated with the phrase selected in-app.
   /// Widget taps use a separate per-phrase monotonic counter so app taps cannot
   /// accidentally mark unsynced launcher taps as already imported.
-  static Future<void> updateTasbeehSelection(String phraseId, int displayCount) async {
+  static Future<void> updateTasbeehSelection(String phraseId, int displayCount, {String? phraseText}) async {
     try {
       await HomeWidget.saveWidgetData<String>('tasbeeh_selected_phrase_id', phraseId);
+      if (phraseText != null) await HomeWidget.saveWidgetData<String>('tasbeeh_selected_phrase_text', phraseText);
       // Keep the legacy monotonic counter separate from the selected phrase's visible cycle.
       await HomeWidget.saveWidgetData<int>('tasbeeh_display_count', displayCount);
       await HomeWidget.updateWidget(androidName: 'WirdiTasbeehWidgetProvider');
