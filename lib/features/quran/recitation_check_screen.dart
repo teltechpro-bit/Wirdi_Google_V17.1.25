@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
@@ -29,6 +30,68 @@ class RecitationCheckScreen extends StatefulWidget {
 }
 
 class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
+  static const MethodChannel _nativeChannel = MethodChannel('wirdi/overlay');
+
+  Future<void> _openSpeechSettings() async {
+    try {
+      await _nativeChannel.invokeMethod<bool>('openSpeechSettings');
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() => _lastError = 'تعذر فتح إعدادات التعرف على الكلام: ${error.message ?? error.code}');
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    try {
+      await _nativeChannel.invokeMethod<bool>('openAppSettings');
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() => _lastError = 'تعذر فتح إعدادات التطبيق: ${error.message ?? error.code}');
+    }
+  }
+
+  Future<Map<String, dynamic>?> _readNativeSpeechDiagnostics() async {
+    try {
+      return await _nativeChannel.invokeMapMethod<String, dynamic>('speechDiagnostics');
+    } catch (_) {
+      // Keep non-Android platforms and older installed builds functional.
+      return null;
+    }
+  }
+
+  Future<void> _enrichSpeechError(String message) async {
+    final diagnostic = await _readNativeSpeechDiagnostics();
+    if (!mounted) return;
+    setState(() {
+      _lastError = '$message — ${_speechServiceHint(diagnostic)}';
+      if (diagnostic?['recordAudioPermissionGranted'] == false) {
+        _microphonePermissionIssue = true;
+      }
+    });
+  }
+
+  String _speechServiceHint(Map<String, dynamic>? diagnostic) {
+    if (diagnostic == null) {
+      return 'تعذر قراءة حالة خدمة الكلام من أندرويد. تأكد من تحديث التطبيق ثم أعد المحاولة.';
+    }
+    final services = (diagnostic['recognitionServices'] as List<dynamic>?)
+            ?.map((value) => value.toString())
+            .where((value) => value.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final recognizer = (diagnostic['defaultRecognizer'] ?? '').toString();
+    if (diagnostic['recordAudioPermissionGranted'] != true) {
+      return 'أندرويد لا يؤكد منح RECORD_AUDIO للتطبيق. أعد فتح إعدادات أذونات وِرْدِي واسمح بالميكروفون.';
+    }
+    if (diagnostic['recognitionAvailable'] != true) {
+      return 'الميكروفون مسموح، لكن أندرويد لا يجد خدمة تعرّف على الكلام متاحة. فعّل/حدّث تطبيق Google أو خدمة Speech Recognition وثبّت حزمة العربية، ثم أعد تشغيل الهاتف. لا يحتاج هذا إلى تغيير إذن الميكروفون داخل وِرْدِي.';
+    }
+    if (services.isEmpty) {
+      return 'أندرويد يعلن أن التعرف على الكلام متاح، لكنه لم يعرض اسم الخدمة. حدّث تطبيق Google أو خدمة Speech Recognition، ثم أعد المحاولة. إذا استمر الفشل، أرسل لنا نص الخطأ الظاهر.';
+    }
+    return 'خدمة الكلام موجودة (${services.join(', ')}). المعرّف الافتراضي: ${recognizer.isEmpty ? 'غير محدد' : recognizer}. إذا استمر الخطأ، افحص تطبيق خدمة الكلام نفسه وصلاحية الميكروفون لديه.';
+  }
+
   stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechInitializationAttempted = false;
 
@@ -131,6 +194,35 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       return false;
     }
 
+    // Cross-check the permission and Android SpeechRecognizer service
+    // natively. A granted app permission alone does not mean a recognition
+    // service is installed/enabled on the device.
+    final nativeDiagnostics = await _readNativeSpeechDiagnostics();
+    if (nativeDiagnostics != null) {
+      if (nativeDiagnostics['recordAudioPermissionGranted'] != true) {
+        if (mounted) {
+          setState(() {
+            _speechReady = false;
+            _speechUnavailable = true;
+            _microphonePermissionIssue = true;
+            _lastError = _speechServiceHint(nativeDiagnostics);
+          });
+        }
+        return false;
+      }
+      if (nativeDiagnostics['recognitionAvailable'] != true) {
+        if (mounted) {
+          setState(() {
+            _speechReady = false;
+            _speechUnavailable = true;
+            _microphonePermissionIssue = false;
+            _lastError = _speechServiceHint(nativeDiagnostics);
+          });
+        }
+        return false;
+      }
+    }
+
     // speech_to_text caches its first initialize() result for an instance.
     // If the service/permission was unavailable on the first attempt, replace
     // the failed instance before allowing a genuine retry.
@@ -168,6 +260,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
               _listening = false;
             }
           });
+          if (!permissionIssue && !noMatchOrTimeout) {
+            unawaited(_enrichSpeechError(message));
+          }
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
@@ -175,14 +270,16 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
       if (!ok) {
         final permissionGranted = (await Permission.microphone.status).isGranted;
+        final diagnostic = await _readNativeSpeechDiagnostics();
         if (mounted) {
           setState(() {
             _speechReady = false;
             _speechUnavailable = true;
-            _microphonePermissionIssue = !permissionGranted;
+            _microphonePermissionIssue = !permissionGranted ||
+                diagnostic?['recordAudioPermissionGranted'] == false;
             _lastError = !permissionGranted
                 ? 'لم يمنح النظام صلاحية الميكروفون للتطبيق. افتح إعدادات التطبيق وتأكد من السماح بالميكروفون.'
-                : 'خدمة التعرف على الكلام غير متاحة. تأكد من تثبيت/تفعيل تطبيق Google أو خدمة Speech Recognition وتحديثها.';
+                : _speechServiceHint(diagnostic);
           });
         }
         return false;
@@ -210,9 +307,11 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
-      // Some speech services don't enumerate downloaded locales reliably.
-      // Try Arabic Egypt explicitly rather than blocking the user at setup.
-      pick ??= 'ar-EG';
+      // Never force a locale the installed recognizer did not report:
+      // unsupported "ar-EG" can make listening fail even with RECORD_AUDIO granted.
+      // If no Arabic locale is enumerated, let Android use its configured default
+      // and clearly tell the user how to install/select Arabic speech support.
+      final hasArabicLocale = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'));
 
       if (mounted) {
         setState(() {
@@ -220,9 +319,9 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           _speechUnavailable = false;
           _microphonePermissionIssue = false;
           _localeId = pick;
-          _lastError = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'))
+          _lastError = hasArabicLocale
               ? null
-              : 'لم تعرض الخدمة حزم العربية ضمن اللغات المثبتة؛ سنجرب العربية المصرية. إذا لم يظهر نص، ثبّت حزمة العربية من إعدادات خدمة Google الصوتية.';
+              : 'خدمة الكلام لا تعرض لغة عربية مثبتة. سنجرب لغة النظام؛ لتصحيح التلاوة بالعربية، فعّل/نزّل العربية من إعدادات تطبيق Google أو خدمة التعرف على الكلام.';
         });
       }
       return true;
@@ -342,10 +441,14 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       );
     } catch (e) {
       final permissionGranted = (await Permission.microphone.status).isGranted;
+      final diagnostic = await _readNativeSpeechDiagnostics();
       if (!mounted) return;
       setState(() {
-        _lastError = e.toString();
-        _microphonePermissionIssue = !permissionGranted;
+        _lastError = !permissionGranted
+            ? e.toString()
+            : '${e.toString()} — ${_speechServiceHint(diagnostic)}';
+        _microphonePermissionIssue = !permissionGranted ||
+            diagnostic?['recordAudioPermissionGranted'] == false;
         _speechUnavailable = true;
         _session = false;
         _listening = false;
@@ -530,6 +633,19 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                       Text(
                         bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    if (_speechUnavailable)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          onPressed: _microphonePermissionIssue ? _openAppSettings : _openSpeechSettings,
+                          icon: const Icon(Icons.settings_voice_rounded),
+                          label: Text(
+                            _microphonePermissionIssue
+                                ? bi(context, 'فتح إعدادات إذن الميكروفون', 'Open microphone permission settings')
+                                : bi(context, 'فتح إعدادات التعرف على الكلام', 'Open speech-recognition settings'),
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(

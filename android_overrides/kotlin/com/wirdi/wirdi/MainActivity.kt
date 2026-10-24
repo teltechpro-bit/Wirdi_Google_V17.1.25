@@ -2,6 +2,9 @@ package com.wirdi.wirdi
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.speech.RecognitionService
+import android.speech.SpeechRecognizer
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -19,6 +22,47 @@ class MainActivity : AudioServiceActivity() {
         PrayerSilentMode.register(flutterEngine, this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
+                "openSpeechSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
+                        if (intent.resolveActivity(packageManager) != null) {
+                            startActivity(intent)
+                        } else {
+                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("speech_settings_unavailable", e.message, null)
+                    }
+                }
+                "openAppSettings" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("app_settings_unavailable", e.message, null)
+                    }
+                }
+                "speechDiagnostics" -> {
+                    val hasRecordPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                        checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    val services = try {
+                        packageManager.queryIntentServices(
+                            Intent(RecognitionService.SERVICE_INTERFACE),
+                            0
+                        ).mapNotNull { it.serviceInfo?.packageName }.distinct()
+                    } catch (_: Exception) { emptyList<String>() }
+                    val defaultRecognizer = try {
+                        Settings.Secure.getString(contentResolver, "voice_recognition_service")
+                    } catch (_: Exception) { null }
+                    result.success(mapOf(
+                        "recordAudioPermissionGranted" to hasRecordPermission,
+                        "recognitionAvailable" to SpeechRecognizer.isRecognitionAvailable(this),
+                        "recognitionServices" to services,
+                        "defaultRecognizer" to (defaultRecognizer ?: ""),
+                        "sdkInt" to Build.VERSION.SDK_INT
+                    ))
+                }
                 "hasOverlayPermission" -> result.success(Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))
                 "requestOverlayPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
