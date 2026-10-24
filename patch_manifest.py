@@ -186,7 +186,7 @@ if 'com.google.android.gms.car.application' not in text:
         '\n    <meta-data android:name="com.google.android.gms.car.application" '
         'android:resource="@xml/automotive_app_desc" />\n'
     )
-    text, n_car = re.subn(r'(</application>)', car_metadata + r'\\1', text, count=1)
+    text, n_car = re.subn(r'(</application>)', car_metadata + r'\1', text, count=1)
     if n_car != 1:
         raise SystemExit('ERROR: could not register Android Auto media metadata')
 
