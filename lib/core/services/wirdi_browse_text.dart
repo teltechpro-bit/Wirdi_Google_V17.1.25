@@ -1,6 +1,6 @@
 /// Display strings for the Android Auto browse tree, in the app language.
 /// [arabic] true → Arabic first; otherwise English (the car UI language the
-/// user chose in Wirdi's settings.
+/// user chose in Wirdi's settings.]
 class WirdiBrowseText {
   final bool arabic;
   const WirdiBrowseText({required this.arabic});
