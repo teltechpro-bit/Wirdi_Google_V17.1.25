@@ -4,10 +4,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/models/quran_models.dart';
 import '../../core/services/arabic_word_match.dart';
 import '../../core/services/quran_repository.dart';
+import '../../core/services/quran_audio_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/bi.dart';
 
@@ -27,7 +29,8 @@ class RecitationCheckScreen extends StatefulWidget {
 }
 
 class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
-  final stt.SpeechToText _speech = stt.SpeechToText();
+  stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechInitializationAttempted = false;
 
   List<SurahModel> _surahs = const <SurahModel>[];
   bool _loadingData = true;
@@ -105,48 +108,99 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
 
   Future<bool> _ensureSpeech() async {
     if (_speechReady) return true;
+
+    // Explicitly check/request Android RECORD_AUDIO before initializing the
+    // recognizer, so permission denial is not confused with service failure.
+    var microphoneStatus = await Permission.microphone.status;
+    if (!microphoneStatus.isGranted) {
+      microphoneStatus = await Permission.microphone.request();
+    }
+    if (!microphoneStatus.isGranted) {
+      if (mounted) {
+        setState(() {
+          _speechReady = false;
+          _speechUnavailable = true;
+          _microphonePermissionIssue = true;
+          _session = false;
+          _listening = false;
+          _lastError = microphoneStatus.isPermanentlyDenied
+              ? 'صلاحية الميكروفون مرفوضة نهائيًا. افتح إعدادات التطبيق > الأذونات > الميكروفون واختر السماح.'
+              : 'لم يمنح أندرويد تطبيق وِردِي صلاحية الميكروفون. اختر السماح عند ظهور نافذة الإذن ثم أعد المحاولة.';
+        });
+      }
+      return false;
+    }
+
+    // speech_to_text caches its first initialize() result for an instance.
+    // If the service/permission was unavailable on the first attempt, replace
+    // the failed instance before allowing a genuine retry.
+    if (_speechInitializationAttempted) {
+      try { await _speech.cancel(); } catch (_) {}
+      _speech = stt.SpeechToText();
+      _speechInitializationAttempted = false;
+    }
+    _speechInitializationAttempted = true;
+
     try {
       final ok = await _speech.initialize(
+        debugLogging: true,
         onError: (error) {
-          if (!mounted) return;
           final message = error.errorMsg;
           final normalized = message.toLowerCase();
-          // Do not interpret every audio/recognizer error as a permission
-          // failure. Android can report audio/service errors even when the
-          // microphone permission is already granted.
           final permissionIssue = normalized.contains('permission') ||
               normalized.contains('not authorized') ||
               normalized.contains('not_authorized') ||
               normalized.contains('not allowed') ||
               normalized.contains('not_allowed') ||
               normalized.contains('denied');
+          final noMatchOrTimeout = normalized.contains('no_match') ||
+              normalized.contains('no match') ||
+              normalized.contains('speech_timeout') ||
+              normalized.contains('speech timeout');
+          if (!mounted) return;
           setState(() {
             _lastError = message;
             _microphonePermissionIssue = permissionIssue;
-            _speechUnavailable = true;
-            _speechReady = false;
-            _session = false;
-            _listening = false;
+            _speechUnavailable = !noMatchOrTimeout;
+            if (!noMatchOrTimeout) {
+              _speechReady = false;
+              _session = false;
+              _listening = false;
+            }
           });
         },
         onStatus: _onStatus,
         finalTimeout: const Duration(seconds: 5),
       );
+
       if (!ok) {
+        final permissionGranted = (await Permission.microphone.status).isGranted;
         if (mounted) {
           setState(() {
+            _speechReady = false;
             _speechUnavailable = true;
-            _microphonePermissionIssue = false;
-            _lastError =
-                'Speech recognition could not initialize. This is not proof that microphone permission is disabled; check the phone speech service and its Arabic language support.';
+            _microphonePermissionIssue = !permissionGranted;
+            _lastError = !permissionGranted
+                ? 'لم يمنح النظام صلاحية الميكروفون للتطبيق. افتح إعدادات التطبيق وتأكد من السماح بالميكروفون.'
+                : 'خدمة التعرف على الكلام غير متاحة. تأكد من تثبيت/تفعيل تطبيق Google أو خدمة Speech Recognition وتحديثها.';
           });
         }
         return false;
       }
+
       final locales = await _speech.locales();
       String? pick;
+      // Prefer Egyptian Arabic for the user's Quran recitation, then Saudi,
+      // then any Arabic locale installed on the device.
       for (final l in locales) {
-        if (l.localeId.toLowerCase().replaceAll('-', '_') == 'ar_sa') pick = l.localeId;
+        final id = l.localeId.toLowerCase().replaceAll('-', '_');
+        if (id == 'ar_eg') { pick = l.localeId; break; }
+      }
+      if (pick == null) {
+        for (final l in locales) {
+          final id = l.localeId.toLowerCase().replaceAll('-', '_');
+          if (id == 'ar_sa') { pick = l.localeId; break; }
+        }
       }
       if (pick == null) {
         for (final l in locales) {
@@ -156,37 +210,35 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
           }
         }
       }
-      if (pick == null) {
-        if (mounted) {
-          setState(() {
-            _speechUnavailable = true;
-            _microphonePermissionIssue = false;
-            _lastError = 'لم تتوفر لغة عربية لخدمة التعرف على الصوت على هذا الجهاز.';
-          });
-        }
-        return false;
-      }
+      // Some speech services don't enumerate downloaded locales reliably.
+      // Try Arabic Egypt explicitly rather than blocking the user at setup.
+      pick ??= 'ar-EG';
+
       if (mounted) {
         setState(() {
           _speechReady = true;
           _speechUnavailable = false;
           _microphonePermissionIssue = false;
           _localeId = pick;
+          _lastError = locales.any((l) => l.localeId.toLowerCase().startsWith('ar'))
+              ? null
+              : 'لم تعرض الخدمة حزم العربية ضمن اللغات المثبتة؛ سنجرب العربية المصرية. إذا لم يظهر نص، ثبّت حزمة العربية من إعدادات خدمة Google الصوتية.';
         });
       }
       return true;
     } catch (error) {
+      final message = error.toString();
+      final normalized = message.toLowerCase();
+      final permissionIssue = normalized.contains('permission') ||
+          normalized.contains('not authorized') ||
+          normalized.contains('not_authorized') ||
+          normalized.contains('not allowed') ||
+          normalized.contains('not_allowed') ||
+          normalized.contains('denied');
       if (mounted) {
         setState(() {
-          final message = error.toString();
-          final normalized = message.toLowerCase();
-          _microphonePermissionIssue = normalized.contains('permission') ||
-              normalized.contains('not authorized') ||
-              normalized.contains('not_authorized') ||
-              normalized.contains('not allowed') ||
-              normalized.contains('not_allowed') ||
-              normalized.contains('denied');
           _speechUnavailable = true;
+          _microphonePermissionIssue = permissionIssue;
           _lastError = message;
           _speechReady = false;
           _session = false;
@@ -246,6 +298,12 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
     if (_starting || _expected.isEmpty) return;
     _starting = true;
     try {
+      // Active Quran/radio playback can hold audio focus or compete for the
+      // microphone on some Android devices. Pause it before requesting speech.
+      final audio = QuranAudioService.instance;
+      if (!audio.isPaused && (audio.playingAyah != null || audio.externalUrl != null)) {
+        await audio.pause();
+      }
       final ok = await _ensureSpeech();
       if (!ok || !mounted) return;
       setState(() {
@@ -272,8 +330,10 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
       await _speech.listen(
         onResult: _onResult,
         localeId: _localeId,
-        listenFor: const Duration(minutes: 3),
-        pauseFor: const Duration(seconds: 8),
+        // Android recognizers commonly stop near 45-60 seconds regardless
+        // of longer listenFor values; _onStatus restarts short sessions safely.
+        listenFor: const Duration(seconds: 45),
+        pauseFor: const Duration(seconds: 4),
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
@@ -281,11 +341,15 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
         ),
       );
     } catch (e) {
+      final permissionGranted = (await Permission.microphone.status).isGranted;
       if (!mounted) return;
       setState(() {
         _lastError = e.toString();
+        _microphonePermissionIssue = !permissionGranted;
+        _speechUnavailable = true;
         _session = false;
         _listening = false;
+        _speechReady = false;
       });
     }
   }
