@@ -183,8 +183,8 @@ if 'com.wirdi.wirdi.WirdiFloatingService' not in text:
 # catalog still requires the handler to expose getChildren()/playFromMediaId().
 if 'com.google.android.gms.car.application' not in text:
     car_metadata = (
-        '\\n    <meta-data android:name="com.google.android.gms.car.application" '
-        'android:resource="@xml/automotive_app_desc" />\\n'
+        '\n    <meta-data android:name="com.google.android.gms.car.application" '
+        'android:resource="@xml/automotive_app_desc" />\n'
     )
     text, n_car = re.subn(r'(</application>)', car_metadata + r'\\1', text, count=1)
     if n_car != 1:
