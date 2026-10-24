@@ -3,7 +3,10 @@ import 'package:audio_service/audio_service.dart';
 import '../models/quran_models.dart';
 import 'app_logger.dart';
 import 'quran_audio_service.dart';
+import 'settings_service.dart';
+import 'voice_search_resolver.dart';
 import 'wirdi_browse_ids.dart';
+import 'wirdi_browse_text.dart';
 import 'quran_repository.dart';
 import 'radio_service.dart';
 
@@ -77,7 +80,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
         MediaControl.stop,
         q.isPaused ? MediaControl.play : MediaControl.pause,
       ],
-      systemActions: const {
+      systemActions: {
+        ..._browseActions,
         MediaAction.play,
         MediaAction.pause,
         MediaAction.stop,
@@ -113,7 +117,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
         MediaControl.skipToNext,
         MediaControl.stop,
       ],
-      systemActions: const {
+      systemActions: {
+        ..._browseActions,
         MediaAction.play,
         MediaAction.pause,
         MediaAction.stop,
@@ -147,7 +152,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
         MediaControl.stop,
         q.isPaused ? MediaControl.play : MediaControl.pause,
       ],
-      systemActions: const {
+      systemActions: {
+        ..._browseActions,
         MediaAction.play,
         MediaAction.pause,
         MediaAction.stop,
@@ -166,11 +172,19 @@ class WirdiAudioHandler extends BaseAudioHandler {
     mediaItem.add(null);
     playbackState.add(PlaybackState(
       controls: const [],
-      systemActions: const {},
+      systemActions: _browseActions,
       processingState: AudioProcessingState.idle,
       playing: false,
     ));
   }
+
+  static const Set<MediaAction> _browseActions = {
+    MediaAction.playFromMediaId,
+    MediaAction.playFromSearch,
+  };
+
+  WirdiBrowseText get _text =>
+      WirdiBrowseText(arabic: appSettings.locale.languageCode == 'ar');
 
   /// Android Auto browsable root. Folder items are represented as non-playable
   /// MediaItems; the platform maps these to browsable media-browser entries.
@@ -180,9 +194,9 @@ class WirdiAudioHandler extends BaseAudioHandler {
   ) async {
     try {
       if (parentMediaId == AudioService.browsableRootId || parentMediaId == 'root') {
-        return const [
-          MediaItem(id: WirdiBrowseIds.surahs, title: 'سور القرآن الكريم', playable: false),
-          MediaItem(id: WirdiBrowseIds.radio, title: 'إذاعات القرآن الكريم', playable: false),
+        return [
+          MediaItem(id: WirdiBrowseIds.surahs, title: _text.surahsFolder, playable: false),
+          MediaItem(id: WirdiBrowseIds.radio, title: _text.radioFolder, playable: false),
         ];
       }
 
@@ -190,9 +204,9 @@ class WirdiAudioHandler extends BaseAudioHandler {
         final surahs = await QuranRepository.load();
         return surahs.map((SurahModel surah) => MediaItem(
           id: WirdiBrowseIds.surah(surah.number),
-          title: surah.name,
-          artist: surah.englishName,
-          album: 'القرآن الكريم',
+          title: _text.surahTitle(surah.name, surah.englishName),
+          artist: _text.surahSubtitle(surah.name, surah.englishName),
+          album: _text.quranAlbum,
           playable: true,
         )).toList(growable: false);
       }
@@ -203,8 +217,8 @@ class WirdiAudioHandler extends BaseAudioHandler {
         await RadioService.instance.init();
         return RadioService.instance.stations.map((station) => MediaItem(
           id: WirdiBrowseIds.station(station.id),
-          title: station.nameAr.isNotEmpty ? station.nameAr : station.nameEn,
-          artist: station.nameEn,
+          title: _text.stationTitle(station.nameAr, station.nameEn),
+          artist: _text.stationSubtitle(station.nameAr, station.nameEn),
           album: station.country,
           playable: true,
           isLive: true,
@@ -217,6 +231,28 @@ class WirdiAudioHandler extends BaseAudioHandler {
     return const <MediaItem>[];
   }
 
+  Future<bool> _playSurahNumber(int number) async {
+    final surahs = await QuranRepository.load();
+    for (final surah in surahs) {
+      if (surah.number == number) {
+        await quranAudio.playWholeSurah(surah, surahs);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<bool> _playStationId(String stationId) async {
+    await RadioService.instance.init();
+    for (final station in RadioService.instance.stations) {
+      if (station.id == stationId) {
+        await RadioService.instance.play(station);
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Start playback through Wirdi's existing engines. No second player is
   /// created, and RadioService/QuranAudioService keep their coordinator rules.
   @override
@@ -224,26 +260,48 @@ class WirdiAudioHandler extends BaseAudioHandler {
     try {
       final number = WirdiBrowseIds.parseSurah(mediaId);
       if (number != null) {
-        final surahs = await QuranRepository.load();
-        SurahModel? selected;
-        for (final surah in surahs) {
-          if (surah.number == number) { selected = surah; break; }
-        }
-        if (selected != null) await quranAudio.playWholeSurah(selected, surahs);
+        await _playSurahNumber(number);
         return;
       }
       final stationId = WirdiBrowseIds.parseStation(mediaId);
-      if (stationId != null) {
-        await RadioService.instance.init();
-        for (final station in RadioService.instance.stations) {
-          if (station.id == stationId) {
-            await RadioService.instance.play(station);
-            return;
-          }
-        }
-      }
+      if (stationId != null) await _playStationId(stationId);
     } catch (e, st) {
       AppLogger.error('Android Auto playback request failed for $mediaId', error: e, stackTrace: st);
+    }
+  }
+
+  /// Voice requests from Google Assistant / Android Auto, e.g. "Play Surah
+  /// Al-Baqarah on Wirdi" or "شغّل سورة الكهف". Unrecognised queries never
+  /// start random audio; an empty query simply resumes playback.
+  @override
+  Future<void> playFromSearch(String query, [Map<String, dynamic>? extras]) async {
+    try {
+      final surahs = await QuranRepository.load();
+      await RadioService.instance.init();
+      final result = VoiceSearchResolver.resolve(
+        query,
+        surahs: surahs.map((s) => VoiceSurahEntry(s.number, s.name, s.englishName)).toList(growable: false),
+        stations: RadioService.instance.stations
+            .map((s) => VoiceStationEntry(s.id, s.nameAr, s.nameEn, s.country))
+            .toList(growable: false),
+      );
+      switch (result.target) {
+        case VoiceTarget.surah:
+          await _playSurahNumber(result.surah!);
+          break;
+        case VoiceTarget.station:
+          await _playStationId(result.stationId!);
+          break;
+        case VoiceTarget.none:
+          if (VoiceSearchResolver.normalize(query).isEmpty) {
+            await play();
+          } else {
+            AppLogger.info('Voice search matched nothing: "$query"');
+          }
+          break;
+      }
+    } catch (e, st) {
+      AppLogger.error('Android Auto voice search failed for "$query"', error: e, stackTrace: st);
     }
   }
 
