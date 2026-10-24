@@ -32,6 +32,24 @@ class RecitationCheckScreen extends StatefulWidget {
 class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
   static const MethodChannel _nativeChannel = MethodChannel('wirdi/overlay');
 
+  Future<void> _openSpeechSettings() async {
+    try {
+      await _nativeChannel.invokeMethod<bool>('openSpeechSettings');
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() => _lastError = 'تعذر فتح إعدادات التعرف على الكلام: ${error.message ?? error.code}');
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    try {
+      await _nativeChannel.invokeMethod<bool>('openAppSettings');
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() => _lastError = 'تعذر فتح إعدادات التطبيق: ${error.message ?? error.code}');
+    }
+  }
+
   Future<Map<String, dynamic>?> _readNativeSpeechDiagnostics() async {
     try {
       return await _nativeChannel.invokeMapMethod<String, dynamic>('speechDiagnostics');
@@ -615,6 +633,19 @@ class _RecitationCheckScreenState extends State<RecitationCheckScreen> {
                       Text(
                         bi(context, 'ملاحظة: $_lastError', 'Note: $_lastError'),
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    if (_speechUnavailable)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          onPressed: _microphonePermissionIssue ? _openAppSettings : _openSpeechSettings,
+                          icon: const Icon(Icons.settings_voice_rounded),
+                          label: Text(
+                            _microphonePermissionIssue
+                                ? bi(context, 'فتح إعدادات إذن الميكروفون', 'Open microphone permission settings')
+                                : bi(context, 'فتح إعدادات التعرف على الكلام', 'Open speech-recognition settings'),
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(
