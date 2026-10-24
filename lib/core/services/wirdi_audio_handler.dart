@@ -1,6 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 
+import '../models/quran_models.dart';
 import 'quran_audio_service.dart';
+import 'quran_repository.dart';
 import 'radio_service.dart';
 
 /// Bridges Wirdi's existing Radio + Quran audio playback into the
@@ -166,6 +168,76 @@ class WirdiAudioHandler extends BaseAudioHandler {
       processingState: AudioProcessingState.idle,
       playing: false,
     ));
+  }
+
+  /// Android Auto browsable root. Folder items are represented as non-playable
+  /// MediaItems; the platform maps these to browsable media-browser entries.
+  static const String _browseSurahs = 'wirdi:browse:surahs';
+  static const String _browseRadio = 'wirdi:browse:radio';
+  static const String _surahPrefix = 'wirdi:surah:';
+  static const String _radioPrefix = 'wirdi:radio:';
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [Map<String, dynamic>? options]
+  ) async {
+    if (parentMediaId == AudioService.browsableRootId || parentMediaId == 'root') {
+      return const [
+        MediaItem(id: _browseSurahs, title: 'سور القرآن الكريم', playable: false),
+        MediaItem(id: _browseRadio, title: 'إذاعات القرآن الكريم', playable: false),
+      ];
+    }
+
+    if (parentMediaId == _browseSurahs) {
+      final surahs = await QuranRepository.load();
+      return surahs.map((SurahModel surah) => MediaItem(
+        id: '$_surahPrefix${surah.number}',
+        title: surah.name,
+        artist: surah.englishName,
+        album: 'القرآن الكريم',
+        playable: true,
+      )).toList(growable: false);
+    }
+
+    if (parentMediaId == _browseRadio) {
+      final stations = RadioService.instance.stations;
+      return stations.map((station) => MediaItem(
+        id: '$_radioPrefix${station.id}',
+        title: station.nameAr.isNotEmpty ? station.nameAr : station.nameEn,
+        artist: station.nameEn,
+        album: station.country,
+        playable: true,
+        isLive: true,
+      )).toList(growable: false);
+    }
+
+    return const <MediaItem>[];
+  }
+
+  /// Start playback through Wirdi's existing engines. No second player is
+  /// created, and RadioService/QuranAudioService keep their coordinator rules.
+  @override
+  Future<void> playFromMediaId(String mediaId, [Map<String, dynamic>? extras]) async {
+    if (mediaId.startsWith(_surahPrefix)) {
+      final number = int.tryParse(mediaId.substring(_surahPrefix.length));
+      if (number == null || number < 1 || number > 114) return;
+      final surahs = await QuranRepository.load();
+      SurahModel? selected;
+      for (final surah in surahs) {
+        if (surah.number == number) { selected = surah; break; }
+      }
+      if (selected != null) await quranAudio.playWholeSurah(selected, surahs);
+      return;
+    }
+    if (mediaId.startsWith(_radioPrefix)) {
+      final id = mediaId.substring(_radioPrefix.length);
+      for (final station in RadioService.instance.stations) {
+        if (station.id == id) {
+          await RadioService.instance.play(station);
+          return;
+        }
+      }
+    }
   }
 
   @override
