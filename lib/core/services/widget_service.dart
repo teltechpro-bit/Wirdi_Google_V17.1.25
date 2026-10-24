@@ -75,21 +75,24 @@ class WidgetService {
     try {
       final now = DateTime.now();
       final dateKey = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-      final savedDate = await HomeWidget.getWidgetData<String>('daily_ayah_date');
+      final poolDate = await HomeWidget.getWidgetData<String>('daily_ayah_pool_date');
       final savedPool = await HomeWidget.getWidgetData<String>('daily_ayah_pool_json');
-      if (savedDate == dateKey && savedPool != null && savedPool.isNotEmpty) return;
+      if (poolDate == dateKey && savedPool != null && savedPool.isNotEmpty) return;
 
       final surahs = await QuranRepository.load();
       final allAyahs = surahs.expand((surah) => surah.ayahs).where((ayah) => ayah.text.trim().isNotEmpty).toList(growable: false);
       if (allAyahs.isEmpty) return;
-      final dayOfYear = now.difference(DateTime(now.year)).inDays;
-      final start = (dayOfYear * 17) % allAyahs.length;
+      // Use days since the Unix epoch so the selection does not reset every January.
+      final epochDay = DateTime.utc(now.year, now.month, now.day)
+          .difference(DateTime.utc(1970, 1, 1)).inDays;
+      final start = (epochDay * 17) % allAyahs.length;
       final pool = List<String>.generate(
         50,
         (offset) => allAyahs[(start + offset) % allAyahs.length].text,
         growable: false,
       );
       await HomeWidget.saveWidgetData<String>('daily_ayah_pool_json', jsonEncode(pool));
+      await HomeWidget.saveWidgetData<String>('daily_ayah_pool_date', dateKey);
       await HomeWidget.saveWidgetData<int>('daily_ayah_index', 0);
       await HomeWidget.saveWidgetData<String>('daily_ayah_text', pool.first);
       await HomeWidget.saveWidgetData<String>('daily_ayah_date', dateKey);
@@ -115,7 +118,8 @@ class WidgetService {
   static Future<void> updateTasbeehSelection(String phraseId, int displayCount) async {
     try {
       await HomeWidget.saveWidgetData<String>('tasbeeh_selected_phrase_id', phraseId);
-      await HomeWidget.saveWidgetData<int>('tasbeeh_count', displayCount);
+      // Keep the legacy monotonic counter separate from the selected phrase's visible cycle.
+      await HomeWidget.saveWidgetData<int>('tasbeeh_display_count', displayCount);
       await HomeWidget.updateWidget(androidName: 'WirdiTasbeehWidgetProvider');
     } catch (e, st) {
       AppLogger.error('Failed to sync selected tasbeeh phrase with widget', error: e, stackTrace: st);
